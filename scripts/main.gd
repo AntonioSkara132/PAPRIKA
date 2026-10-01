@@ -32,8 +32,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameState.save_game()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("quick_load") and not get_tree().paused:
-		if GameState.load_game() and world != null and world.has_method("apply_loaded_state"):
-			world.apply_loaded_state()
+		if GameState.load_game():
+			if world != null and world.has_method("apply_loaded_state"):
+				world.apply_loaded_state()
+			if game_ui != null and game_ui.has_method("close_modal"):
+				game_ui.call("close_modal")
 		get_viewport().set_input_as_handled()
 
 func _ensure_input_actions() -> void:
@@ -47,6 +50,12 @@ func _ensure_input_actions() -> void:
 		"inventory": [KEY_I],
 		"jobs": [KEY_J],
 		"use_food": [KEY_H],
+		"party_player": [KEY_1],
+		"party_first": [KEY_2],
+		"party_second": [KEY_3],
+		"order_follow": [KEY_Q],
+		"order_hold": [KEY_R],
+		"order_attack": [KEY_T],
 		"pause": [KEY_ESCAPE],
 		"quick_save": [KEY_F5],
 		"quick_load": [KEY_F9],

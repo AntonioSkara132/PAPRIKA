@@ -18,6 +18,10 @@ func _initialize() -> void:
 	_run("wrong issuer cannot claim", _test_wrong_issuer)
 	_run("unique hacker job cannot repeat", _test_unique_job)
 	_run("multiple jobs progress independently", _test_simultaneous_jobs)
+	_run("hacker defeat unlocks camp without bounty", _test_camp_unlock)
+	_run("camp casualties are unique and reward pays once", _test_camp_casualties)
+	_run("recruits, equipment and orders", _test_squad_equipment)
+	_run("downed recruit recovers", _test_recruit_recovery)
 	_run("save migration and validation", _test_saves)
 	_run("travel fare is not an item purchase", _test_travel_fare)
 	print("GameState: %d checks, %d failures" % [_checks, _failures])
@@ -191,6 +195,85 @@ func _test_simultaneous_jobs() -> void:
 	state.free()
 
 
+func _test_camp_unlock() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	_check(not state.accept_job(state.CAMP_JOB), "camp job is locked before defeating the hacker")
+	state.defeated_persistent_enemies.append("hacker_forest")
+	_check(not state.accept_job("hacker_bounty"), "hacker bounty cannot be accepted after defeating its target")
+	_check(state.hacker_defeated() and state.accept_job(state.CAMP_JOB), "defeating the hacker unlocks the camp without accepting or claiming its bounty")
+	_check(not state.completed_unique_jobs.has("hacker_bounty") and not state.active_jobs.has("hacker_bounty"), "camp unlock does not depend on bounty payment")
+	state.free()
+
+
+func _test_camp_casualties() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.defeated_persistent_enemies.append("hacker_forest")
+	_check(state.accept_job(state.CAMP_JOB), "unlocked camp mission can be accepted")
+	_check(not state.record_camp_defeat(state.CAMP_IDS[0]) and not state.record_event("camp_bandit_defeated", 3), "camp kills cannot count before deployment or through generic events")
+	_check(state.recruit_villager("resident_00", Vector2(830, 600)) and state.recruit_villager("resident_01", Vector2(845, 600)) and state.deploy_squad(), "two recruits allow camp deployment")
+	_check(not state.claim_job("mercenary", state.CAMP_JOB), "camp reward cannot be claimed before the bandits are defeated")
+	_check(not state.record_camp_defeat("bandit_forest") and not state.record_camp_defeat("unknown"), "other bandits cannot advance the camp mission")
+	for index in state.CAMP_IDS.size():
+		var enemy_id: String = state.CAMP_IDS[index]
+		_check(state.record_camp_defeat(enemy_id), "unique camp bandit %d advances the mission" % (index + 1))
+		_check(not state.record_camp_defeat(enemy_id) and int(state.active_jobs[state.CAMP_JOB]) == index + 1, "same camp bandit cannot count twice")
+	_check(state.active_job_ready(state.CAMP_JOB) and state.camp_defeated_ids.size() == 3, "exactly three distinct camp kills complete the mission")
+	_check(not state.claim_job("work_office", state.CAMP_JOB), "work office cannot pay the camp reward")
+	var reward := int(GameData.job(state.CAMP_JOB)["reward"])
+	_check(state.claim_job("mercenary", state.CAMP_JOB) and state.gold == reward, "mercenary pays the camp reward once")
+	_check(not state.squad_deployed and state.squad_recruits.is_empty() and state.completed_unique_jobs.has(state.CAMP_JOB), "claiming releases the squad and records unique completion")
+	_check(not state.claim_job("mercenary", state.CAMP_JOB) and not state.accept_job(state.CAMP_JOB) and state.gold == reward, "camp reward cannot be claimed or accepted a second time")
+	state.free()
+
+
+func _test_squad_equipment() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and not state.deploy_squad(), "recruitment and deployment require the camp mission")
+	state.defeated_persistent_enemies.append("hacker_forest")
+	state.accept_job(state.CAMP_JOB)
+	_check(not state.recruit_villager("not_a_villager", Vector2.ZERO), "unknown villagers cannot join")
+	_check(state.recruit_villager("resident_00", Vector2(813, 610)), "first villager joins the squad")
+	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and not state.deploy_squad(), "same villager cannot join twice and one recruit cannot deploy")
+	_check(state.recruit_villager("resident_01", Vector2(844, 613)) and not state.recruit_villager("resident_02", Vector2.ZERO), "squad holds exactly two distinct villagers")
+	_check(state.dismiss_recruit("resident_01") and state.recruit_villager("resident_02", Vector2(840, 600)), "recruit can be replaced before deployment")
+	_check(state.add_item("wood_sword") and state.equip_recruit("resident_00", "weapon", "wood_sword"), "first recruit can equip one owned sword")
+	_check(state.reserved_item_count("wood_sword") == 1 and not state.equip_recruit("resident_02", "weapon", "wood_sword") and not state.equip_item("wood_sword"), "one sword cannot be equipped by several squad members")
+	_check(not state.sell_item("wood_sword") and not state.remove_item("wood_sword"), "equipped sword cannot be sold or removed")
+	_check(state.add_item("wood_sword") and state.equip_recruit("resident_02", "weapon", "wood_sword") and state.reserved_item_count("wood_sword") == 2, "second sword allows the other recruit to equip one")
+	_check(state.add_item("wood_armor") and state.equip_recruit("resident_02", "armor", "wood_armor"), "owned armor can be assigned to a recruit")
+	_check(not state.equip_recruit("resident_00", "armor", "wood_armor") and not state.equip_recruit("resident_00", "weapon", "wood_armor"), "armor requires a spare copy and cannot be assigned as a weapon")
+	_check(state.deploy_squad() and not state.dismiss_recruit("resident_00"), "deployment locks the two-person roster")
+	_check(state.set_controlled_member("resident_02") and state.controlled_member_id == "resident_02", "either recruit can be controlled")
+	_check(state.set_squad_order("player", "hold", Vector2(12, 34)) and state.player_order == "hold" and state.player_hold_position == [12.0, 34.0], "player hold order remembers its location")
+	_check(state.set_squad_order("resident_00", "attack", Vector2(44, 55)) and state.squad_members["resident_00"]["order"] == "attack", "recruit receives attack order")
+	_check(not state.set_squad_order("resident_00", "invalid", Vector2.ZERO), "invalid orders are refused")
+	state.free()
+
+
+func _test_recruit_recovery() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.defeated_persistent_enemies.append("hacker_forest")
+	state.accept_job(state.CAMP_JOB)
+	state.recruit_villager("resident_00", Vector2(813, 610))
+	state.recruit_villager("resident_01", Vector2(844, 613))
+	state.deploy_squad()
+	_check(state.damage_recruit("resident_00", 5) and int(state.squad_members["resident_00"]["health"]) == 19, "recruit takes nonfatal damage")
+	_check(state.heal_recruit("resident_00", "bread") and int(state.inventory.get("bread", 0)) == 0, "food heals recruit and consumes one inventory item")
+	_check(state.set_controlled_member("resident_00") and state.damage_recruit("resident_00", 999), "controlled recruit can be downed")
+	_check(state.recruit_recovering("resident_00") and state.controlled_member_id == "player", "downed recruit returns control to player")
+	_check(not state.damage_recruit("resident_00", 1) and not state.heal_recruit("resident_00", "bread") and not state.set_controlled_member("resident_00"), "downed recruit cannot fight, eat or be controlled")
+	state._process(state.RECOVERY_SECONDS - 0.1)
+	_check(state.recruit_recovering("resident_00"), "recruit still recovers just before deadline")
+	state._process(0.2)
+	_check(not state.recruit_recovering("resident_00") and int(state.squad_members["resident_00"]["health"]) == int(state.squad_members["resident_00"]["max_health"]), "recruit returns at full health after recovery")
+	_check(state.set_controlled_member("resident_00"), "recovered recruit can be controlled again")
+	state.free()
+
+
 func _test_saves() -> void:
 	var original_xdg_home := OS.get_environment("XDG_DATA_HOME")
 	var had_xdg_home := OS.has_environment("XDG_DATA_HOME")
@@ -262,14 +345,15 @@ func _test_save_migration(state) -> void:
 	_check(state.load_game() and state.active_jobs == {"field_work": 3} and state.tracked_job_id == "field_work", "schema-one job and progress migrate without being lost")
 	_check(state.accept_job("rabbit_catch") and state.track_job("field_work"), "a second job can be added to a migrated save")
 	state.record_event("rabbit_caught", 2)
-	_check(state.save_game(), "save writes schema two with simultaneous jobs")
+	_check(state.save_game(), "saving a schema-one migration writes schema three")
 	var saved_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	var saved_jobs: Dictionary = saved_data.get("active_jobs", {}) if saved_data is Dictionary else {}
-	_check(saved_data is Dictionary and saved_data.get("schema") == 2 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "saved data contains each job and tracked selection")
+	_check(saved_data is Dictionary and saved_data.get("schema") == 3 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "schema-three save contains each job and tracked selection")
+	_check(saved_data is Dictionary and saved_data.get("squad_recruits") == [] and saved_data.get("squad_deployed") == false and saved_data.get("camp_defeated_ids") == [], "migration initializes empty squad and camp progress")
 	var backup_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
 	_check(backup_data is Dictionary and backup_data.get("schema") == 1, "previous schema-one save stays in the backup")
 	state.start_new_game()
-	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema two restores both jobs and tracked selection")
+	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema three restores both jobs and tracked selection")
 	if saved_data is Dictionary:
 		var invalid_tracking: Dictionary = saved_data.duplicate(true)
 		invalid_tracking["tracked_job_id"] = "hacker_bounty"
@@ -283,9 +367,30 @@ func _test_save_migration(state) -> void:
 	var invalid_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(invalid_file != null, "primary save can be corrupted in the isolated directory")
 	if invalid_file != null:
-		invalid_file.store_string('{"schema": 2, "active_jobs": "invalid"}')
+		invalid_file.store_string('{"schema": 3, "active_jobs": "invalid"}')
 		invalid_file.close()
 		_check(state.load_game() and state.active_jobs == {"field_work": 3} and state.tracked_job_id == "field_work", "invalid primary loads the earlier schema-one backup")
+	var schema_two: Dictionary = legacy_data.duplicate(true)
+	schema_two["schema"] = 2
+	schema_two.erase("active_job_id")
+	schema_two.erase("active_job_progress")
+	schema_two["active_jobs"] = {"field_work": 3, "rabbit_catch": 2}
+	schema_two["tracked_job_id"] = "rabbit_catch"
+	var schema_two_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
+	_check(schema_two_file != null, "schema-two fixture can be written")
+	if schema_two_file == null:
+		return
+	schema_two_file.store_string(JSON.stringify(schema_two))
+	schema_two_file.close()
+	state.start_new_game()
+	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "rabbit_catch", "schema-two save restores simultaneous jobs")
+	_check(state.squad_recruits.is_empty() and state.squad_members.is_empty() and not state.squad_deployed and state.controlled_member_id == "player" and state.camp_defeated_ids.is_empty(), "schema-two migration defaults to no squad or camp progress")
+	_check(state.save_game(), "schema-two fixture can be saved as schema three")
+	var migrated_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	var migrated_jobs: Dictionary = migrated_two.get("active_jobs", {}) if migrated_two is Dictionary else {}
+	_check(migrated_two is Dictionary and migrated_two.get("schema") == 3 and migrated_two.get("tracked_job_id") == "rabbit_catch" and migrated_jobs.size() == 2 and int(migrated_jobs.get("field_work", -1)) == 3 and int(migrated_jobs.get("rabbit_catch", -1)) == 2, "schema-two jobs survive schema-three serialization")
+	var previous_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
+	_check(previous_two is Dictionary and previous_two.get("schema") == 2, "schema-two source is kept in the backup")
 
 
 func _test_travel_fare() -> void:

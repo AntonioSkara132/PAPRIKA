@@ -22,6 +22,8 @@ The source map is `/home/antonio/Paprika/maps/paprika.tmj`. This is the playable
 | I | Open inventory, use food, or change equipment |
 | J | View active jobs, choose one to track, or abandon a job |
 | H | Eat bread (or stew) to restore health |
+| 1 / 2 / 3 | Control yourself / first recruit / second recruit after deploying |
+| Q / R / T | Tell the other squad members to follow / hold / attack nearby enemies |
 | F5 | Save |
 | F9 | Load the saved game |
 | Esc | Close a menu, pause, or resume |
@@ -35,7 +37,9 @@ The source map is `/home/antonio/Paprika/maps/paprika.tmj`. This is the playable
 3. Return to the work office to claim **10 gold**. Crops regrow after **120 seconds** of unpaused play.
 4. Accept the rabbit-catching job and a mercenary job at the same time. Each job keeps its own progress; press **J** to view them all, choose which one the HUD tracks, or abandon one. Claim each completed job at the office that offered it. A stick is starting equipment; the forge sells swords, spears, and bows. The clothing shop sells clothing and armor. Armor reduces attack damage by 1, 2, or 3 points depending on its tier.
 5. Sell crops or rabbit meat at the food shop. Enter at the shop's door; the private crops are farther north, away from the building. The level-five hacker is intentionally much stronger than starting equipment.
-6. Visit the travel agency near the landing pad. It quotes a **1,000-gold** fare, but other planets are not built yet: opening it never takes gold.
+6. After defeating the hacker, return to the **MERCENARY** center and accept **Clear the Bandit Camp**. Choose exactly two villagers from its named roster; each choice shows a stable villager ID, so villagers with the same name can be distinguished. Before deploying, you can dismiss and replace either recruit. Recruits start with militia clubs; assign weapons or armor you own from the mercenary menu. Each equipped item needs its own copy in your inventory, including items equipped by you.
+7. Deploy the three-person squad and head for the camp in the northwest forest. Press **1/2/3** to switch the character you control. **Q** orders the others to follow, **R** to hold, and **T** to attack nearby enemies; these shortcuts do not act while a menu is open. The HUD shows squad health, orders, and recovery. A fallen recruit returns after a short recovery. Once all **three distinct camp bandits** are defeated, return to the mercenary center to claim the reward. A deployed camp mission cannot be abandoned.
+8. Visit the travel agency near the landing pad. It quotes a **1,000-gold** fare, but other planets are not built yet: opening it never takes gold.
 
 Matching dark plaques identify the FOOD, FORGE, WORK, MERCENARY, CLOTHES, and TRAVEL services; visit the door to open a menu. Wooden **COMMON** signs and fences mark public fields; **PRIVATE** marks gardens that cannot be harvested. The fence openings are the entrances. **FOREST** signs show routes into the woods, while **DANGER** marks the darker forest where enemies may be nearby. The wooden signs are landmarks, not interaction points.
 
@@ -49,7 +53,7 @@ Open the live map in Tiled:
 tiled /home/antonio/Paprika/maps/paprika.tmj
 ```
 
-The finite orthogonal Tiled JSON map references external `.tsj` tilesets and individual PNG sprites. Terrain uses 16×16 tiles. The game reads the `.tmj` and `.tsj` files at startup, so changing a supported tile or object and restarting the game changes the playable world. The layers **Common Fields** and **Private Fields** decide whether harvesting is allowed. The **Field Boundaries and Forest Details** layer draws fence tiles and forest debris; its intact fence tiles block movement, so keep openings when editing a field. New named shops or enemies also need a matching rule in `scripts/world/tiled_loader.gd` and, for shops, `scripts/ui/game_ui.gd`.
+The finite orthogonal Tiled JSON map references external `.tsj` tilesets and individual PNG sprites. Terrain uses 16×16 tiles. The game reads the `.tmj` and `.tsj` files at startup, so changing a supported tile or object and restarting the game changes the playable world. The layers **Common Fields** and **Private Fields** decide whether harvesting is allowed. The **Field Boundaries and Forest Details** layer draws fence tiles and forest debris; its intact fence tiles block movement, so keep openings when editing a field. New named shops or enemies also need a matching rule in `scripts/world/tiled_loader.gd` and, for shops, `scripts/ui/game_ui.gd`. The bandit camp marker and its three mission enemies appear dynamically only after squad deployment; they are not permanent Tiled objects in the editable map.
 
 The art is original and local. Open `art/concepts/paprika_tileset.aseprite` for the first terrain tiles. The new building, enemy, and clothing `.aseprite` files are under `assets/art/`, and the PNGs used by Tiled and Godot are beside them. LibreSprite opens either kind:
 
@@ -75,7 +79,7 @@ TEST_HOME=$(mktemp -d /tmp/paprika-worldtest.XXXXXX)
 XDG_DATA_HOME="$TEST_HOME" godot --headless --path /home/antonio/Paprika --quit-after 600 res://tests/world_smoke.tscn
 ```
 
-The world smoke test writes a save file, so always run it with an isolated `XDG_DATA_HOME` as shown. Normal game saves go to Godot's `user://paprika_save.json`; F5 writes a previous-save backup alongside it, and F9 restores the save. Schema-one saves load with their active mission and progress intact; the next F5 writes schema two with all active missions and their tracked selection. Saving does not overwrite the Tiled map or sprite files.
+The world smoke test writes a save file, so always run it with an isolated `XDG_DATA_HOME` as shown. Normal game saves go to Godot's `user://paprika_save.json`; F5 writes a previous-save backup alongside it, and F9 restores the save. Schema-one and schema-two saves load with their jobs and progress intact; the next F5 writes schema three with squad and camp mission state. Saving does not overwrite the Tiled map or sprite files.
 
 ## This version's boundaries
 

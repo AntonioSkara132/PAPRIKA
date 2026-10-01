@@ -17,7 +17,7 @@ func configure(origin: Vector2, travel_direction: Vector2, attack_damage: int, t
 	max_distance = attack_range
 	from_player = player_owned
 	collision_layer = 0
-	collision_mask = 1 | (8 | 32 if from_player else 2)
+	collision_mask = 1 | (8 | 32 if from_player else 2 | 64)
 	monitoring = true
 	monitorable = false
 	body_entered.connect(_on_body_entered)

@@ -5,12 +5,17 @@ signal gold_changed(amount: int)
 signal inventory_changed
 signal equipment_changed
 signal job_changed
+signal squad_changed
 signal notification_requested(message: String)
 signal save_finished(success: bool)
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 2
+const SAVE_SCHEMA := 3
+const CAMP_JOB := "bandit_camp"
+const CAMP_IDS := ["camp_bandit_0", "camp_bandit_1", "camp_bandit_2"]
+const SQUAD_ORDERS := ["follow", "hold", "attack"]
+const RECOVERY_SECONDS := 30.0
 
 var max_health: int = GameData.STARTING_MAX_HEALTH
 var health: int = GameData.STARTING_MAX_HEALTH
@@ -24,6 +29,13 @@ var player_position := Vector2(320, 220)
 var field_regrowth: Dictionary = {}
 var defeated_persistent_enemies: Array[String] = []
 var play_seconds: float = 0.0
+var squad_recruits: Array[String] = []
+var squad_members: Dictionary = {}
+var squad_deployed := false
+var controlled_member_id := "player"
+var player_order := "follow"
+var player_hold_position := [0.0, 0.0]
+var camp_defeated_ids: Array[String] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -37,6 +49,16 @@ func _process(delta: float) -> void:
 			ready_fields.append(field_id)
 	for field_id in ready_fields:
 		field_regrowth.erase(field_id)
+	var recovered := false
+	for villager_id in squad_recruits:
+		var member: Dictionary = squad_members.get(villager_id, {})
+		if float(member.get("recover_until", 0.0)) > 0.0 and play_seconds >= float(member["recover_until"]):
+			member["recover_until"] = 0.0
+			member["health"] = int(member.get("max_health", 24))
+			squad_members[villager_id] = member
+			recovered = true
+	if recovered:
+		squad_changed.emit()
 
 func start_new_game() -> void:
 	max_health = GameData.STARTING_MAX_HEALTH
@@ -51,6 +73,13 @@ func start_new_game() -> void:
 	field_regrowth.clear()
 	defeated_persistent_enemies.clear()
 	play_seconds = 0.0
+	squad_recruits.clear()
+	squad_members.clear()
+	squad_deployed = false
+	controlled_member_id = "player"
+	player_order = "follow"
+	player_hold_position = [0.0, 0.0]
+	camp_defeated_ids.clear()
 	_emit_all()
 
 func add_gold(amount: int) -> void:
@@ -74,7 +103,7 @@ func add_item(item_id: String, amount: int = 1) -> bool:
 
 func remove_item(item_id: String, amount: int = 1) -> bool:
 	var owned := int(inventory.get(item_id, 0))
-	if amount <= 0 or owned < amount:
+	if amount <= 0 or owned - amount < reserved_item_count(item_id):
 		return false
 	owned -= amount
 	if owned == 0:
@@ -116,6 +145,9 @@ func equip_item(item_id: String) -> bool:
 		return false
 	var definition := GameData.item(item_id)
 	var kind := String(definition.get("kind", ""))
+	if equipment.get(kind, "") != item_id and reserved_item_count(item_id) >= int(inventory.get(item_id, 0)):
+		notify("Each equipped item needs its own inventory copy.")
+		return false
 	if kind == "weapon":
 		equipment["weapon"] = item_id
 	elif kind == "armor":
@@ -139,6 +171,18 @@ func use_food(item_id: String) -> bool:
 	notify("Ate %s." % definition["name"])
 	return true
 
+func heal_recruit(villager_id: String, item_id: String) -> bool:
+	if not squad_recruits.has(villager_id) or recruit_recovering(villager_id):
+		return false
+	var member: Dictionary = squad_members[villager_id]
+	var food := GameData.item(item_id)
+	if food.get("kind", "") != "food" or int(member["health"]) >= int(member["max_health"]) or not remove_item(item_id):
+		return false
+	member["health"] = mini(int(member["max_health"]), int(member["health"]) + int(food.get("heal", 0)))
+	squad_members[villager_id] = member
+	squad_changed.emit()
+	return true
+
 func weapon_definition() -> Dictionary:
 	return GameData.item(String(equipment.get("weapon", "stick")))
 
@@ -159,9 +203,155 @@ func restore_health() -> void:
 	health = max_health
 	health_changed.emit(health, max_health)
 
+func hacker_defeated() -> bool:
+	for enemy_id in defeated_persistent_enemies:
+		if enemy_id.begins_with("hacker_"):
+			return true
+	return false
+
+func recruit_villager(villager_id: String, position: Vector2) -> bool:
+	if not active_jobs.has(CAMP_JOB) or squad_deployed or squad_recruits.size() >= 2 or squad_recruits.has(villager_id) or not _valid_recruit_id(villager_id):
+		return false
+	squad_recruits.append(villager_id)
+	squad_members[villager_id] = {
+		"health": 24, "max_health": 24, "weapon": "militia_club", "armor": "",
+		"order": "follow", "position": [position.x, position.y],
+		"hold_position": [position.x, position.y], "recover_until": 0.0,
+	}
+	squad_changed.emit()
+	return true
+
+func dismiss_recruit(villager_id: String) -> bool:
+	if squad_deployed or not squad_recruits.has(villager_id):
+		return false
+	squad_recruits.erase(villager_id)
+	squad_members.erase(villager_id)
+	squad_changed.emit()
+	return true
+
+func deploy_squad() -> bool:
+	if not active_jobs.has(CAMP_JOB) or squad_deployed or squad_recruits.size() != 2:
+		return false
+	squad_deployed = true
+	squad_changed.emit()
+	notify("Squad assembled. Lead them to the bandit camp in the northwest forest.")
+	return true
+
+func set_controlled_member(member_id: String) -> bool:
+	if member_id != "player":
+		if not squad_deployed or not squad_recruits.has(member_id) or recruit_recovering(member_id):
+			return false
+	if controlled_member_id == member_id:
+		return true
+	controlled_member_id = member_id
+	squad_changed.emit()
+	return true
+
+func set_squad_order(member_id: String, order: String, at: Vector2) -> bool:
+	if not squad_deployed or not SQUAD_ORDERS.has(order) or (member_id != "player" and not squad_recruits.has(member_id)):
+		return false
+	if member_id == "player":
+		player_order = order
+		player_hold_position = [at.x, at.y]
+	else:
+		var member: Dictionary = squad_members[member_id]
+		member["order"] = order
+		member["hold_position"] = [at.x, at.y]
+		squad_members[member_id] = member
+	squad_changed.emit()
+	return true
+
+func recruit_recovering(villager_id: String) -> bool:
+	var member: Dictionary = squad_members.get(villager_id, {})
+	return int(member.get("health", 1)) <= 0 or float(member.get("recover_until", 0.0)) > play_seconds
+
+func damage_recruit(villager_id: String, raw_damage: int) -> bool:
+	if not squad_deployed or not squad_recruits.has(villager_id) or recruit_recovering(villager_id):
+		return false
+	var member: Dictionary = squad_members[villager_id]
+	var protection := int(GameData.item(String(member.get("armor", ""))).get("protection", 0))
+	var applied := maxi(0, raw_damage - protection)
+	if applied == 0:
+		return false
+	member["health"] = maxi(0, int(member["health"]) - applied)
+	if int(member["health"]) == 0:
+		member["recover_until"] = play_seconds + RECOVERY_SECONDS
+		member["order"] = "follow"
+		if controlled_member_id == villager_id:
+			controlled_member_id = "player"
+		notify("%s is recovering in the village." % villager_id)
+	squad_members[villager_id] = member
+	squad_changed.emit()
+	return true
+
+func equip_recruit(villager_id: String, slot: String, item_id: String) -> bool:
+	if not squad_recruits.has(villager_id) or not slot in ["weapon", "armor"]:
+		return false
+	if not item_id.is_empty() and String(GameData.item(item_id).get("kind", "")) != slot:
+		return false
+	if slot == "weapon" and item_id.is_empty():
+		item_id = "militia_club"
+	var member: Dictionary = squad_members[villager_id]
+	if member[slot] == item_id:
+		return true
+	if item_id != "militia_club" and not item_id.is_empty() and reserved_item_count(item_id) >= int(inventory.get(item_id, 0)):
+		notify("Each equipped item needs its own inventory copy.")
+		return false
+	member[slot] = item_id
+	squad_members[villager_id] = member
+	squad_changed.emit()
+	inventory_changed.emit()
+	return true
+
+func reserved_item_count(item_id: String) -> int:
+	var count := 0
+	for equipped in equipment.values():
+		if equipped == item_id:
+			count += 1
+	for villager_id in squad_recruits:
+		for slot in ["weapon", "armor"]:
+			if squad_members[villager_id][slot] == item_id:
+				count += 1
+	return count
+
+func record_camp_defeat(enemy_id: String) -> bool:
+	if not squad_deployed or not active_jobs.has(CAMP_JOB) or not CAMP_IDS.has(enemy_id) or camp_defeated_ids.has(enemy_id):
+		return false
+	camp_defeated_ids.append(enemy_id)
+	if not defeated_persistent_enemies.has(enemy_id):
+		defeated_persistent_enemies.append(enemy_id)
+	active_jobs[CAMP_JOB] = camp_defeated_ids.size()
+	job_changed.emit()
+	if active_job_ready(CAMP_JOB):
+		notify("Camp cleared. Return to the mercenary center for your reward.")
+	return true
+
+func _release_squad() -> void:
+	squad_deployed = false
+	squad_recruits.clear()
+	squad_members.clear()
+	controlled_member_id = "player"
+	player_order = "follow"
+	player_hold_position = [0.0, 0.0]
+	squad_changed.emit()
+
+func _valid_recruit_id(villager_id: String) -> bool:
+	var parts := villager_id.split("_")
+	if parts.size() != 2 or not String(parts[1]).is_valid_int():
+		return false
+	if parts[0] == "resident":
+		return int(parts[1]) >= 0 and int(parts[1]) < 25
+	return parts[0] in ["villager1", "villager2", "villager3", "villager4", "villager5", "villager6"] and int(parts[1]) > 0
+
 func accept_job(job_id: String) -> bool:
 	var definition := GameData.job(job_id)
 	if definition.is_empty():
+		return false
+	if job_id == CAMP_JOB and not hacker_defeated():
+		notify("Defeat the hacker to unlock the bandit camp mission.")
+		return false
+	if job_id == "hacker_bounty" and hacker_defeated() and not active_jobs.has(job_id):
+		notify("The hacker is already defeated. The bandit camp mission is available instead.")
 		return false
 	if active_jobs.has(job_id):
 		notify("That job is already active.")
@@ -187,6 +377,12 @@ func abandon_job(job_id: String = "") -> void:
 	var selected := job_id if not job_id.is_empty() else tracked_job_id
 	if not active_jobs.has(selected):
 		return
+	if selected == CAMP_JOB:
+		if squad_deployed:
+			notify("The squad mission cannot be abandoned after deployment.")
+			return
+		_release_squad()
+		camp_defeated_ids.clear()
 	active_jobs.erase(selected)
 	if tracked_job_id == selected:
 		tracked_job_id = String(active_jobs.keys()[0]) if not active_jobs.is_empty() else ""
@@ -194,7 +390,7 @@ func abandon_job(job_id: String = "") -> void:
 	notify("Job abandoned: %s" % GameData.job(selected).get("name", selected))
 
 func record_event(event_name: String, amount: int = 1) -> bool:
-	if amount <= 0:
+	if event_name == "camp_bandit_defeated" or amount <= 0:
 		return false
 	var matched := false
 	for job_id: String in active_jobs.keys():
@@ -219,7 +415,7 @@ func active_job_ready(job_id: String = "") -> bool:
 
 func claim_job(issuer: String, job_id: String = "") -> bool:
 	var selected := job_id if not job_id.is_empty() else tracked_job_id
-	if not active_job_ready(selected):
+	if not active_job_ready(selected) or (selected == CAMP_JOB and (not squad_deployed or camp_defeated_ids.size() != CAMP_IDS.size())):
 		notify("The job is not ready to claim.")
 		return false
 	var definition := GameData.job(selected)
@@ -232,6 +428,8 @@ func claim_job(issuer: String, job_id: String = "") -> bool:
 	active_jobs.erase(selected)
 	if tracked_job_id == selected:
 		tracked_job_id = String(active_jobs.keys()[0]) if not active_jobs.is_empty() else ""
+	if selected == CAMP_JOB:
+		_release_squad()
 	add_gold(reward)
 	job_changed.emit()
 	notify("%s: %d gold earned." % [definition["name"], reward])
@@ -271,6 +469,13 @@ func save_game() -> bool:
 		"field_regrowth": field_regrowth,
 		"defeated_persistent_enemies": defeated_persistent_enemies,
 		"play_seconds": play_seconds,
+		"squad_recruits": squad_recruits,
+		"squad_members": squad_members,
+		"squad_deployed": squad_deployed,
+		"controlled_member_id": controlled_member_id,
+		"player_order": player_order,
+		"player_hold_position": player_hold_position,
+		"camp_defeated_ids": camp_defeated_ids,
 	}
 	var json_text := JSON.stringify(data, "\t")
 	var temp_path := SAVE_PATH + ".tmp"
@@ -346,6 +551,17 @@ func load_game() -> bool:
 	for enemy_id in data.get("defeated_persistent_enemies", []):
 		defeated_persistent_enemies.append(String(enemy_id))
 	play_seconds = maxf(0.0, float(data.get("play_seconds", 0.0)))
+	squad_recruits.clear()
+	for villager_id in data.get("squad_recruits", []):
+		squad_recruits.append(String(villager_id))
+	squad_members = data.get("squad_members", {}).duplicate(true)
+	squad_deployed = bool(data.get("squad_deployed", false))
+	controlled_member_id = String(data.get("controlled_member_id", "player"))
+	player_order = String(data.get("player_order", "follow"))
+	player_hold_position = data.get("player_hold_position", [0.0, 0.0]).duplicate()
+	camp_defeated_ids.clear()
+	for enemy_id in data.get("camp_defeated_ids", []):
+		camp_defeated_ids.append(String(enemy_id))
 	_emit_all()
 	notify("Game loaded.")
 	return true
@@ -354,8 +570,9 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if schema != 1 and schema != SAVE_SCHEMA:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SAVE_SCHEMA]:
 		return false
+	schema = int(schema)
 	var item_counts = data.get("inventory", null)
 	var gear = data.get("equipment", null)
 	var location = data.get("player_position", null)
@@ -401,6 +618,8 @@ func _valid_save(data: Variant) -> bool:
 		return false
 	for job_id in jobs:
 		var progress = jobs[job_id]
+		if schema < SAVE_SCHEMA and job_id == CAMP_JOB:
+			return false
 		if not job_id is String or not GameData.JOBS.has(job_id) or not _is_number(progress):
 			return false
 		if float(progress) < 0.0 or float(progress) > float(GameData.job(job_id).get("target", 0)) or float(progress) != float(int(progress)):
@@ -415,12 +634,95 @@ func _valid_save(data: Variant) -> bool:
 	for completed_id in unique_jobs:
 		if not completed_id is String or not GameData.JOBS.has(completed_id):
 			return false
+		if schema < SAVE_SCHEMA and completed_id == CAMP_JOB:
+			return false
 		if jobs.has(completed_id) and not bool(GameData.job(completed_id).get("repeatable", false)):
 			return false
 	for enemy_id in defeated:
 		if not enemy_id is String:
 			return false
+	if schema == SAVE_SCHEMA and not _valid_squad_save(data, jobs, item_counts, gear):
+		return false
 	return true
+
+func _valid_squad_save(data: Dictionary, jobs: Dictionary, item_counts: Dictionary, gear: Dictionary) -> bool:
+	var recruits = data.get("squad_recruits", null)
+	var members = data.get("squad_members", null)
+	var deployed = data.get("squad_deployed", null)
+	var controlled = data.get("controlled_member_id", null)
+	var order = data.get("player_order", null)
+	var hold = data.get("player_hold_position", null)
+	var casualties = data.get("camp_defeated_ids", null)
+	if not recruits is Array or not members is Dictionary or not deployed is bool or not controlled is String or not order is String or not _valid_point(hold) or not casualties is Array:
+		return false
+	if recruits.size() > 2 or recruits.size() != members.size() or not SQUAD_ORDERS.has(order):
+		return false
+	if deployed and (not jobs.has(CAMP_JOB) or recruits.size() != 2):
+		return false
+	if not jobs.has(CAMP_JOB) and (not recruits.is_empty() or deployed):
+		return false
+	if jobs.has(CAMP_JOB) or data["completed_unique_jobs"].has(CAMP_JOB):
+		var hacker_found := false
+		for enemy_id in data["defeated_persistent_enemies"]:
+			if String(enemy_id).begins_with("hacker_"):
+				hacker_found = true
+		if not hacker_found:
+			return false
+	if controlled != "player" and (not deployed or not recruits.has(controlled)):
+		return false
+	var reserved: Dictionary = {}
+	for item_id in gear.values():
+		if item_id != "":
+			reserved[item_id] = int(reserved.get(item_id, 0)) + 1
+	for villager_id in recruits:
+		if not villager_id is String or not _valid_recruit_id(villager_id) or not members.has(villager_id):
+			return false
+		var member = members[villager_id]
+		if not member is Dictionary or not _valid_point(member.get("position", null)) or not _valid_point(member.get("hold_position", null)):
+			return false
+		if not _is_number(member.get("health", null)) or not _is_number(member.get("max_health", null)) or not _is_number(member.get("recover_until", null)):
+			return false
+		if float(member["max_health"]) < 1.0 or float(member["health"]) < 0.0 or float(member["health"]) > float(member["max_health"]) or float(member["recover_until"]) < 0.0:
+			return false
+		if float(member["health"]) != float(int(member["health"])) or float(member["max_health"]) != float(int(member["max_health"])):
+			return false
+		if (int(member["health"]) == 0 and float(member["recover_until"]) <= 0.0) or (int(member["health"]) > 0 and float(member["recover_until"]) > float(data["play_seconds"])):
+			return false
+		if not SQUAD_ORDERS.has(member.get("order", null)):
+			return false
+		for slot in ["weapon", "armor"]:
+			var item_id = member.get(slot, null)
+			if not item_id is String or (slot == "weapon" and item_id.is_empty()):
+				return false
+			if item_id == "militia_club" and slot == "weapon":
+				continue
+			if not item_id.is_empty():
+				if String(GameData.item(item_id).get("kind", "")) != slot:
+					return false
+				reserved[item_id] = int(reserved.get(item_id, 0)) + 1
+		if controlled == villager_id and (int(member["health"]) <= 0 or float(member["recover_until"]) > float(data["play_seconds"])):
+			return false
+	for item_id in reserved:
+		if int(reserved[item_id]) > int(item_counts.get(item_id, 0)):
+			return false
+	if casualties.size() > CAMP_IDS.size() or (not jobs.has(CAMP_JOB) and not casualties.is_empty() and not data["completed_unique_jobs"].has(CAMP_JOB)):
+		return false
+	var seen: Dictionary = {}
+	for enemy_id in casualties:
+		if not enemy_id is String or not CAMP_IDS.has(enemy_id) or seen.has(enemy_id):
+			return false
+		seen[enemy_id] = true
+	if jobs.has(CAMP_JOB) and (int(jobs[CAMP_JOB]) != casualties.size() or (not deployed and not casualties.is_empty())):
+		return false
+	if data["completed_unique_jobs"].has(CAMP_JOB) and casualties.size() != CAMP_IDS.size():
+		return false
+	for enemy_id in CAMP_IDS:
+		if data["defeated_persistent_enemies"].has(enemy_id) != casualties.has(enemy_id):
+			return false
+	return true
+
+func _valid_point(value: Variant) -> bool:
+	return value is Array and value.size() == 2 and _is_number(value[0]) and _is_number(value[1])
 
 func _is_number(value: Variant) -> bool:
 	return value is int or value is float

@@ -28,6 +28,7 @@ func configure(texture_path: String, spawn_position: Vector2, bounds: Rect2) -> 
 
 func _ready() -> void:
 	add_to_group("player")
+	add_to_group("party_target")
 	if not _built:
 		_build("res://art/concepts/source/player.png")
 	GameState.equipment_changed.connect(_refresh_appearance)
@@ -78,16 +79,20 @@ func _physics_process(delta: float) -> void:
 	if _prompt_scan_timer <= 0.0:
 		_prompt_scan_timer = 0.10
 		_update_nearest_interactable()
-	if _ui_is_open():
-		velocity = Vector2.ZERO
-		return
-	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = input_direction * SPEED
-	if input_direction.length_squared() > 0.01:
-		facing = _cardinal(input_direction)
-	move_and_slide()
-	global_position.x = clampf(global_position.x, map_bounds.position.x + 6, map_bounds.end.x - 6)
-	global_position.y = clampf(global_position.y, map_bounds.position.y + 8, map_bounds.end.y - 6)
+	var world := get_parent().get_parent() as GameWorld
+	if world != null and GameState.squad_deployed and GameState.controlled_member_id != "player":
+		world.step_squad_actor(self, delta)
+	else:
+		if _ui_is_open():
+			velocity = Vector2.ZERO
+			return
+		var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+		velocity = input_direction * SPEED
+		if input_direction.length_squared() > 0.01:
+			facing = _cardinal(input_direction)
+		move_and_slide()
+		global_position.x = clampf(global_position.x, map_bounds.position.x + 6, map_bounds.end.x - 6)
+		global_position.y = clampf(global_position.y, map_bounds.position.y + 8, map_bounds.end.y - 6)
 	z_index = 100 + int(global_position.y)
 	_position_report_timer -= delta
 	if _position_report_timer <= 0.0:
@@ -96,24 +101,33 @@ func _physics_process(delta: float) -> void:
 		position_changed.emit(global_position)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _ui_is_open():
+	if _ui_is_open() or get_tree().paused:
 		return
+	var world := get_parent().get_parent() as GameWorld
+	var active: CharacterBody2D = world.controlled_actor() if world != null else self
 	if event.is_action_pressed("interact"):
 		_update_nearest_interactable()
 		if is_instance_valid(_current_interactable) and _current_interactable.has_method("interact"):
-			_current_interactable.interact(self)
+			_current_interactable.interact(active)
 		else:
 			GameState.notify("There is nothing nearby to interact with.")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("attack"):
-		_attack()
+		if active == self:
+			_attack()
+		elif world != null:
+			world.attack_as(active)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
-		if not GameState.use_food("bread"):
-			GameState.use_food("stew")
+		if active == self:
+			if not GameState.use_food("bread"):
+				GameState.use_food("stew")
+		elif active is Villager:
+			if not GameState.heal_recruit(active.villager_id, "bread"):
+				GameState.heal_recruit(active.villager_id, "stew")
 		get_viewport().set_input_as_handled()
 
-func _attack() -> void:
+func _attack(preferred_target: Node2D = null) -> void:
 	if _attack_cooldown > 0.0:
 		return
 	var weapon := GameState.weapon_definition()
@@ -126,8 +140,8 @@ func _attack() -> void:
 		get_parent().add_child(projectile)
 		projectile.configure(global_position + facing * 10.0 + Vector2(0, -7), facing, attack_damage, 190.0, reach, true)
 	else:
-		var target := _nearest_damageable(reach)
-		if target != null:
+		var target := preferred_target if preferred_target != null else _nearest_damageable(reach)
+		if target != null and global_position.distance_to(target.global_position) <= reach:
 			target.take_damage(attack_damage, global_position)
 		_show_melee_swing(reach)
 
@@ -173,6 +187,7 @@ func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> v
 		_respawn()
 
 func _respawn() -> void:
+	GameState.set_controlled_member("player")
 	global_position = RESPAWN_POSITION
 	GameState.player_position = global_position
 	GameState.restore_health()
@@ -180,11 +195,14 @@ func _respawn() -> void:
 	GameState.notify("You were defeated and woke up safely in Paprika village.")
 
 func _update_nearest_interactable() -> void:
+	var world := get_parent().get_parent() as GameWorld
+	var active: CharacterBody2D = world.controlled_actor() if world != null else self
+	var origin := active.global_position
 	var best: Node2D
 	var best_distance := 46.0
 	var best_priority := 1
 	for candidate in get_tree().get_nodes_in_group("interactable"):
-		if not candidate is Node2D or candidate == self or not is_instance_valid(candidate):
+		if not candidate is Node2D or candidate == active or not is_instance_valid(candidate):
 			continue
 		var node := candidate as Node2D
 		if not node.is_visible_in_tree():
@@ -192,7 +210,7 @@ func _update_nearest_interactable() -> void:
 		var interaction_position := node.global_position
 		if node.has_method("get_interaction_position"):
 			interaction_position = node.get_interaction_position()
-		var distance := global_position.distance_to(interaction_position)
+		var distance := origin.distance_to(interaction_position)
 		var allowed_distance := 45.0 if node is Rabbit else INTERACTION_DISTANCE
 		var priority := 0 if node is WorldService else 1
 		if distance <= allowed_distance and (priority < best_priority or (priority == best_priority and distance < best_distance)):
@@ -227,6 +245,9 @@ func _refresh_appearance() -> void:
 			"bronze_armor": _armor_overlay.modulate = Color("e5b578")
 			"iron_armor": _armor_overlay.modulate = Color("d7e6ea")
 			_: _armor_overlay.modulate = Color.WHITE
+
+func ui_is_open() -> bool:
+	return _ui_is_open()
 
 func _ui_is_open() -> bool:
 	for node in get_tree().get_nodes_in_group("ui_modal"):

@@ -47,7 +47,7 @@ func _build(texture_path: String) -> void:
 		return
 	_built = true
 	collision_layer = 8
-	collision_mask = 1 | 2
+	collision_mask = 1 | 2 | 64
 	_sprite = Sprite2D.new()
 	_sprite.texture = load(texture_path) as Texture2D
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -80,8 +80,8 @@ func _build(texture_path: String) -> void:
 	elif enemy_id == "zombie_bear":
 		_sprite.scale = Vector2(1.45, 1.45)
 		_sprite.modulate = Color(0.54, 0.72, 0.50)
-	elif enemy_id == "bandit":
-		_sprite.modulate = Color(0.95, 0.62, 0.50)
+	elif enemy_id in ["bandit", "camp_bandit"]:
+		_sprite.modulate = Color(0.95, 0.62, 0.50) if enemy_id == "bandit" else Color(1.0, 0.35, 0.28)
 
 func _physics_process(delta: float) -> void:
 	if _defeated:
@@ -91,7 +91,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_time = maxf(0.0, _state_time - delta)
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-	var player := get_tree().get_first_node_in_group("player") as Node2D
+	var player := _nearest_party_target()
 	if player == null:
 		velocity = Vector2.ZERO
 		return
@@ -144,6 +144,18 @@ func _physics_process(delta: float) -> void:
 				_choose_patrol()
 	z_index = 100 + int(global_position.y)
 
+func _nearest_party_target() -> Node2D:
+	var nearest: Node2D
+	var best := INF
+	for candidate in get_tree().get_nodes_in_group("party_target"):
+		if not candidate is Node2D or not is_instance_valid(candidate) or candidate.is_queued_for_deletion():
+			continue
+		var distance := global_position.distance_squared_to(candidate.global_position)
+		if distance < best:
+			nearest = candidate
+			best = distance
+	return nearest
+
 func _move_toward(target: Vector2, movement_speed: float) -> void:
 	velocity = (target - global_position).normalized() * movement_speed
 	move_and_slide()
@@ -169,10 +181,13 @@ func _die() -> void:
 	var reward := int(definition.get("reward", 0))
 	GameState.add_gold(reward)
 	GameState.record_event(String(definition.get("event", "monster_defeated")))
+	if enemy_id == "camp_bandit":
+		GameState.record_camp_defeat(persistent_id)
 	GameState.notify("Defeated %s. Found %d gold." % [definition.get("name", enemy_id), reward])
-	if enemy_id == "hacker":
-		if not GameState.defeated_persistent_enemies.has(persistent_id):
+	if enemy_id in ["hacker", "camp_bandit"]:
+		if enemy_id == "hacker" and not GameState.defeated_persistent_enemies.has(persistent_id):
 			GameState.defeated_persistent_enemies.append(persistent_id)
+			GameState.notify("Bandit camp mission unlocked at the mercenary center.")
 		queue_free()
 	else:
 		_defeated = true
@@ -182,10 +197,10 @@ func _die() -> void:
 		_collision.set_deferred("disabled", true)
 
 func _respawn() -> void:
-	var player := get_tree().get_first_node_in_group("player") as Node2D
-	if player != null and player.global_position.distance_to(spawn_position) < 75.0:
-		_respawn_timer = 5.0
-		return
+	for actor in get_tree().get_nodes_in_group("party_target"):
+		if actor is Node2D and actor.global_position.distance_to(spawn_position) < 75.0:
+			_respawn_timer = 5.0
+			return
 	_defeated = false
 	health = max_health
 	global_position = spawn_position

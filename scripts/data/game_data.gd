@@ -14,6 +14,7 @@ const ITEMS := {
 	"bread": {"name": "Bread", "kind": "food", "buy": 5, "sell": 2, "heal": 6},
 	"stew": {"name": "Vegetable Stew", "kind": "food", "buy": 12, "sell": 5, "heal": 14},
 	"stick": {"name": "Sturdy Stick", "kind": "weapon", "buy": 0, "power": 1, "reach": 24.0, "cooldown": 0.52},
+	"militia_club": {"name": "Militia Club", "kind": "weapon", "buy": 0, "power": 1, "reach": 24.0, "cooldown": 0.55},
 	"wood_sword": {"name": "Wooden Sword", "kind": "weapon", "buy": 20, "power": 1, "reach": 27.0, "cooldown": 0.40},
 	"bronze_sword": {"name": "Bronze Sword", "kind": "weapon", "buy": 85, "power": 2, "reach": 29.0, "cooldown": 0.36},
 	"iron_sword": {"name": "Iron Sword", "kind": "weapon", "buy": 250, "power": 3, "reach": 31.0, "cooldown": 0.32},
@@ -77,6 +78,15 @@ const JOBS := {
 		"issuer": "mercenary",
 		"repeatable": false,
 	},
+	"bandit_camp": {
+		"name": "Clear the Bandit Camp",
+		"description": "Recruit two villagers and defeat three distinct bandits at their camp.",
+		"event": "camp_bandit_defeated",
+		"target": 3,
+		"reward": 350,
+		"issuer": "mercenary",
+		"repeatable": false,
+	},
 }
 
 const ENEMIES := {
@@ -84,6 +94,7 @@ const ENEMIES := {
 	"zombie": {"name": "Zombie", "level": 2, "max_health": 20, "damage": 5, "speed": 31.0, "event": "monster_defeated", "reward": 5},
 	"zombie_bear": {"name": "Zombified Bear", "level": 2, "max_health": 32, "damage": 7, "speed": 35.0, "event": "monster_defeated", "reward": 10},
 	"bandit": {"name": "Bandit", "level": 3, "max_health": 38, "damage": 9, "speed": 52.0, "event": "bandit_defeated", "reward": 20},
+	"camp_bandit": {"name": "Camp Bandit", "level": 3, "max_health": 32, "damage": 7, "speed": 45.0, "event": "bandit_defeated", "reward": 12},
 	"hacker": {"name": "Hacker", "level": 5, "max_health": 110, "damage": 18, "speed": 58.0, "event": "hacker_defeated", "reward": 100},
 }
 

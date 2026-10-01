@@ -12,6 +12,8 @@ var health_bar: ProgressBar
 var status_label: Label
 var equipment_label: Label
 var job_label: Label
+var squad_label: Label
+var squad_panel: PanelContainer
 var notification_label: Label
 var prompt_panel: PanelContainer
 var prompt_label: Label
@@ -21,6 +23,15 @@ var modal_content: VBoxContainer
 var _notification_timer: Timer
 var _active_service_id := ""
 var _active_service_name := ""
+var _squad_refresh_elapsed := 0.0
+
+func _process(delta: float) -> void:
+	if not GameState.squad_deployed:
+		return
+	_squad_refresh_elapsed += delta
+	if _squad_refresh_elapsed >= 0.5:
+		_squad_refresh_elapsed = 0.0
+		_refresh_squad()
 
 func _ready() -> void:
 	layer = 1000
@@ -108,7 +119,12 @@ func open_jobs() -> void:
 			_add_body("Progress: %d / %d%s   Reward: %d gold\nReturn to: %s" % [int(GameState.active_jobs[job_id]), int(definition.get("target", 1)), " — ready" if GameState.active_job_ready(job_id) else "", int(definition.get("reward", 0)), String(definition.get("issuer", "work_office")).replace("_", " ").capitalize()])
 			if not tracked:
 				_add_action_button("Track %s" % definition.get("name", job_id), func() -> void: GameState.track_job(job_id); _refresh_jobs_panel())
-			_add_action_button("Abandon %s" % definition.get("name", job_id), func() -> void: GameState.abandon_job(job_id); _refresh_jobs_panel())
+			if job_id == GameState.CAMP_JOB:
+				_add_body("The squad mission cannot be abandoned after deployment." if GameState.squad_deployed else "Recruit two villagers at the mercenary center before deploying.")
+				if GameState.squad_deployed:
+					_add_camp_roster(false)
+			if job_id != GameState.CAMP_JOB or not GameState.squad_deployed:
+				_add_action_button("Abandon %s" % definition.get("name", job_id), func() -> void: GameState.abandon_job(job_id); _refresh_jobs_panel())
 	_add_close_button()
 
 func close_modal() -> void:
@@ -173,7 +189,15 @@ func _build_hud() -> void:
 	prompt_panel.add_child(prompt_label)
 	prompt_panel.visible = false
 
-	var controls := _label("WASD move   E interact   SPACE attack   I pack   J jobs   H eat   F5/F9 save/load", 7, Color(0.92, 0.88, 0.78, 0.92))
+	squad_panel = _panel_at(Vector2(8, 290), Vector2(624, 33), CYAN)
+	squad_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(squad_panel)
+	squad_label = _label("", 9, CREAM)
+	squad_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	squad_panel.add_child(squad_label)
+	squad_panel.visible = false
+
+	var controls := _label("WASD move   E interact   SPACE attack   I pack   J jobs   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 7, Color(0.92, 0.88, 0.78, 0.92))
 	controls.position = Vector2(8, 349)
 	controls.size = Vector2(624, 10)
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -212,22 +236,25 @@ func _connect_state() -> void:
 	GameState.inventory_changed.connect(_refresh_status)
 	GameState.equipment_changed.connect(_refresh_status)
 	GameState.job_changed.connect(_refresh_job)
+	GameState.squad_changed.connect(_refresh_squad)
 	GameState.notification_requested.connect(_show_notification)
 
 func _refresh_all() -> void:
 	_refresh_status()
 	_refresh_job()
+	_refresh_squad()
 
 func _refresh_status() -> void:
 	health_bar.max_value = GameState.max_health
 	health_bar.value = GameState.health
-	status_label.text = "HP %d/%d       GOLD %d" % [GameState.health, GameState.max_health, GameState.gold]
+	status_label.text = "YOU HP %d/%d    GOLD %d" % [GameState.health, GameState.max_health, GameState.gold]
 	var weapon: String = GameData.item(String(GameState.equipment.get("weapon", "stick"))).get("name", "Stick")
 	var armor_id := String(GameState.equipment.get("armor", ""))
 	var armor: String = GameData.item(armor_id).get("name", "No armor") if not armor_id.is_empty() else "No armor"
-	equipment_label.text = "%s | %s" % [weapon, armor]
+	equipment_label.text = "YOUR GEAR: %s | %s" % [weapon, armor]
 
 func _refresh_job() -> void:
+	_refresh_squad()
 	if GameState.active_jobs.is_empty():
 		job_label.text = "JOBS\nNo active jobs — visit WORK"
 		return
@@ -235,6 +262,24 @@ func _refresh_job() -> void:
 	var definition := GameData.job(job_id)
 	var ready := " — CLAIM" if GameState.active_job_ready(job_id) else ""
 	job_label.text = "JOBS (%d) — J TO VIEW\n%s\n%d / %d%s" % [GameState.active_jobs.size(), definition.get("name", job_id), int(GameState.active_jobs[job_id]), int(definition.get("target", 1)), ready]
+
+func _refresh_squad() -> void:
+	squad_panel.visible = GameState.squad_deployed
+	if not GameState.squad_deployed:
+		return
+	var active_name := _member_name(GameState.controlled_member_id)
+	var summaries: Array[String] = []
+	if GameState.controlled_member_id != "player":
+		summaries.append("[1] You %d/%d %s" % [GameState.health, GameState.max_health, GameState.player_order])
+	for index in GameState.squad_recruits.size():
+		var villager_id: String = GameState.squad_recruits[index]
+		var member: Dictionary = GameState.squad_members.get(villager_id, {})
+		var health := "%d/%d" % [int(member.get("health", 0)), int(member.get("max_health", 24))]
+		var order := "direct control" if villager_id == GameState.controlled_member_id else String(member.get("order", "follow"))
+		if GameState.recruit_recovering(villager_id):
+			order = "recovering %ds" % ceili(float(member["recover_until"]) - GameState.play_seconds)
+		summaries.append("[%d] %s %s %s" % [index + 2, _member_name(villager_id), health, order])
+	squad_label.text = "SQUAD  Active: %s (direct control)  |  Q Follow  R Hold  T Attack\n%s" % [active_name, "    |    ".join(summaries)]
 
 func _show_notification(message: String) -> void:
 	notification_label.text = message
@@ -299,8 +344,10 @@ func _build_job_board(service_id: String) -> void:
 			_add_job_button(job_id)
 	else:
 		_add_heading("Mercenary bounties")
-		for job_id in ["forest_patrol", "bandit_bounty", "hacker_bounty"]:
+		for job_id in ["forest_patrol", "bandit_bounty", "hacker_bounty", GameState.CAMP_JOB]:
 			_add_job_button(job_id)
+		if GameState.active_jobs.has(GameState.CAMP_JOB):
+			_add_camp_roster(true)
 
 func _build_travel_agency() -> void:
 	_add_body("A ship ticket to a neighboring Cauliflower Confederation planet costs %d gold." % GameData.TRAVEL_FARE)
@@ -315,9 +362,13 @@ func _add_job_button(job_id: String) -> void:
 		text_value += " — CLAIM" if GameState.active_job_ready(job_id) else " — %d/%d" % [int(GameState.active_jobs[job_id]), int(definition["target"])]
 	elif not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id):
 		text_value += " — completed"
+	elif job_id == "hacker_bounty" and GameState.hacker_defeated():
+		text_value = "%s — already defeated" % definition["name"]
+	elif job_id == GameState.CAMP_JOB and not GameState.hacker_defeated():
+		text_value += " — locked: defeat the hacker"
 	var button := _add_action_button(text_value, func() -> void: _job_action(job_id))
 	button.tooltip_text = String(definition.get("description", ""))
-	button.disabled = not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id)
+	button.disabled = (not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id)) or (job_id == "hacker_bounty" and GameState.hacker_defeated() and not GameState.active_jobs.has(job_id)) or (job_id == GameState.CAMP_JOB and not GameState.hacker_defeated())
 
 func _job_action(job_id: String) -> void:
 	if GameState.active_jobs.has(job_id):
@@ -327,6 +378,96 @@ func _job_action(job_id: String) -> void:
 			GameState.track_job(job_id)
 	else:
 		GameState.accept_job(job_id)
+	_reopen_service()
+
+func _add_camp_roster(at_mercenary: bool) -> void:
+	_add_heading("Three-person squad")
+	if GameState.squad_deployed:
+		_add_body("Defeat all three camp bandits in the northwest forest. Camp: %d/3. Return here to claim the reward when all three fall." % GameState.camp_defeated_ids.size())
+	else:
+		_add_body("Choose exactly two villagers below, equip them from your pack, then deploy. The mission cannot be abandoned after deployment.")
+	for index in GameState.squad_recruits.size():
+		var villager_id: String = GameState.squad_recruits[index]
+		var member: Dictionary = GameState.squad_members.get(villager_id, {})
+		var state := ""
+		if GameState.squad_deployed:
+			state = "  HP %d/%d  %s" % [int(member.get("health", 0)), int(member.get("max_health", 24)), String(member.get("order", "follow"))]
+			if GameState.recruit_recovering(villager_id):
+				state += "  recovering (%ds)" % maxi(0, ceili(float(member.get("recover_until", 0.0)) - GameState.play_seconds))
+		_add_body("[%d] %s (%s)%s" % [index + 2, _member_name(villager_id), villager_id, state])
+		_add_body("Weapon: %s  |  Armor: %s" % [_gear_name(String(member.get("weapon", "militia_club"))), _gear_name(String(member.get("armor", "")))])
+		if at_mercenary:
+			if not GameState.squad_deployed:
+				_add_action_button("Dismiss %s" % _member_name(villager_id), func() -> void: GameState.dismiss_recruit(villager_id); _reopen_service())
+			_add_recruit_gear_buttons(villager_id, "weapon")
+			_add_recruit_gear_buttons(villager_id, "armor")
+	if not at_mercenary:
+		return
+	if GameState.squad_deployed:
+		return
+	if GameState.squad_recruits.size() == 2:
+		_add_action_button("Deploy squad — lead them to the northwest camp", func() -> void: GameState.deploy_squad(); _reopen_service())
+		return
+	_add_heading("Available villagers (%d/2 recruited)" % GameState.squad_recruits.size())
+	var world := _world()
+	if world == null or world.actors_root == null:
+		_add_body("Villagers are unavailable. Return after the world loads.")
+		return
+	var villagers: Array[Villager] = []
+	for actor in world.actors_root.get_children():
+		if actor is Villager and not GameState.squad_recruits.has(actor.villager_id):
+			villagers.append(actor)
+	villagers.sort_custom(func(a: Villager, b: Villager) -> bool:
+		return a.villager_name < b.villager_name or (a.villager_name == b.villager_name and a.villager_id < b.villager_id)
+	)
+	for villager in villagers:
+		var villager_id := villager.villager_id
+		_add_action_button("Recruit %s (%s)" % [villager.villager_name, villager_id], func() -> void: _recruit(villager_id))
+
+func _add_recruit_gear_buttons(villager_id: String, slot: String) -> void:
+	var member: Dictionary = GameState.squad_members.get(villager_id, {})
+	var current_id := String(member.get(slot, ""))
+	var default_id := "militia_club" if slot == "weapon" else ""
+	if current_id != default_id:
+		_add_action_button("%s: %s (remove)" % [slot.capitalize(), _gear_name(current_id)], func() -> void: _equip_recruit(villager_id, slot, default_id))
+	var item_ids := GameState.inventory.keys()
+	item_ids.sort()
+	for item_id_value in item_ids:
+		var item_id := String(item_id_value)
+		if String(GameData.item(item_id).get("kind", "")) != slot or item_id == current_id:
+			continue
+		var available := int(GameState.inventory[item_id]) - GameState.reserved_item_count(item_id)
+		var button := _add_action_button("%s: %s (%d available)" % [slot.capitalize(), _gear_name(item_id), available], func() -> void: _equip_recruit(villager_id, slot, item_id))
+		button.disabled = available <= 0
+
+func _world() -> GameWorld:
+	var world := get_tree().get_first_node_in_group("game_world") as GameWorld
+	if world == null:
+		world = get_parent().get_node_or_null("PaprikaWorld") as GameWorld
+	return world
+
+func _member_name(member_id: String) -> String:
+	if member_id == "player":
+		return "You"
+	var world := _world()
+	if world != null:
+		var villager := world.find_villager(member_id)
+		if villager != null:
+			return villager.villager_name
+	return member_id
+
+func _gear_name(item_id: String) -> String:
+	return String(GameData.item(item_id).get("name", "None")) if not item_id.is_empty() else "None"
+
+func _recruit(villager_id: String) -> void:
+	var world := _world()
+	if world != null and world.recruit(villager_id):
+		GameState.notify("%s joined your squad." % _member_name(villager_id))
+	_reopen_service()
+
+func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
+	if GameState.equip_recruit(villager_id, slot, item_id):
+		GameState.notify("%s equipped: %s." % [_member_name(villager_id), _gear_name(item_id)])
 	_reopen_service()
 
 func _buy_or_equip(item_id: String) -> void:

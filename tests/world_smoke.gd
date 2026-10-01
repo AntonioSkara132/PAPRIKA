@@ -282,10 +282,200 @@ func _run() -> void:
 		_check(state.active_jobs == saved_jobs and state.tracked_job_id == saved_tracking and state.active_jobs.size() == 2, "two active missions and the tracked mission survive reload")
 		_check(int(state.inventory.get("potato", 0)) + int(state.inventory.get("carrot", 0)) + int(state.inventory.get("tomato", 0)) + int(state.inventory.get("grape", 0)) >= 5, "harvested inventory survives reload")
 
+	await _check_squad_mission(world)
 	print("Paprika world: %d checks, %d failures" % [checks, failures])
 	remove_child(game)
 	game.free()
 	get_tree().quit(0 if failures == 0 else 1)
+
+func _check_squad_mission(world: GameWorld) -> void:
+	var state := GameState
+	state.start_new_game()
+	state.player_position = Player.RESPAWN_POSITION
+	world.apply_loaded_state()
+	var ui := get_tree().get_first_node_in_group("game_ui") as GameUI
+	_check(ui != null, "camp mission has a mercenary board")
+	if ui == null:
+		return
+	ui.open_service("mercenary", "Mercenary Center")
+	var locked_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
+	_check(locked_button != null and locked_button.disabled and locked_button.text.contains("locked"), "mercenary board displays a locked camp mission before hacker defeat")
+	ui.close_modal()
+	_check(not state.accept_job(state.CAMP_JOB), "camp remains locked before the hacker is defeated")
+	var hacker: Enemy
+	for actor in world.actors_root.get_children():
+		if actor is Enemy and actor.enemy_id == "hacker" and not actor.is_queued_for_deletion():
+			hacker = actor
+			break
+	_check(hacker != null, "hacker remains available for camp unlock test")
+	if hacker == null:
+		return
+	hacker.take_damage(999)
+	_check(state.hacker_defeated() and not state.completed_unique_jobs.has("hacker_bounty") and not state.active_jobs.has("hacker_bounty"), "defeating the hacker unlocks the mission without bounty acceptance or payment")
+	ui.open_service("mercenary", "Mercenary Center")
+	var available_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
+	_check(available_button != null and not available_button.disabled, "mercenary board unlocks camp mission after hacker defeat")
+	if available_button != null and not available_button.disabled:
+		available_button.pressed.emit()
+	_check(state.active_jobs.has(state.CAMP_JOB), "camp mission accepts from mercenary board")
+	var first := world.find_villager("resident_00")
+	var second := world.find_villager("resident_01")
+	_check(first != null and second != null and first != second, "two distinct villagers can be found by stable ID")
+	if first == null or second == null:
+		return
+	var first_recruit := _find_button(ui.modal_content, "(" + first.villager_id + ")")
+	_check(first_recruit != null and first_recruit.text.begins_with("Recruit "), "mercenary board lists first villager by stable ID")
+	if first_recruit != null:
+		first_recruit.pressed.emit()
+	var second_recruit := _find_button(ui.modal_content, "(" + second.villager_id + ")")
+	_check(second_recruit != null and second_recruit.text.begins_with("Recruit "), "mercenary board lists another recruit by stable ID")
+	if second_recruit != null:
+		second_recruit.pressed.emit()
+	_check(state.squad_recruits == [first.villager_id, second.villager_id], "board buttons recruit exactly two distinct villagers")
+	_check(not world.recruit(first.villager_id) and not world.recruit("not_a_villager"), "duplicate and unknown recruits are rejected")
+	var deploy_button := _find_button(ui.modal_content, "Deploy squad")
+	_check(deploy_button != null and not deploy_button.disabled, "mercenary board offers deployment with two recruits")
+	if deploy_button != null:
+		deploy_button.pressed.emit()
+	ui.close_modal()
+	_check(state.squad_deployed and first.squad_member and second.squad_member, "deploy button activates both villagers as squad members")
+	if not state.squad_deployed:
+		return
+	_check(first.is_in_group("party_target") and second.is_in_group("party_target"), "enemy targeting includes deployed recruits")
+	var camp: Array[Enemy] = _live_camp_bandits(world)
+	_check(camp.size() == 3, "three distinct camp bandits spawn on deployment")
+	var camp_ids: Dictionary = {}
+	var all_routes := true
+	for enemy in camp:
+		camp_ids[enemy.persistent_id] = true
+		var path := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, enemy.spawn_position)
+		if path.is_empty() or path[-1].distance_to(enemy.spawn_position) > 18.0:
+			all_routes = false
+	_check(camp_ids.size() == 3 and camp_ids.has(state.CAMP_IDS[0]) and camp_ids.has(state.CAMP_IDS[1]) and camp_ids.has(state.CAMP_IDS[2]), "camp bandits have unique persistent identities")
+	_check(all_routes, "every camp spawn is reachable from the village")
+	_check(world.controlled_actor() == world.player and world.select_member(1) and world.controlled_actor() == first, "control switches from player to first recruit")
+	_check(first.get_node_or_null("Camera") is Camera2D and world.select_member(2) and world.controlled_actor() == second and second.get_node_or_null("Camera") is Camera2D, "camera follows the selected recruit")
+	_check(world.select_member(0) and world.controlled_actor() == world.player and world.player.get_node_or_null("Camera") is Camera2D, "control and camera return to the player")
+	var party_key := InputEventAction.new()
+	party_key.action = "party_first"
+	party_key.pressed = true
+	ui.open_service("mercenary", "Mercenary Center")
+	world._unhandled_input(party_key)
+	_check(world.controlled_actor() == world.player, "party hotkey does not change control while a menu is open")
+	var attack_key := InputEventAction.new()
+	attack_key.action = "order_attack"
+	attack_key.pressed = true
+	world._unhandled_input(attack_key)
+	_check(state.squad_members[first.villager_id]["order"] == "follow", "order hotkey does not act while a menu is open")
+	ui.close_modal()
+	world._unhandled_input(party_key)
+	_check(world.controlled_actor() == first and first.get_node_or_null("Camera") is Camera2D, "party hotkey selects first recruit after menu closes")
+	world._unhandled_input(attack_key)
+	_check(state.player_order == "attack" and state.squad_members[second.villager_id]["order"] == "attack", "order hotkey commands uncontrolled allies after menu closes")
+	var player_key := InputEventAction.new()
+	player_key.action = "party_player"
+	player_key.pressed = true
+	world._unhandled_input(player_key)
+	_check(world.controlled_actor() == world.player, "party hotkey can restore player control")
+	world.issue_order("hold")
+	_check(state.squad_members[first.villager_id]["order"] == "hold" and state.squad_members[second.villager_id]["order"] == "hold", "hold command reaches both uncontrolled recruits")
+	var hold_position := first.global_position
+	world.step_squad_actor(first, 1.0 / 60.0)
+	_check(first.global_position.distance_to(hold_position) < 0.1, "recruit stays in place on hold order")
+	first.global_position = world.player.global_position + Vector2(-70, 0)
+	world.issue_order("follow")
+	_check(state.squad_members[first.villager_id]["order"] == "follow" and state.squad_members[second.villager_id]["order"] == "follow", "follow command changes both orders")
+	var initial_follow_distance := first.global_position.distance_to(world.player.global_position)
+	for tick in range(45):
+		world.step_squad_actor(first, 1.0 / 60.0)
+	_check(first.global_position.distance_to(world.player.global_position) < initial_follow_distance - 8.0, "following recruit moves toward the controlled player")
+	world.issue_order("attack")
+	_check(state.squad_members[first.villager_id]["order"] == "attack" and state.squad_members[second.villager_id]["order"] == "attack", "attack command changes both orders")
+	if not camp.is_empty():
+		var target: Enemy = camp[0]
+		var original_position := target.global_position
+		target.global_position = first.global_position + Vector2(-10, 0)
+		_check(target._nearest_party_target() == first, "camp bandit targets a nearer squad member rather than the player")
+		_check(world.nearest_hostile(first.global_position, 30.0) == target, "squad targeting finds the nearby camp bandit")
+		first.facing = Vector2.LEFT
+		var before_attack := target.health
+		world.step_squad_actor(first, 1.0 / 60.0)
+		_check(target.health < before_attack, "attack order makes recruit strike a nearby hostile")
+		world.issue_order("hold")
+		var friendly := Projectile.new()
+		world.actors_root.add_child(friendly)
+		friendly.configure(first.global_position, Vector2.RIGHT, 1, 100.0, 30.0, true)
+		_check((friendly.collision_mask & 8) != 0 and (friendly.collision_mask & 64) == 0, "squad projectile can hit enemies but not recruits")
+		before_attack = target.health
+		friendly._on_body_entered(target)
+		_check(target.health < before_attack, "friendly projectile damages a camp bandit")
+		var hostile := Projectile.new()
+		world.actors_root.add_child(hostile)
+		hostile.configure(target.global_position, Vector2.LEFT, 1, 100.0, 30.0, false)
+		_check((hostile.collision_mask & 64) != 0 and (hostile.collision_mask & 8) == 0 and (hostile.collision_mask & 2) != 0, "hostile projectile can hit player and recruits but not enemies")
+		var recruit_health := int(state.squad_members[first.villager_id]["health"])
+		hostile._on_body_entered(first)
+		_check(int(state.squad_members[first.villager_id]["health"]) < recruit_health, "hostile projectile damages a deployed recruit")
+		target.global_position = original_position
+		var recruit_home := first.home_position
+		first._invulnerability = 0.0
+		first.take_damage(999)
+		_check(state.recruit_recovering(first.villager_id) and first.global_position == recruit_home and not first.is_in_group("party_target"), "downed recruit returns home and cannot be targeted")
+		state._process(state.RECOVERY_SECONDS + 0.1)
+		_check(not state.recruit_recovering(first.villager_id) and int(state.squad_members[first.villager_id]["health"]) == int(state.squad_members[first.villager_id]["max_health"]) and first.is_in_group("party_target"), "recovered recruit rejoins squad at full health")
+		target.take_damage(999)
+		_check(state.camp_defeated_ids.has(target.persistent_id) and int(state.active_jobs[state.CAMP_JOB]) == 1, "first camp kill is recorded once")
+	if OS.get_environment("XDG_DATA_HOME").is_empty():
+		_check(false, "set XDG_DATA_HOME before the midmission save test")
+		return
+	world.issue_order("hold")
+	world.capture_player_position()
+	var saved_first_position := first.global_position
+	_check(state.save_game(), "midmission squad and one camp casualty can be saved")
+	state.player_position = Vector2.ZERO
+	state.camp_defeated_ids.clear()
+	state.squad_members.clear()
+	_check(state.load_game(), "midmission squad save loads")
+	var restored_position: Array = state.squad_members[first.villager_id]["position"]
+	_check(Vector2(float(restored_position[0]), float(restored_position[1])).distance_to(saved_first_position) < 0.01, "reload restores saved recruit position")
+	world.apply_loaded_state()
+	await get_tree().process_frame
+	_check(state.squad_deployed and state.squad_recruits.size() == 2 and state.camp_defeated_ids.size() == 1 and int(state.active_jobs[state.CAMP_JOB]) == 1, "reload restores two recruits and unique camp progress")
+	_check(first.global_position.distance_to(saved_first_position) < 5.0, "recruit appears near saved position after one physics frame")
+	_check(world.controlled_actor() == world.player, "reload restores player control")
+	var remaining := _live_camp_bandits(world)
+	_check(remaining.size() == 2, "reload spawns only two undefeated camp bandits")
+	world.apply_loaded_state()
+	await get_tree().process_frame
+	remaining = _live_camp_bandits(world)
+	var remaining_ids: Dictionary = {}
+	for enemy in remaining:
+		remaining_ids[enemy.persistent_id] = true
+	_check(remaining.size() == 2 and remaining_ids.size() == 2 and not remaining_ids.has(state.camp_defeated_ids[0]), "repeated load does not duplicate camp bandits or resurrect defeated bandit")
+	for enemy in remaining:
+		enemy.take_damage(999)
+	_check(state.active_job_ready(state.CAMP_JOB) and state.camp_defeated_ids.size() == 3, "defeating remaining distinct camp bandits completes the mission")
+	var reward := int(GameData.job(state.CAMP_JOB)["reward"])
+	var before_claim := state.gold
+	ui.open_service("mercenary", "Mercenary Center")
+	var claim_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
+	_check(claim_button != null and claim_button.text.contains("CLAIM") and not claim_button.disabled, "mercenary board offers claim after all three camp kills")
+	if claim_button != null and not claim_button.disabled:
+		claim_button.pressed.emit()
+	_check(state.gold == before_claim + reward and state.completed_unique_jobs.has(state.CAMP_JOB), "mercenary board pays camp reward once")
+	var completed_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
+	_check(completed_button != null and completed_button.disabled and completed_button.text.contains("completed"), "claimed camp mission is marked completed on mercenary board")
+	ui.close_modal()
+	_check(not state.claim_job("mercenary", state.CAMP_JOB) and state.gold == before_claim + reward and not state.squad_deployed, "camp reward cannot pay twice and squad is released")
+
+
+func _live_camp_bandits(world: GameWorld) -> Array[Enemy]:
+	var bandits: Array[Enemy] = []
+	for actor in world.actors_root.get_children():
+		if actor is Enemy and actor.enemy_id == "camp_bandit" and not actor.is_queued_for_deletion():
+			bandits.append(actor)
+	return bandits
+
 
 func _check_visual_map(world: GameWorld) -> void:
 	var source = JSON.parse_string(FileAccess.get_file_as_string(GameWorld.MAP_PATH))

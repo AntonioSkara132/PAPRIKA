@@ -9,6 +9,11 @@ var home_position := Vector2.ZERO
 var routine_points: Array[Vector2] = []
 var interaction_text := "Talk"
 var is_farmer := false
+var squad_member := false
+var facing := Vector2.DOWN
+var attack_cooldown := 0.0
+var _invulnerability := 0.0
+var _was_squad_member := false
 var _target := Vector2.ZERO
 var _wait_time := 0.0
 var _sprite: Sprite2D
@@ -97,6 +102,15 @@ func _build(texture_path: String) -> void:
 	add_child(collision)
 
 func _physics_process(delta: float) -> void:
+	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	_invulnerability = maxf(0.0, _invulnerability - delta)
+	if squad_member:
+		_was_squad_member = true
+		_animate_work(0.0, false)
+		var world := get_parent().get_parent() as GameWorld
+		if world != null:
+			world.step_squad_actor(self, delta)
+		return
 	if _wait_time > 0.0:
 		_wait_time -= delta
 		velocity = Vector2.ZERO
@@ -152,6 +166,43 @@ func _animate_work(delta: float, working: bool) -> void:
 	else:
 		_hoe.rotation = 0.0
 		_sprite.position = _sprite_base_position
+
+func resume_routine() -> void:
+	if not _was_squad_member:
+		return
+	_was_squad_member = false
+	_path_dirty = true
+	_path.clear()
+	_wait_time = 0.0
+	_choose_next_target()
+
+func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> void:
+	if not squad_member or _invulnerability > 0.0 or GameState.recruit_recovering(villager_id):
+		return
+	if not GameState.damage_recruit(villager_id, raw_damage):
+		return
+	_invulnerability = 0.6
+	if GameState.recruit_recovering(villager_id):
+		global_position = home_position
+		velocity = Vector2.ZERO
+		var member: Dictionary = GameState.squad_members[villager_id]
+		member["position"] = [home_position.x, home_position.y]
+		GameState.squad_members[villager_id] = member
+	elif _sprite != null:
+		_sprite.modulate = Color(1.0, 0.45, 0.45)
+		var tween := create_tween()
+		tween.tween_property(_sprite, "modulate", Color.WHITE, 0.30)
+
+func show_swing(reach: float) -> void:
+	var line := Line2D.new()
+	line.width = 2.0
+	line.default_color = Color(0.8, 0.96, 0.76, 0.9)
+	line.points = PackedVector2Array([facing * 7.0 + Vector2(0, -7), facing * reach + Vector2(0, -7)])
+	line.z_index = 950
+	add_child(line)
+	var tween := create_tween()
+	tween.tween_property(line, "modulate:a", 0.0, 0.14)
+	tween.tween_callback(line.queue_free)
 
 func get_interaction_text() -> String:
 	return interaction_text
