@@ -1,0 +1,67 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "paprika_additions",
+  "tilewidth": 80,
+  "tileheight": 64,
+  "tilecount": 9,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/clothing_shop.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/work_office.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/bandit.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/zombie.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/zombie_bear.png",
+      "imagewidth": 30,
+      "imageheight": 26
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/hacker.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/common_field_sign.png",
+      "imagewidth": 64,
+      "imageheight": 32
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/private_garden_sign.png",
+      "imagewidth": 64,
+      "imageheight": 32
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/forest_warning_sign.png",
+      "imagewidth": 64,
+      "imageheight": 40
+    }
+  ]
+}

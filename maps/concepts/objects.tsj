@@ -1,0 +1,145 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "paprika_objects",
+  "tilewidth": 112,
+  "tileheight": 72,
+  "tilecount": 22,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../../art/concepts/source/cottage_red.png",
+      "imagewidth": 64,
+      "imageheight": 56
+    },
+    {
+      "id": 1,
+      "image": "../../art/concepts/source/cottage_blue.png",
+      "imagewidth": 64,
+      "imageheight": 56
+    },
+    {
+      "id": 2,
+      "image": "../../art/concepts/source/two_storey.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 3,
+      "image": "../../art/concepts/source/shack.png",
+      "imagewidth": 48,
+      "imageheight": 40
+    },
+    {
+      "id": 4,
+      "image": "../../art/concepts/source/food_shop.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 5,
+      "image": "../../art/concepts/source/forge.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 6,
+      "image": "../../art/concepts/source/mercenary.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 7,
+      "image": "../../art/concepts/source/travel.png",
+      "imagewidth": 112,
+      "imageheight": 72
+    },
+    {
+      "id": 8,
+      "image": "../../art/concepts/source/tree1.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 9,
+      "image": "../../art/concepts/source/tree2.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 10,
+      "image": "../../art/concepts/source/player.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 11,
+      "image": "../../art/concepts/source/villager1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 12,
+      "image": "../../art/concepts/source/villager2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 13,
+      "image": "../../art/concepts/source/villager3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 14,
+      "image": "../../art/concepts/source/villager4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 15,
+      "image": "../../art/concepts/source/villager5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 16,
+      "image": "../../art/concepts/source/villager6.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 17,
+      "image": "../../art/concepts/source/rabbit.png",
+      "imagewidth": 16,
+      "imageheight": 16
+    },
+    {
+      "id": 18,
+      "image": "../../art/concepts/source/wolf.png",
+      "imagewidth": 24,
+      "imageheight": 18
+    },
+    {
+      "id": 19,
+      "image": "../../art/concepts/source/spaceship.png",
+      "imagewidth": 112,
+      "imageheight": 56
+    },
+    {
+      "id": 20,
+      "image": "../../art/concepts/source/forest_sign.png",
+      "imagewidth": 48,
+      "imageheight": 32
+    },
+    {
+      "id": 21,
+      "image": "../../art/concepts/source/fountain.png",
+      "imagewidth": 48,
+      "imageheight": 40
+    }
+  ]
+}

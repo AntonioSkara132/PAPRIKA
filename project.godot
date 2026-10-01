@@ -1,0 +1,43 @@
+; Paprika — first playable planet of Craft
+; Open this project with Godot 4.7 or later.
+
+config_version=5
+
+[application]
+
+config/name="Paprika"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.09, 0.08, 0.18, 1)
+boot_splash/image="res://art/concepts/source/spaceship.png"
+
+[autoload]
+
+GameState="*res://scripts/state/game_state.gd"
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+textures/canvas_textures/default_texture_filter=0
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+environment/defaults/default_clear_color=Color(0.09, 0.08, 0.18, 1)
+
+[layer_names]
+
+2d_physics/layer_1="World"
+2d_physics/layer_2="Player"
+2d_physics/layer_3="NPC"
+2d_physics/layer_4="Enemy"
+2d_physics/layer_5="Interactable"
