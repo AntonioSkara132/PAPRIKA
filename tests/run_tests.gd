@@ -28,6 +28,7 @@ func _initialize() -> void:
 	_run("travel fare is not an item purchase", _test_travel_fare)
 	_run("planet travel and fare", _test_planet_travel)
 	_run("deployed squad cannot travel", _test_deployed_travel)
+	_run("Brudet teams and local recruits", _test_brudet_teams)
 	print("GameState: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -62,11 +63,13 @@ func _test_new_game() -> void:
 	state.current_planet = "brudet"
 	state.planet_positions["brudet"] = [7.0, 8.0]
 	state.fishing_ready_at = 90.0
+	state.team_job_id = "brudet_monster_team"
+	state.team_defeated_ids.append("brudet_team_monster_0")
 	state.start_new_game()
 	_check(state.max_health == GameData.STARTING_MAX_HEALTH and state.health == state.max_health, "new game restores full starting health")
 	_check(state.gold == 0 and state.inventory == {"stick": 1, "bread": 1}, "new game restores starting gold and inventory")
 	_check(state.equipment == {"weapon": "stick", "armor": "", "clothing": ""}, "new game restores starting equipment")
-	_check(state.active_jobs.is_empty() and state.tracked_job_id == "" and state.completed_unique_jobs.is_empty(), "new game clears jobs")
+	_check(state.active_jobs.is_empty() and state.tracked_job_id == "" and state.completed_unique_jobs.is_empty() and state.team_job_id == "" and state.team_defeated_ids.is_empty(), "new game clears jobs")
 	_check(state.player_position == Vector2(320, 220) and state.field_regrowth.is_empty(), "new game resets position and regrowth")
 	_check(state.defeated_persistent_enemies.is_empty() and state.play_seconds == 0.0, "new game clears enemy history and play time")
 	_check(state.current_planet == "paprika" and state.planet_positions["brudet"] == [1450.0, 706.0] and state.fishing_ready_at == 0.0, "new game restores Paprika and resets the Brudet arrival and fishing cooldown")
@@ -243,7 +246,7 @@ func _test_squad_equipment() -> void:
 	state.defeated_persistent_enemies.append("hacker_forest")
 	state.accept_job(state.CAMP_JOB)
 	_check(not state.recruit_villager("not_a_villager", Vector2.ZERO), "unknown villagers cannot join")
-	_check(state._valid_recruit_id("resident_25") and not state._valid_recruit_id("resident_26"), "northern recruit IDs extend through resident_25")
+	_check(state._valid_recruit_id("resident_25", "paprika") and not state._valid_recruit_id("resident_26", "paprika"), "northern recruit IDs extend through resident_25")
 	_check(state.recruit_villager("resident_00", Vector2(813, 610)), "first villager joins the squad")
 	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and not state.deploy_squad(), "same villager cannot join twice and one recruit cannot deploy")
 	_check(state.recruit_villager("resident_01", Vector2(844, 613)) and not state.recruit_villager("resident_02", Vector2.ZERO), "squad holds exactly two distinct villagers")
@@ -371,17 +374,17 @@ func _test_save_migration(state) -> void:
 	_check(state.field_regrowth == {"paprika:51:74": 90.0, "paprika:54:11": 55.0, "brudet:3:30": 20.0}, "schema-one migration shifts southern field rows but keeps northern and Brudet field keys")
 	_check(state.accept_job("rabbit_catch") and state.track_job("field_work"), "a second job can be added to a migrated save")
 	state.record_event("rabbit_caught", 2)
-	_check(state.save_game(), "saving a schema-one migration writes schema five")
+	_check(state.save_game(), "saving a schema-one migration writes schema six")
 	var saved_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	var saved_jobs: Dictionary = saved_data.get("active_jobs", {}) if saved_data is Dictionary else {}
-	_check(saved_data is Dictionary and saved_data.get("schema") == 5 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "schema-five save contains each job and tracked selection")
-	_check(saved_data is Dictionary and saved_data.get("field_regrowth", {}).has("paprika:51:74") and not saved_data.get("field_regrowth", {}).has("paprika:51:122"), "schema-five field keys are not shifted twice on save")
+	_check(saved_data is Dictionary and saved_data.get("schema") == 6 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "schema-six save contains each job and tracked selection")
+	_check(saved_data is Dictionary and saved_data.get("field_regrowth", {}).has("paprika:51:74") and not saved_data.get("field_regrowth", {}).has("paprika:51:122"), "schema-six field keys are not shifted twice on save")
 	_check(saved_data is Dictionary and saved_data.get("squad_recruits") == [] and saved_data.get("squad_deployed") == false and saved_data.get("camp_defeated_ids") == [], "migration initializes empty squad and camp progress")
 	var backup_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
 	_check(backup_data is Dictionary and backup_data.get("schema") == 1, "previous schema-one save stays in the backup")
 	state.start_new_game()
-	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema five restores both jobs and tracked selection")
-	_check(state.player_position == Vector2(790, 1383) and state.field_regrowth.has("paprika:51:74") and not state.field_regrowth.has("paprika:51:122"), "reloading schema five does not shift the southern position or field again")
+	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema six restores both jobs and tracked selection")
+	_check(state.player_position == Vector2(790, 1383) and state.field_regrowth.has("paprika:51:74") and not state.field_regrowth.has("paprika:51:122"), "reloading schema six does not shift the southern position or field again")
 	if saved_data is Dictionary:
 		var invalid_tracking: Dictionary = saved_data.duplicate(true)
 		invalid_tracking["tracked_job_id"] = "hacker_bounty"
@@ -416,10 +419,10 @@ func _test_save_migration(state) -> void:
 	_check(state.squad_recruits.is_empty() and state.squad_members.is_empty() and not state.squad_deployed and state.controlled_member_id == "player" and state.camp_defeated_ids.is_empty(), "schema-two migration defaults to no squad or camp progress")
 	_check(state.current_planet == "paprika" and state.player_position == Vector2(350, 240) and state.planet_positions["paprika"] == [350.0, 240.0] and state.fishing_ready_at == 0.0, "schema-two save keeps a northern Paprika position and has no fishing cooldown")
 	_check(state.field_regrowth.has("paprika:51:74") and state.field_regrowth.has("paprika:54:11"), "schema-two migration shifts only fields south of row 21")
-	_check(state.save_game(), "schema-two fixture can be saved as schema five")
+	_check(state.save_game(), "schema-two fixture can be saved as schema six")
 	var migrated_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	var migrated_jobs: Dictionary = migrated_two.get("active_jobs", {}) if migrated_two is Dictionary else {}
-	_check(migrated_two is Dictionary and migrated_two.get("schema") == 5 and migrated_two.get("tracked_job_id") == "rabbit_catch" and migrated_jobs.size() == 2 and int(migrated_jobs.get("field_work", -1)) == 3 and int(migrated_jobs.get("rabbit_catch", -1)) == 2, "schema-two jobs survive schema-five serialization")
+	_check(migrated_two is Dictionary and migrated_two.get("schema") == 6 and migrated_two.get("tracked_job_id") == "rabbit_catch" and migrated_jobs.size() == 2 and int(migrated_jobs.get("field_work", -1)) == 3 and int(migrated_jobs.get("rabbit_catch", -1)) == 2, "schema-two jobs survive schema-six serialization")
 	var previous_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
 	_check(previous_two is Dictionary and previous_two.get("schema") == 2, "schema-two source is kept in the backup")
 	_test_schema_three_mission(state)
@@ -458,16 +461,16 @@ func _test_schema_three_mission(state) -> void:
 	_check(state.player_hold_position == [760.0, 1108.0] and state.squad_members["resident_00"]["position"] == [830.0, 1368.0] and state.squad_members["resident_00"]["hold_position"] == [818.0, 1378.0], "schema-three migration moves player and recruit holds, including the old office approach")
 	_check(state.squad_members["resident_25"]["position"] == [1250.0, 255.0] and state.squad_members["resident_25"]["hold_position"] == [1250.0, 255.0], "schema-three migration keeps a northern recruit in place")
 	_check(state.field_regrowth == {"paprika:52:78": 60.0, "paprika:54:11": 45.0}, "schema-three migration moves only southern field keys")
-	_check(state.save_game(), "schema-three deployed mission migrates to schema five")
+	_check(state.save_game(), "schema-three deployed mission migrates to schema six")
 	var migrated = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
-	_check(migrated is Dictionary and migrated.get("schema") == 5 and migrated.get("squad_deployed") == true and migrated.get("fishing_ready_at") == 0.0, "schema-five migration preserves deployed squad and initializes fishing cooldown")
+	_check(migrated is Dictionary and migrated.get("schema") == 6 and migrated.get("squad_deployed") == true and migrated.get("fishing_ready_at") == 0.0, "schema-six migration preserves deployed squad and initializes fishing cooldown")
 	state.start_new_game()
 	_check(state.load_game() and state.player_position == Vector2(830, 1368) and state.player_hold_position == [760.0, 1108.0] and state.squad_members["resident_00"]["position"] == [830.0, 1368.0] and state.field_regrowth.has("paprika:52:78"), "reloading the migrated squad does not shift coordinates a second time")
 
 
 func _test_planet_save(state) -> void:
 	state.start_new_game()
-	state.add_gold(1200)
+	state.add_gold(2200)
 	_check(state.travel_to("brudet", Vector2(790, 615)), "planet save fixture reaches Brudet from the old southern village")
 	state.remember_player_position(Vector2(1475, 735))
 	state.field_regrowth = {"paprika:51:26": 90.0, "brudet:3:30": 20.0}
@@ -475,7 +478,7 @@ func _test_planet_save(state) -> void:
 	state.fishing_ready_at = 31.5
 	_check(state.save_game(), "Brudet fixture can be saved before migration")
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
-	_check(saved is Dictionary and saved.get("schema") == 5 and saved.get("current_planet") == "brudet" and saved.get("player_position") == [1475.0, 735.0] and saved.get("planet_positions", {}).get("paprika") == [790.0, 615.0] and saved.get("fishing_ready_at") == 31.5, "fixture records both planets and the absolute fishing deadline")
+	_check(saved is Dictionary and saved.get("schema") == 6 and saved.get("current_planet") == "brudet" and saved.get("player_position") == [1475.0, 735.0] and saved.get("planet_positions", {}).get("paprika") == [790.0, 615.0] and saved.get("fishing_ready_at") == 31.5, "fixture records both planets and the absolute fishing deadline")
 	if not saved is Dictionary:
 		return
 	saved["schema"] = 4
@@ -486,22 +489,22 @@ func _test_planet_save(state) -> void:
 	legacy_file.store_string(JSON.stringify(saved))
 	legacy_file.close()
 	state.start_new_game()
-	_check(state.load_game() and state.current_planet == "brudet" and state.player_position == Vector2(1475, 735) and state.gold == 200 and state.fishing_ready_at == 31.5, "schema-four migration leaves active Brudet position, gold and fishing deadline unchanged")
+	_check(state.load_game() and state.current_planet == "brudet" and state.player_position == Vector2(1475, 735) and state.gold == 1200 and state.fishing_ready_at == 31.5, "schema-four migration leaves active Brudet position, gold and fishing deadline unchanged")
 	_check(state.planet_positions["paprika"] == [790.0, 1383.0], "schema-four migration shifts the inactive Paprika position while on Brudet")
 	_check(state.field_regrowth == {"paprika:51:74": 90.0, "brudet:3:30": 20.0}, "schema-four migration shifts Paprika fields without changing Brudet fields")
-	_check(state.save_game(), "migrated Brudet game can be saved as schema five")
+	_check(state.save_game(), "migrated Brudet game can be saved as schema six")
 	var migrated = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
-	_check(migrated is Dictionary and migrated.get("schema") == 5 and migrated.get("planet_positions", {}).get("paprika") == [790.0, 1383.0], "schema-five save keeps the corrected inactive Paprika position")
+	_check(migrated is Dictionary and migrated.get("schema") == 6 and migrated.get("planet_positions", {}).get("paprika") == [790.0, 1383.0], "schema-six save keeps the corrected inactive Paprika position")
 	state.start_new_game()
-	_check(state.load_game() and state.player_position == Vector2(1475, 735) and state.planet_positions["paprika"] == [790.0, 1383.0] and state.field_regrowth.has("paprika:51:74"), "schema-five reload does not shift inactive Paprika coordinates twice")
+	_check(state.load_game() and state.player_position == Vector2(1475, 735) and state.planet_positions["paprika"] == [790.0, 1383.0] and state.field_regrowth.has("paprika:51:74"), "schema-six reload does not shift inactive Paprika coordinates twice")
 	state._process(4.0)
 	_check(state.play_seconds == 24.0 and state.fishing_ready_at == 31.5, "elapsed play time does not reset the fishing deadline")
-	_check(state.travel_to("paprika", Vector2(1475, 735)) and state.player_position == Vector2(790, 1383) and state.fishing_ready_at == 31.5, "free return restores the migrated southern Paprika position without resetting fishing")
+	_check(state.travel_to("paprika", Vector2(1475, 735)) and state.gold == 200 and state.player_position == Vector2(790, 1383) and state.fishing_ready_at == 31.5, "paid return restores the migrated southern Paprika position without resetting fishing")
 	if migrated is Dictionary:
 		for field in ["current_planet", "planet_positions", "fishing_ready_at"]:
 			var missing: Dictionary = migrated.duplicate(true)
 			missing.erase(field)
-			_check(not state._valid_save(missing), "schema-five save requires %s" % field)
+			_check(not state._valid_save(missing), "schema-six save requires %s" % field)
 		var bad_planet: Dictionary = migrated.duplicate(true)
 		bad_planet["current_planet"] = "unknown"
 		_check(not state._valid_save(bad_planet), "unknown saved planet is rejected")
@@ -552,7 +555,9 @@ func _test_planet_travel() -> void:
 	_check(state.travel_to("brudet", Vector2(1050, 240)) and state.gold == 0 and state.current_planet == "brudet" and state.player_position == Vector2(1450, 706), "successful outbound trip charges exactly 1000 gold and reaches Brudet arrival")
 	_check(state.planet_positions["paprika"] == [1050.0, 240.0] and state.inventory == original_inventory, "outbound trip remembers Paprika position without changing inventory")
 	state.remember_player_position(Vector2(1505, 748))
-	_check(state.travel_fare("paprika") == 0 and state.travel_to("paprika", Vector2(1505, 748)) and state.gold == 0 and state.player_position == Vector2(1050, 240), "return trip is free and restores departure position on Paprika")
+	_check(state.travel_fare("paprika") == 1000 and not state.travel_to("paprika", Vector2(1505, 748)) and state.gold == 0 and state.current_planet == "brudet" and state.planet_positions["brudet"] == [1505.0, 748.0], "unaffordable return preserves Brudet state")
+	state.add_gold(1000)
+	_check(state.travel_to("paprika", Vector2(1505, 748)) and state.gold == 0 and state.player_position == Vector2(1050, 240), "return trip costs 1000 and restores departure position on Paprika")
 	_check(state.planet_positions["brudet"] == [1505.0, 748.0], "return saves the Brudet position")
 	_check(not state.travel_to("paprika", Vector2.ZERO) and state.gold == 0, "same-planet travel is rejected without charging gold")
 	state.add_gold(1000)
@@ -571,4 +576,77 @@ func _test_deployed_travel() -> void:
 	_check(state.deploy_squad(), "two camp recruits can deploy before the travel check")
 	_check(not state.can_travel("brudet") and not state.travel_to("brudet", Vector2(1050, 240)), "deployed squad cannot leave Paprika")
 	_check(state.gold == 1000 and state.current_planet == "paprika" and state.player_position == Vector2(320, 220) and state.planet_positions["paprika"] == [320.0, 220.0] and state.squad_deployed, "blocked trip preserves fare, position and squad deployment")
+	state.start_new_game()
+	state.add_gold(1000)
+	state.defeated_persistent_enemies.append("hacker_forest")
+	_check(state.accept_job(state.CAMP_JOB) and state.recruit_villager("resident_00", Vector2(830, 600)), "camp team can recruit before deployment")
+	_check(not state.can_travel("brudet") and not state.travel_to("brudet", Vector2(1050, 240)) and state.gold == 1000, "one undeployed recruit also blocks travel")
+	state.dismiss_recruit("resident_00")
+	_check(state.travel_to("brudet", Vector2(1050, 240)) and state.team_job_id == state.CAMP_JOB and state.active_jobs.has(state.CAMP_JOB), "empty undeployed team may travel without losing its mission")
 	state.free()
+
+
+func _test_brudet_teams() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	_check(not state.accept_job("brudet_monster_team"), "Brudet team job cannot start on Paprika")
+	_check(state.accept_job("bandit_bounty") and state.accept_job("hacker_bounty"), "Paprika solo bounties remain active across travel")
+	state.add_gold(1000)
+	_check(state.travel_to("brudet", Vector2(1050, 240)), "team fixture travels to Brudet")
+	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and not state.recruit_villager("villager_river_01_45", Vector2.ZERO), "recruits require an active local team job")
+	_check(not state.record_event("bandit_defeated") and not state.record_event("hacker_defeated") and state.active_jobs["bandit_bounty"] == 0 and state.active_jobs["hacker_bounty"] == 0, "Brudet bandit and hacker kills cannot progress Paprika solo bounties")
+	_check(state.accept_job("brudet_monster_team"), "Brudet monster team job can be accepted")
+	_check(state.team_job_id == "brudet_monster_team" and not state.accept_job("brudet_bandit_team") and not state.accept_job(state.CAMP_JOB), "only one team job can be active")
+	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and state.recruit_villager("villager_river_01_45", Vector2(1400, 710)), "Brudet mission rejects Paprika recruit and accepts a local villager")
+	_check(not state.deploy_squad() and state.recruit_villager("villager_river_02_46", Vector2(1420, 710)) and state.deploy_squad(), "two distinct Brudet villagers are required to deploy")
+	_check(not state.record_team_defeat("brudet_team_bandit_0") and not state.record_event("monster_defeated", 3), "other targets and generic events do not progress the team job")
+	for index in state.BRUDET_TEAM_IDS["brudet_monster_team"].size():
+		var enemy_id: String = state.BRUDET_TEAM_IDS["brudet_monster_team"][index]
+		_check(state.record_team_defeat(enemy_id) and not state.record_team_defeat(enemy_id), "each monster target counts once: %s" % enemy_id)
+	_check(state.team_defeated_ids.size() == 3 and state.active_job_ready("brudet_monster_team"), "three distinct monsters finish the team job")
+	_check(not state.claim_job("mercenary", "brudet_monster_team"), "wrong issuer cannot pay Brudet team job")
+	var reward := int(GameData.job("brudet_monster_team")["reward"])
+	_check(state.claim_job("river_town_hall", "brudet_monster_team") and state.gold == reward, "town hall pays the monster team reward once")
+	_check(state.team_job_id == "" and state.team_defeated_ids.is_empty() and not state.squad_deployed, "claiming releases Brudet team and clears target history")
+	_check(not state.claim_job("river_town_hall", "brudet_monster_team") and state.accept_job("brudet_monster_team"), "monster team job repeats after claiming, without a second payment")
+	_check(state.active_jobs["brudet_monster_team"] == 0 and state.team_defeated_ids.is_empty(), "repeat starts with no target progress")
+	state.abandon_job("brudet_monster_team")
+	_check(state.accept_job("brudet_bandit_team"), "abandoning a team job permits another Brudet team")
+	state.abandon_job("brudet_bandit_team")
+	_check(state.accept_job("brudet_hacker_team"), "hacker team job can also be accepted")
+	state.free()
+
+
+func _test_brudet_save(state) -> void:
+	state.start_new_game()
+	state.add_gold(1000)
+	_check(state.travel_to("brudet", Vector2(830, 1368)) and state.accept_job("brudet_bandit_team"), "Brudet save fixture accepts bandit team job")
+	_check(state.recruit_villager("villager_river_01_45", Vector2(1400, 710)) and state.recruit_villager("villager_river_02_46", Vector2(1420, 710)) and state.deploy_squad(), "Brudet save fixture deploys local villagers")
+	_check(state.record_team_defeat("brudet_team_bandit_0") and state.save_game(), "midmission Brudet team can be saved")
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(saved is Dictionary and saved.get("schema") == 6 and saved.get("team_job_id") == "brudet_bandit_team" and saved.get("team_defeated_ids") == ["brudet_team_bandit_0"], "schema-six save records Brudet team and casualty")
+	state.start_new_game()
+	_check(state.load_game() and state.current_planet == "brudet" and state.team_job_id == "brudet_bandit_team" and state.squad_deployed and state.team_defeated_ids == ["brudet_team_bandit_0"], "loading restores deployed Brudet team and unique progress")
+	_check(state.squad_recruits == ["villager_river_01_45", "villager_river_02_46"] and not state.record_team_defeat("brudet_team_bandit_0"), "local recruit identities and counted target survive reload")
+	if saved is Dictionary:
+		var schema_five: Dictionary = saved.duplicate(true)
+		schema_five["schema"] = 5
+		schema_five["current_planet"] = "paprika"
+		schema_five["player_position"] = [830.0, 1368.0]
+		schema_five["planet_positions"]["paprika"] = [830.0, 1368.0]
+		schema_five["active_jobs"] = {}
+		schema_five["tracked_job_id"] = ""
+		schema_five["squad_deployed"] = false
+		schema_five["squad_recruits"] = []
+		schema_five["squad_members"] = {}
+		schema_five["controlled_member_id"] = "player"
+		schema_five["team_job_id"] = ""
+		schema_five["team_defeated_ids"] = []
+		schema_five["field_regrowth"] = {"paprika:51:74": 90.0}
+		var file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
+		_check(file != null, "schema-five Paprika fixture can be written")
+		if file != null:
+			file.store_string(JSON.stringify(schema_five))
+			file.close()
+			state.start_new_game()
+			_check(state.load_game() and state.player_position == Vector2(830, 1368) and state.field_regrowth.has("paprika:51:74") and not state.field_regrowth.has("paprika:51:122"), "schema-five Paprika coordinates and fields do not migrate a second time")

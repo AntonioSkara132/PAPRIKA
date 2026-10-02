@@ -1,9 +1,12 @@
 class_name Enemy
 extends CharacterBody2D
 
-enum State { IDLE, PATROL, CHASE, TELEGRAPH, RECOVER, RETURN }
+enum State { IDLE, PATROL, CHASE, TELEGRAPH, RECOVER, RETURN, PHASE_WARNING }
 
 const RESPAWN_SECONDS := 75.0
+const PHASE_COOLDOWN := 6.0
+const PHASE_WARNING_SECONDS := 0.55
+const PHASE_LEASH := 150.0
 
 var enemy_id := "wolf"
 var persistent_id := ""
@@ -25,6 +28,9 @@ var _respawn_timer := 0.0
 var _river_path := PackedVector2Array()
 var _river_path_index := 0
 var _river_repath_timer := 0.0
+var _phase_cooldown := 2.0
+var _phase_destination := Vector2.ZERO
+var _phase_warning: ColorRect
 
 func configure(kind: String, texture_path: String, position_in_world: Vector2, stable_id: String) -> void:
 	enemy_id = kind
@@ -65,7 +71,7 @@ func _build(texture_path: String) -> void:
 	_collision.position = Vector2(0, -3.5)
 	add_child(_collision)
 	_label = Label.new()
-	_label.text = "%s  Lv.%d" % [definition.get("name", enemy_id.capitalize()), int(definition.get("level", 1))]
+	_label.text = "%s  Lv.%d" % [_display_name(), int(definition.get("level", 1))]
 	_label.position = Vector2(-36, -32)
 	_label.size = Vector2(72, 14)
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -78,6 +84,8 @@ func _build(texture_path: String) -> void:
 	add_child(_label)
 	if enemy_id == "hacker":
 		_sprite.modulate = Color(0.85, 0.42, 1.0)
+	elif enemy_id == "phase_hacker":
+		_sprite.modulate = Color(0.30, 0.95, 0.92)
 	elif enemy_id == "zombie":
 		_sprite.modulate = Color(0.55, 0.86, 0.58)
 	elif enemy_id == "zombie_bear":
@@ -96,6 +104,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_time = maxf(0.0, _state_time - delta)
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
 	_river_repath_timer = maxf(0.0, _river_repath_timer - delta)
 	var player := _nearest_party_target()
 	if player == null:
@@ -103,17 +112,23 @@ func _physics_process(delta: float) -> void:
 		return
 	var distance := global_position.distance_to(player.global_position)
 	_label.visible = distance < 92.0 or health < max_health
-	if enemy_id == "hacker" and distance < 170.0 and _attack_cooldown <= 0.0:
+	if enemy_id in ["hacker", "phase_hacker"] and state != State.PHASE_WARNING and distance < 170.0 and _attack_cooldown <= 0.0:
 		_fire_hacker_projectile(player)
 		_attack_cooldown = 1.25
-	if state not in [State.TELEGRAPH, State.RECOVER]:
+	if state not in [State.TELEGRAPH, State.RECOVER, State.PHASE_WARNING]:
 		if distance < 112.0 and global_position.distance_to(spawn_position) < 190.0:
 			state = State.CHASE
 		elif global_position.distance_to(spawn_position) > 155.0:
 			state = State.RETURN
 		elif state == State.CHASE and distance >= 112.0:
 			_choose_patrol()
+	if enemy_id == "phase_hacker" and state == State.CHASE and distance < 125.0 and distance > 24.0 and _phase_cooldown <= 0.0:
+		_start_phase(player)
 	match state:
+		State.PHASE_WARNING:
+			velocity = Vector2.ZERO
+			if _state_time <= 0.0:
+				_finish_phase()
 		State.IDLE:
 			velocity = Vector2.ZERO
 			if _state_time <= 0.0:
@@ -149,6 +164,66 @@ func _physics_process(delta: float) -> void:
 			if global_position.distance_to(spawn_position) < 5.0:
 				_choose_patrol()
 	z_index = 100 + int(global_position.y)
+
+func _start_phase(target: Node2D) -> void:
+	_phase_cooldown = PHASE_COOLDOWN
+	var world := get_parent().get_parent() as GameWorld
+	if world == null or world.tiled_loader == null:
+		return
+	var navigation := world.tiled_loader
+	var space := get_world_2d().direct_space_state
+	for attempt in 16:
+		var angle := _rng.randf_range(-PI, PI)
+		var radius := _rng.randf_range(32.0, 65.0)
+		var candidate := target.global_position + Vector2.from_angle(angle) * radius
+		if candidate.distance_to(spawn_position) > PHASE_LEASH:
+			continue
+		var clear := true
+		for offset in [Vector2.ZERO, Vector2(-6, -5), Vector2(6, -5), Vector2(-6, 2), Vector2(6, 2)]:
+			if not navigation.is_walkable_position(candidate + offset):
+				clear = false
+				break
+		if not clear:
+			continue
+		var query := PhysicsShapeQueryParameters2D.new()
+		query.shape = _collision.shape
+		query.transform = Transform2D(0.0, candidate + _collision.position)
+		query.collision_mask = 1 | 2 | 8 | 64
+		query.exclude = [get_rid()]
+		if not space.intersect_shape(query, 1).is_empty():
+			continue
+		_phase_destination = candidate
+		state = State.PHASE_WARNING
+		_state_time = PHASE_WARNING_SECONDS
+		velocity = Vector2.ZERO
+		_phase_warning = ColorRect.new()
+		_phase_warning.color = Color(1.0, 0.15, 0.65, 0.75)
+		_phase_warning.size = Vector2(16, 10)
+		_phase_warning.position = candidate - _phase_warning.size * 0.5
+		_phase_warning.z_index = 100 + int(candidate.y)
+		get_parent().add_child(_phase_warning)
+		var tween := create_tween()
+		tween.tween_property(_phase_warning, "modulate:a", 0.25, PHASE_WARNING_SECONDS * 0.5)
+		tween.tween_property(_phase_warning, "modulate:a", 1.0, PHASE_WARNING_SECONDS * 0.5)
+		return
+
+func _finish_phase() -> void:
+	_clear_phase_warning()
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = _collision.shape
+	query.transform = Transform2D(0.0, _phase_destination + _collision.position)
+	query.collision_mask = 1 | 2 | 8 | 64
+	query.exclude = [get_rid()]
+	var world := get_parent().get_parent() as GameWorld
+	if world != null and world.tiled_loader != null and world.tiled_loader.is_walkable_position(_phase_destination) and get_world_2d().direct_space_state.intersect_shape(query, 1).is_empty():
+		global_position = _phase_destination
+	state = State.RECOVER
+	_state_time = 0.35
+
+func _clear_phase_warning() -> void:
+	if is_instance_valid(_phase_warning):
+		_phase_warning.queue_free()
+	_phase_warning = null
 
 func _nearest_party_target() -> Node2D:
 	var nearest: Node2D
@@ -209,7 +284,7 @@ func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 		return
 	health = maxi(0, health - maxi(0, amount))
 	_label.visible = true
-	_label.text = "%s  Lv.%d  %d/%d" % [definition.get("name", enemy_id.capitalize()), int(definition.get("level", 1)), health, max_health]
+	_label.text = "%s  Lv.%d  %d/%d" % [_display_name(), int(definition.get("level", 1)), health, max_health]
 	_sprite.modulate = Color.WHITE
 	var tween := create_tween()
 	tween.tween_property(_sprite, "modulate", _base_modulate(), 0.22)
@@ -217,14 +292,17 @@ func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 		_die()
 
 func _die() -> void:
+	_clear_phase_warning()
 	remove_from_group("damageable")
 	var reward := int(definition.get("reward", 0))
 	GameState.add_gold(reward)
 	GameState.record_event("river_monster_defeated" if _is_river_monster() else String(definition.get("event", "monster_defeated")))
 	if enemy_id == "camp_bandit":
 		GameState.record_camp_defeat(persistent_id)
+	if persistent_id.begins_with("brudet_team_"):
+		GameState.record_team_defeat(persistent_id)
 	GameState.notify("Defeated %s. Found %d gold." % [definition.get("name", enemy_id), reward])
-	if enemy_id in ["hacker", "camp_bandit"]:
+	if enemy_id in ["hacker", "camp_bandit"] or persistent_id.begins_with("brudet_team_"):
 		if enemy_id == "hacker" and not GameState.defeated_persistent_enemies.has(persistent_id):
 			GameState.defeated_persistent_enemies.append(persistent_id)
 			GameState.notify("Bandit camp mission unlocked at the mercenary center.")
@@ -245,7 +323,7 @@ func _respawn() -> void:
 	health = max_health
 	global_position = spawn_position
 	_sprite.modulate = _base_modulate()
-	_label.text = "%s  Lv.%d" % [definition.get("name", enemy_id.capitalize()), int(definition.get("level", 1))]
+	_label.text = "%s  Lv.%d" % [_display_name(), int(definition.get("level", 1))]
 	_label.visible = false
 	collision_layer = 8
 	_collision.set_deferred("disabled", false)
@@ -256,6 +334,8 @@ func _respawn() -> void:
 func reset_after_player_defeat() -> void:
 	if _defeated or health <= 0:
 		return
+	_clear_phase_warning()
+	_phase_cooldown = PHASE_COOLDOWN
 	global_position = spawn_position
 	velocity = Vector2.ZERO
 	_attack_cooldown = 1.0
@@ -269,9 +349,13 @@ func _fire_hacker_projectile(player: Node2D) -> void:
 	get_parent().add_child(projectile)
 	projectile.configure(global_position + Vector2(0, -8), (player.global_position - global_position).normalized(), int(definition.get("damage", 18)), 130.0, 190.0, false)
 
+func _display_name() -> String:
+	return "Phase Hacker" if enemy_id == "phase_hacker" else String(definition.get("name", enemy_id.capitalize()))
+
 func _base_modulate() -> Color:
 	match enemy_id:
 		"hacker": return Color(0.85, 0.42, 1.0)
+		"phase_hacker": return Color(0.30, 0.95, 0.92)
 		"zombie": return Color(0.55, 0.86, 0.58)
 		"zombie_bear": return Color(0.54, 0.72, 0.50)
 		"bandit": return Color(0.95, 0.62, 0.50)

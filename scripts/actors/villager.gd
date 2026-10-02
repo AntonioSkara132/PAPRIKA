@@ -46,7 +46,7 @@ const DIALOGUE := [
 	"The common fields belong to everyone. Work honestly and Paprika will feed you.",
 	"Spaceships look modern, but the forge still makes the best tools by hand.",
 	"Do not follow the forest road too far without armor.",
-	"The travel fare is one thousand gold. Most villagers never leave Paprika.",
+	"The travel fare to Brudet is one thousand gold each way. Most villagers never leave Paprika.",
 	"They say a hacker is hiding beyond the old trees. I would not test that story.",
 	"Crops return quickly here. Craft was never built to obey ordinary physics.",
 ]
@@ -54,12 +54,12 @@ const ROLE_DIALOGUE := {
 	"farmer": ["The common field gates stay open for everyone.", "I work the rows, then rest by the square."],
 	"market": ["I help carry food between the stalls and the clothing shop.", "The food shop buys crops and rabbit meat."],
 	"craft": ["I bring supplies to the forge and check the work board.", "A better sword helps, but armor matters too."],
-	"runner": ["I take messages between the work office and travel agency.", "The travel fare is one thousand gold; other planets are not open yet."],
-	"neighbor": ["We meet at the square between errands.", "The forest road is safer with a friend and armor."],
+	"runner": ["I take messages between the work office and travel agency.", "Travel to Brudet costs one thousand gold each way; other planets are not open yet."],
+	"neighbor": ["We meet at the square between errands.", "The forest road is safer with a friend and armor.", "The Republic attacked Artichoke. The military is recruiting, but the war has not reached our fields."],
 	"fisher": ["The pond is busiest at dawn. A fishing rod and patience are all you need.", "I lower my line where the reeds meet the bank."],
-	"river_farmer": ["The terraces above the river keep our crops watered.", "Good soil and a steady river make a fine harvest."],
-	"river_market": ["The river market sells everything we bring in from the boats.", "Fresh fish travels quickly from the bank to the market."],
-	"river_neighbor": ["Brudet's bridges keep both riverbanks close.", "I like reading by the river library after work."],
+	"river_farmer": ["The terraces above the river keep our crops watered.", "Good soil and a steady river make a fine harvest.", "I hear the military is recruiting."],
+	"river_market": ["The river market sells everything we bring in from the boats.", "Fresh fish travels quickly from the bank to the market.", "Did you hear the Republic attacked Artichoke? I wouldn't want to be there."],
+	"river_neighbor": ["Brudet's bridges keep both riverbanks close.", "I like reading by the river library after work.", "Brudet belongs to the Cauliflower Confederation, just like Paprika.", "The Republic attacked Artichoke. Our Military Headquarters has enlistment information, but training and deployment are still ahead."],
 }
 
 func configure(texture_path: String, stable_id: String, spawn_position: Vector2, points: Array[Vector2] = []) -> void:

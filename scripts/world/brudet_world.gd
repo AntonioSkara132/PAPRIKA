@@ -4,6 +4,10 @@ extends GameWorld
 const TargetScript = preload("res://scripts/world/practice_target.gd")
 const BRUDET_MAP := "res://maps/brudet.tmj"
 const FISHING_COOLDOWN := 15.0
+const TEAM_SPAWN_OFFSETS := [Vector2(-112, -96), Vector2(112, -80), Vector2(-96, 96), Vector2(96, 96), Vector2(-128, 0), Vector2(128, 0), Vector2(-48, -128), Vector2(48, -112), Vector2(0, 128)]
+const TEAM_MONSTER_KINDS := ["finling", "lake_maw", "river_serpent"]
+const TEAM_MONSTER_TEXTURES := ["res://assets/art/river_planet/finling.png", "res://assets/art/river_planet/lake_maw.png", "res://assets/art/river_planet/river_serpent.png"]
+const TEAM_HACKER_TEXTURE := "res://assets/art/hacker.png"
 const RIVER_NAMES := [
 	"Ayla", "Belen", "Ciro", "Dalia", "Eren", "Fara", "Gio", "Hana", "Ivo", "Juna",
 	"Kora", "Leto", "Mina", "Neri", "Olia", "Piro", "Quin", "Ravi", "Suna", "Tali",
@@ -43,18 +47,99 @@ func _spawn_player(position: Vector2, texture_path: String) -> void:
 	player.respawn_location_name = "Brudet"
 
 func _sync_camp() -> void:
-	# Paprika's bandit camp is never created on Brudet.
-	pass
+	var job_id: String = GameState.team_job_id if GameState.squad_deployed else ""
+	if not GameState.BRUDET_TEAM_IDS.has(job_id):
+		job_id = ""
+	var expected_ids: Array = GameState.BRUDET_TEAM_IDS.get(job_id, [])
+	for actor in actors_root.get_children():
+		if actor is Enemy and String(actor.persistent_id).begins_with("brudet_team_"):
+			if not expected_ids.has(actor.persistent_id) or GameState.team_defeated_ids.has(actor.persistent_id):
+				actor.queue_free()
+	if job_id.is_empty():
+		return
+	var used_positions: Array[Vector2] = []
+	for index in expected_ids.size():
+		var stable_id: String = expected_ids[index]
+		if GameState.team_defeated_ids.has(stable_id):
+			continue
+		var exists := false
+		for actor in actors_root.get_children():
+			if actor is Enemy and actor.persistent_id == stable_id and not actor.is_queued_for_deletion():
+				exists = true
+				used_positions.append(actor.global_position)
+				break
+		if exists:
+			continue
+		var position := _team_walk_position(index, used_positions)
+		if not position.is_finite():
+			continue
+		used_positions.append(position)
+		var kind := "bandit"
+		var texture: String = CAMP_TEXTURE
+		if job_id == "brudet_monster_team":
+			kind = TEAM_MONSTER_KINDS[index]
+			texture = TEAM_MONSTER_TEXTURES[index]
+		elif job_id == "brudet_hacker_team":
+			kind = "phase_hacker"
+			texture = TEAM_HACKER_TEXTURE
+		_spawn_enemy(kind, position, texture, stable_id)
+		var enemy := actors_root.get_child(actors_root.get_child_count() - 1) as Enemy
+		var marker := Label.new()
+		marker.text = "TEAM TARGET"
+		marker.position = Vector2(-42, -48)
+		marker.size = Vector2(84, 16)
+		marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		marker.add_theme_font_size_override("font_size", 9)
+		marker.add_theme_color_override("font_color", Color("ffe071"))
+		enemy.add_child(marker)
+
+func _team_walk_position(index: int, used_positions: Array[Vector2]) -> Vector2:
+	var origin: Vector2 = GameState.BRUDET_ARRIVAL
+	var hall_position := Vector2(1136, 576)
+	var map_objects := tiled_loader.get_node_or_null("MapObjects")
+	if map_objects != null:
+		for node in map_objects.get_children():
+			if node is WorldService and node.service_id == "river_town_hall":
+				hall_position = node.get_interaction_position()
+				break
+	for candidate_index in TEAM_SPAWN_OFFSETS.size():
+		var offset: Vector2 = TEAM_SPAWN_OFFSETS[(index + candidate_index) % TEAM_SPAWN_OFFSETS.size()]
+		var desired := origin + offset
+		if not tiled_loader.is_walkable_position(desired):
+			continue
+		var too_close := false
+		for used in used_positions:
+			if used.distance_to(desired) < 96.0:
+				too_close = true
+				break
+		if too_close:
+			continue
+		var path := tiled_loader.get_walk_path(origin, desired)
+		var hall_path := tiled_loader.get_walk_path(hall_position, desired)
+		if not path.is_empty() and path[-1].distance_to(desired) <= 16.0 and not hall_path.is_empty() and hall_path[-1].distance_to(desired) <= 16.0:
+			return desired
+	push_error("No reachable Brudet team enemy spawn for slot %d." % index)
+	return Vector2(INF, INF)
 
 func capture_player_position() -> void:
-	if player != null:
-		GameState.player_position = player.global_position
+	super.capture_player_position()
 
 func apply_loaded_state() -> void:
 	if player != null:
 		player.global_position = _safe_loaded_position(GameState.player_position)
 		GameState.player_position = player.global_position
 	_squad_ai.clear()
+	for actor in actors_root.get_children():
+		if actor is Enemy and String(actor.persistent_id).begins_with("brudet_team_"):
+			actor.queue_free()
+	for villager_id in GameState.squad_recruits:
+		var villager := find_villager(villager_id)
+		if villager != null and GameState.squad_members.has(villager_id):
+			var member: Dictionary = GameState.squad_members[villager_id]
+			var position_data: Array = member["position"]
+			villager.global_position = _safe_loaded_position(Vector2(float(position_data[0]), float(position_data[1])))
+			member["position"] = [villager.global_position.x, villager.global_position.y]
+			GameState.squad_members[villager_id] = member
 	_sync_squad()
 
 func _safe_loaded_position(saved: Vector2) -> Vector2:

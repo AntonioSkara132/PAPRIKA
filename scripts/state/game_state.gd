@@ -11,7 +11,8 @@ signal save_finished(success: bool)
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 5
+const SAVE_SCHEMA := 6
+const PAPRIKA_LAYOUT_SCHEMA := 5
 const PLANET_SAVE_SCHEMA := 4
 const SQUAD_SAVE_SCHEMA := 3
 const PAPRIKA_OLD_SOUTH_Y := 352.0
@@ -20,9 +21,13 @@ const PAPRIKA_LAYOUT_SHIFT := 768.0
 const PAPRIKA_FIELD_ROW_SHIFT := 48
 const PLANETS := ["paprika", "brudet"]
 const BRUDET_ARRIVAL := Vector2(1450, 706)
-const BRUDET_FARE := 1000
 const CAMP_JOB := "bandit_camp"
 const CAMP_IDS := ["camp_bandit_0", "camp_bandit_1", "camp_bandit_2"]
+const BRUDET_TEAM_IDS := {
+	"brudet_monster_team": ["brudet_team_monster_0", "brudet_team_monster_1", "brudet_team_monster_2"],
+	"brudet_bandit_team": ["brudet_team_bandit_0", "brudet_team_bandit_1", "brudet_team_bandit_2"],
+	"brudet_hacker_team": ["brudet_team_hacker_0"],
+}
 const SQUAD_ORDERS := ["follow", "hold", "attack"]
 const RECOVERY_SECONDS := 30.0
 
@@ -48,6 +53,8 @@ var controlled_member_id := "player"
 var player_order := "follow"
 var player_hold_position := [0.0, 0.0]
 var camp_defeated_ids: Array[String] = []
+var team_job_id := ""
+var team_defeated_ids: Array[String] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -95,13 +102,15 @@ func start_new_game() -> void:
 	player_order = "follow"
 	player_hold_position = [0.0, 0.0]
 	camp_defeated_ids.clear()
+	team_job_id = ""
+	team_defeated_ids.clear()
 	_emit_all()
 
 func travel_fare(destination: String) -> int:
 	if current_planet == "paprika" and destination == "brudet":
-		return BRUDET_FARE
+		return GameData.TRAVEL_FARE
 	if current_planet == "brudet" and destination == "paprika":
-		return 0
+		return GameData.TRAVEL_FARE
 	return -1
 
 func can_travel(destination: String) -> bool:
@@ -110,10 +119,13 @@ func can_travel(destination: String) -> bool:
 		notify("That destination is unavailable.")
 		return false
 	if squad_deployed:
-		notify("Finish the deployed squad mission before leaving Paprika.")
+		notify("Finish the deployed squad mission before traveling.")
+		return false
+	if not squad_recruits.is_empty():
+		notify("Dismiss your recruits before traveling.")
 		return false
 	if gold < fare:
-		notify("You need %d gold to travel to Brudet." % fare)
+		notify("You need %d gold to travel to %s." % [fare, destination.capitalize()])
 		return false
 	return true
 
@@ -262,7 +274,7 @@ func hacker_defeated() -> bool:
 	return false
 
 func recruit_villager(villager_id: String, position: Vector2) -> bool:
-	if not active_jobs.has(CAMP_JOB) or squad_deployed or squad_recruits.size() >= 2 or squad_recruits.has(villager_id) or not _valid_recruit_id(villager_id):
+	if team_job_id.is_empty() or not active_jobs.has(team_job_id) or current_planet != ("paprika" if team_job_id == CAMP_JOB else "brudet") or squad_deployed or squad_recruits.size() >= 2 or squad_recruits.has(villager_id) or not _valid_recruit_id(villager_id, current_planet):
 		return false
 	squad_recruits.append(villager_id)
 	squad_members[villager_id] = {
@@ -282,11 +294,11 @@ func dismiss_recruit(villager_id: String) -> bool:
 	return true
 
 func deploy_squad() -> bool:
-	if not active_jobs.has(CAMP_JOB) or squad_deployed or squad_recruits.size() != 2:
+	if team_job_id.is_empty() or not active_jobs.has(team_job_id) or current_planet != ("paprika" if team_job_id == CAMP_JOB else "brudet") or squad_deployed or squad_recruits.size() != 2:
 		return false
 	squad_deployed = true
 	squad_changed.emit()
-	notify("Squad assembled. Lead them to the bandit camp in the northwest forest.")
+	notify("Squad assembled. Lead them to the northwest bandit camp." if team_job_id == CAMP_JOB else "Squad assembled. Follow the mission markers and clear the targets.")
 	return true
 
 func set_controlled_member(member_id: String) -> bool:
@@ -331,7 +343,7 @@ func damage_recruit(villager_id: String, raw_damage: int) -> bool:
 		member["order"] = "follow"
 		if controlled_member_id == villager_id:
 			controlled_member_id = "player"
-		notify("%s is recovering in the village." % villager_id)
+		notify("%s is recovering in the city." % villager_id if current_planet == "brudet" else "%s is recovering in the village." % villager_id)
 	squad_members[villager_id] = member
 	squad_changed.emit()
 	return true
@@ -367,7 +379,7 @@ func reserved_item_count(item_id: String) -> int:
 	return count
 
 func record_camp_defeat(enemy_id: String) -> bool:
-	if not squad_deployed or not active_jobs.has(CAMP_JOB) or not CAMP_IDS.has(enemy_id) or camp_defeated_ids.has(enemy_id):
+	if not squad_deployed or team_job_id != CAMP_JOB or not active_jobs.has(CAMP_JOB) or not CAMP_IDS.has(enemy_id) or camp_defeated_ids.has(enemy_id):
 		return false
 	camp_defeated_ids.append(enemy_id)
 	if not defeated_persistent_enemies.has(enemy_id):
@@ -378,7 +390,21 @@ func record_camp_defeat(enemy_id: String) -> bool:
 		notify("Camp cleared. Return to the mercenary center for your reward.")
 	return true
 
+func record_team_defeat(enemy_id: String) -> bool:
+	if not squad_deployed or not BRUDET_TEAM_IDS.has(team_job_id) or not active_jobs.has(team_job_id):
+		return false
+	if not BRUDET_TEAM_IDS[team_job_id].has(enemy_id) or team_defeated_ids.has(enemy_id):
+		return false
+	team_defeated_ids.append(enemy_id)
+	active_jobs[team_job_id] = team_defeated_ids.size()
+	job_changed.emit()
+	if active_job_ready(team_job_id):
+		notify("Cleanup complete. Return to Brudet Town Hall for your reward.")
+	return true
+
 func _release_squad() -> void:
+	team_job_id = ""
+	team_defeated_ids.clear()
 	squad_deployed = false
 	squad_recruits.clear()
 	squad_members.clear()
@@ -387,9 +413,14 @@ func _release_squad() -> void:
 	player_hold_position = [0.0, 0.0]
 	squad_changed.emit()
 
-func _valid_recruit_id(villager_id: String) -> bool:
+func _valid_recruit_id(villager_id: String, planet: String) -> bool:
 	var parts := villager_id.split("_")
-	if parts.size() != 2 or not String(parts[1]).is_valid_int():
+	if planet == "brudet":
+		if parts.size() != 4 or parts[0] != "villager" or parts[1] != "river" or not String(parts[2]).is_valid_int() or not String(parts[3]).is_valid_int():
+			return false
+		var index := int(parts[2])
+		return index >= 1 and index <= 30 and parts[2] == "%02d" % index and int(parts[3]) == index + 44
+	if planet != "paprika" or parts.size() != 2 or not String(parts[1]).is_valid_int():
 		return false
 	if parts[0] == "resident":
 		return int(parts[1]) >= 0 and int(parts[1]) <= 25
@@ -398,6 +429,9 @@ func _valid_recruit_id(villager_id: String) -> bool:
 func accept_job(job_id: String) -> bool:
 	var definition := GameData.job(job_id)
 	if definition.is_empty():
+		return false
+	if bool(definition.get("team", false)) and (not team_job_id.is_empty() or current_planet != ("paprika" if job_id == CAMP_JOB else "brudet")):
+		notify("Finish or abandon your current squad mission first." if not team_job_id.is_empty() else "This squad mission belongs on another planet.")
 		return false
 	if job_id == CAMP_JOB and not hacker_defeated():
 		notify("Defeat the hacker to unlock the bandit camp mission.")
@@ -413,6 +447,9 @@ func accept_job(job_id: String) -> bool:
 		return false
 	active_jobs[job_id] = 0
 	tracked_job_id = job_id
+	if bool(definition.get("team", false)):
+		team_job_id = job_id
+		team_defeated_ids.clear()
 	job_changed.emit()
 	notify("Accepted: %s" % definition["name"])
 	return true
@@ -429,12 +466,13 @@ func abandon_job(job_id: String = "") -> void:
 	var selected := job_id if not job_id.is_empty() else tracked_job_id
 	if not active_jobs.has(selected):
 		return
-	if selected == CAMP_JOB:
+	if selected == team_job_id:
 		if squad_deployed:
 			notify("The squad mission cannot be abandoned after deployment.")
 			return
 		_release_squad()
-		camp_defeated_ids.clear()
+		if selected == CAMP_JOB:
+			camp_defeated_ids.clear()
 	active_jobs.erase(selected)
 	if tracked_job_id == selected:
 		tracked_job_id = String(active_jobs.keys()[0]) if not active_jobs.is_empty() else ""
@@ -442,12 +480,14 @@ func abandon_job(job_id: String = "") -> void:
 	notify("Job abandoned: %s" % GameData.job(selected).get("name", selected))
 
 func record_event(event_name: String, amount: int = 1) -> bool:
-	if event_name == "camp_bandit_defeated" or amount <= 0:
+	if event_name in ["camp_bandit_defeated", "team_target_defeated"] or amount <= 0:
 		return false
 	var matched := false
 	for job_id: String in active_jobs.keys():
 		var definition := GameData.job(job_id)
 		if String(definition.get("event", "")) != event_name:
+			continue
+		if (definition.get("issuer", "") == "mercenary" and current_planet != "paprika") or (definition.get("issuer", "") == "river_town_hall" and current_planet != "brudet"):
 			continue
 		matched = true
 		var target := int(definition.get("target", 1))
@@ -467,7 +507,7 @@ func active_job_ready(job_id: String = "") -> bool:
 
 func claim_job(issuer: String, job_id: String = "") -> bool:
 	var selected := job_id if not job_id.is_empty() else tracked_job_id
-	if not active_job_ready(selected) or (selected == CAMP_JOB and (not squad_deployed or camp_defeated_ids.size() != CAMP_IDS.size())):
+	if not active_job_ready(selected) or (selected == team_job_id and (not squad_deployed or (camp_defeated_ids.size() != CAMP_IDS.size() if selected == CAMP_JOB else team_defeated_ids.size() != BRUDET_TEAM_IDS[selected].size()))):
 		notify("The job is not ready to claim.")
 		return false
 	var definition := GameData.job(selected)
@@ -480,7 +520,7 @@ func claim_job(issuer: String, job_id: String = "") -> bool:
 	active_jobs.erase(selected)
 	if tracked_job_id == selected:
 		tracked_job_id = String(active_jobs.keys()[0]) if not active_jobs.is_empty() else ""
-	if selected == CAMP_JOB:
+	if selected == team_job_id:
 		_release_squad()
 	add_gold(reward)
 	job_changed.emit()
@@ -532,6 +572,8 @@ func save_game() -> bool:
 		"player_order": player_order,
 		"player_hold_position": player_hold_position,
 		"camp_defeated_ids": camp_defeated_ids,
+		"team_job_id": team_job_id,
+		"team_defeated_ids": team_defeated_ids,
 	}
 	var json_text := JSON.stringify(data, "\t")
 	var temp_path := SAVE_PATH + ".tmp"
@@ -612,7 +654,7 @@ func load_game() -> bool:
 	if not _valid_save(data):
 		notify("The save file is invalid.")
 		return false
-	if int(data["schema"]) < SAVE_SCHEMA:
+	if int(data["schema"]) < PAPRIKA_LAYOUT_SCHEMA:
 		data = _migrate_old_paprika_layout(data)
 	max_health = maxi(1, int(data.get("max_health", GameData.STARTING_MAX_HEALTH)))
 	health = clampi(int(data.get("health", max_health)), 0, max_health)
@@ -654,6 +696,13 @@ func load_game() -> bool:
 	camp_defeated_ids.clear()
 	for enemy_id in data.get("camp_defeated_ids", []):
 		camp_defeated_ids.append(String(enemy_id))
+	team_job_id = String(data.get("team_job_id", CAMP_JOB if active_jobs.has(CAMP_JOB) else ""))
+	team_defeated_ids.clear()
+	for enemy_id in data.get("team_defeated_ids", []):
+		team_defeated_ids.append(String(enemy_id))
+	if int(data["schema"]) < SAVE_SCHEMA and current_planet == "brudet" and not squad_recruits.is_empty():
+		_release_squad()
+		team_job_id = CAMP_JOB if active_jobs.has(CAMP_JOB) else ""
 	_emit_all()
 	notify("Game loaded.")
 	return true
@@ -662,7 +711,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -681,7 +730,7 @@ func _valid_save(data: Variant) -> bool:
 		for planet_id in PLANETS:
 			if not positions.has(planet_id) or not _valid_point(positions[planet_id]):
 				return false
-		if planet == "brudet" and data.get("squad_deployed", false):
+		if schema < SAVE_SCHEMA and planet == "brudet" and data.get("squad_deployed", false):
 			return false
 		var fishing_time = data.get("fishing_ready_at", null)
 		if not _is_number(fishing_time) or float(fishing_time) < 0.0:
@@ -723,7 +772,7 @@ func _valid_save(data: Variant) -> bool:
 		return false
 	for job_id in jobs:
 		var progress = jobs[job_id]
-		if schema < SQUAD_SAVE_SCHEMA and job_id == CAMP_JOB:
+		if (schema < SQUAD_SAVE_SCHEMA and job_id == CAMP_JOB) or (schema < SAVE_SCHEMA and BRUDET_TEAM_IDS.has(job_id)):
 			return false
 		if not job_id is String or not GameData.JOBS.has(job_id) or not _is_number(progress):
 			return false
@@ -762,10 +811,31 @@ func _valid_squad_save(data: Dictionary, jobs: Dictionary, item_counts: Dictiona
 		return false
 	if recruits.size() > 2 or recruits.size() != members.size() or not SQUAD_ORDERS.has(order):
 		return false
-	if deployed and (not jobs.has(CAMP_JOB) or recruits.size() != 2):
+	var schema := int(data["schema"])
+	var team_id = data.get("team_job_id", CAMP_JOB if jobs.has(CAMP_JOB) else "")
+	var team_ids = data.get("team_defeated_ids", [])
+	if schema >= SAVE_SCHEMA and (not team_id is String or not team_ids is Array):
 		return false
-	if not jobs.has(CAMP_JOB) and (not recruits.is_empty() or deployed):
-		return false
+	if schema >= SAVE_SCHEMA:
+		var active_team_jobs := 0
+		for job_id in jobs:
+			if bool(GameData.job(job_id).get("team", false)):
+				active_team_jobs += 1
+		if active_team_jobs > 1 or (not team_id.is_empty()) != (active_team_jobs == 1):
+			return false
+		if not team_id.is_empty() and (not jobs.has(team_id) or not bool(GameData.job(team_id).get("team", false))):
+			return false
+		if not team_id.is_empty() and (deployed or not recruits.is_empty()) and String(data["current_planet"]) != ("paprika" if team_id == CAMP_JOB else "brudet"):
+			return false
+		if deployed and (team_id.is_empty() or recruits.size() != 2):
+			return false
+		if team_id.is_empty() and (not recruits.is_empty() or deployed):
+			return false
+	else:
+		if deployed and (not jobs.has(CAMP_JOB) or recruits.size() != 2):
+			return false
+		if not jobs.has(CAMP_JOB) and (not recruits.is_empty() or deployed):
+			return false
 	if jobs.has(CAMP_JOB) or data["completed_unique_jobs"].has(CAMP_JOB):
 		var hacker_found := false
 		for enemy_id in data["defeated_persistent_enemies"]:
@@ -780,7 +850,7 @@ func _valid_squad_save(data: Dictionary, jobs: Dictionary, item_counts: Dictiona
 		if item_id != "":
 			reserved[item_id] = int(reserved.get(item_id, 0)) + 1
 	for villager_id in recruits:
-		if not villager_id is String or not _valid_recruit_id(villager_id) or not members.has(villager_id):
+		if not villager_id is String or not _valid_recruit_id(villager_id, "paprika" if schema < SAVE_SCHEMA else String(data["current_planet"])) or not members.has(villager_id):
 			return false
 		var member = members[villager_id]
 		if not member is Dictionary or not _valid_point(member.get("position", null)) or not _valid_point(member.get("hold_position", null)):
@@ -824,6 +894,20 @@ func _valid_squad_save(data: Dictionary, jobs: Dictionary, item_counts: Dictiona
 	for enemy_id in CAMP_IDS:
 		if data["defeated_persistent_enemies"].has(enemy_id) != casualties.has(enemy_id):
 			return false
+	if schema >= SAVE_SCHEMA:
+		if team_id == CAMP_JOB or team_id.is_empty():
+			if not team_ids.is_empty():
+				return false
+		else:
+			if not BRUDET_TEAM_IDS.has(team_id) or team_ids.size() > BRUDET_TEAM_IDS[team_id].size() or not deployed and not team_ids.is_empty():
+				return false
+			var seen_team: Dictionary = {}
+			for enemy_id in team_ids:
+				if not enemy_id is String or not BRUDET_TEAM_IDS[team_id].has(enemy_id) or seen_team.has(enemy_id):
+					return false
+				seen_team[enemy_id] = true
+			if int(jobs[team_id]) != team_ids.size():
+				return false
 	return true
 
 func _valid_point(value: Variant) -> bool:

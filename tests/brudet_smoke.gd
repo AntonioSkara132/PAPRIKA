@@ -70,6 +70,15 @@ func _run() -> void:
 			enemies.append(actor)
 	_check(residents.size() == 30 and distinct_ids.size() == 30 and distinct_names.size() >= 25, "thirty distinct Brudet residents have stable identities")
 	_check(fisher_count >= 4 and enemies.size() >= 3, "fishermen and fishlike enemies inhabit Brudet")
+	var heard_republic := false
+	var heard_recruiting := false
+	for resident in residents:
+		for line: String in Villager.ROLE_DIALOGUE.get(resident.routine_role, []):
+			if line.contains("Artichoke") and line.contains("Republic"):
+				heard_republic = true
+			if line.contains("military") and (line.contains("recruiting") or line.contains("enlistment")):
+				heard_recruiting = true
+	_check(heard_republic and heard_recruiting, "Brudet residents have dialogue about the Republic attack on Artichoke and military recruiting")
 	var reachable_monsters := 0
 	for enemy in enemies:
 		var path := river.tiled_loader.get_walk_path(state.BRUDET_ARRIVAL, enemy.spawn_position)
@@ -151,11 +160,14 @@ func _run() -> void:
 			_check(not route.is_empty() and route[-1].distance_to(service.get_interaction_position()) < Player.INTERACTION_DISTANCE, "%s can be reached from arrival" % service_id)
 	ui.open_service("river_library", "Brudet Library")
 	_check(_has_text(ui.modal_content, "Blockovia") and _has_text(ui.modal_content, "fishing rod") and _has_text(ui.modal_content, "Military Headquarters"), "library offers Craft history and useful local advice")
+	_check(_has_text(ui.modal_content, "Paprika and Brudet belong to the Cauliflower Confederation"), "library identifies Brudet and Paprika as Confederation planets")
 	ui.open_service("river_town_hall", "Brudet Town Hall")
 	_check(_has_text(ui.modal_content, "stone bridges"), "town hall describes river-city landmarks")
 	ui.open_service("military_hq", "Military Headquarters")
+	_check(_find_button(ui.modal_content, "Clear River Monsters") == null and _has_text(ui.modal_content, "training space station") and _has_text(ui.modal_content, "battlefield"), "headquarters only explains future enlistment and training")
+	ui.open_service("river_town_hall", "Brudet Town Hall")
 	var patrol := _find_button(ui.modal_content, "Clear River Monsters")
-	_check(patrol != null, "Military Headquarters offers river patrol")
+	_check(patrol != null, "Town Hall offers river patrol")
 	if patrol != null:
 		patrol.pressed.emit()
 	_check(state.active_jobs.has("river_patrol"), "Brudet patrol can be accepted")
@@ -212,12 +224,100 @@ func _run() -> void:
 		enemy.take_damage(999)
 		kills += 1
 	_check(int(state.active_jobs.get("river_patrol", 0)) == 3 and state.active_job_ready("river_patrol"), "three fishlike monster defeats complete river patrol")
-	ui.open_service("military_hq", "Military Headquarters")
+	ui.open_service("river_town_hall", "Brudet Town Hall")
 	var claim_patrol := _find_button(ui.modal_content, "Clear River Monsters")
 	if claim_patrol != null:
 		claim_patrol.pressed.emit()
-	_check(not state.active_jobs.has("river_patrol") and state.gold >= 250, "headquarters pays patrol reward")
+	_check(not state.active_jobs.has("river_patrol") and state.gold >= 250, "Town Hall pays patrol reward")
 	ui.close_modal()
+
+	for team_job: String in state.BRUDET_TEAM_IDS:
+		ui.open_service("river_town_hall", "Brudet Town Hall")
+		var job_name: String = String(GameData.job(team_job).get("name", team_job))
+		var offer := _find_button(ui.modal_content, job_name)
+		_check(offer != null and not offer.disabled, "%s is offered at Town Hall" % team_job)
+		if offer == null:
+			continue
+		offer.pressed.emit()
+		_check(state.team_job_id == team_job and state.active_jobs.has(team_job) and not state.squad_deployed, "Town Hall starts %s before deployment" % team_job)
+		for other_job: String in state.BRUDET_TEAM_IDS:
+			if other_job != team_job:
+				var other_button := _find_button(ui.modal_content, String(GameData.job(other_job).get("name", other_job)))
+				_check(other_button != null and other_button.disabled, "another team job cannot start during %s" % team_job)
+		for resident_index in 2:
+			var recruit_button := _find_button(ui.modal_content, "Recruit ")
+			_check(recruit_button != null, "Town Hall lists a Brudet villager for recruitment")
+			if recruit_button != null:
+				recruit_button.pressed.emit()
+		_check(state.squad_recruits.size() == 2, "Town Hall recruits two Brudet residents for %s" % team_job)
+		var deploy_button := _find_button(ui.modal_content, "Deploy squad")
+		_check(deploy_button != null, "Town Hall enables deployment with two recruits")
+		if deploy_button != null:
+			deploy_button.pressed.emit()
+		_check(state.squad_deployed, "two Brudet residents deploy for %s" % team_job)
+		if state.squad_deployed:
+			var recruit_id: String = state.squad_recruits[0]
+			_check(state.set_squad_order(recruit_id, "hold", river.player.global_position) and String(state.squad_members[recruit_id]["order"]) == "hold", "Brudet recruit accepts a hold order")
+			_check(state.set_squad_order(recruit_id, "follow", river.player.global_position), "Brudet recruit resumes following")
+		await get_tree().process_frame
+		var expected_ids: Array = state.BRUDET_TEAM_IDS[team_job]
+		var targets: Dictionary = {}
+		for actor in river.actors_root.get_children():
+			if actor is Enemy and expected_ids.has(actor.persistent_id) and not actor.is_queued_for_deletion():
+				targets[actor.persistent_id] = actor
+		_check(targets.size() == expected_ids.size(), "%s spawns its distinct marked targets" % team_job)
+		if team_job == "brudet_hacker_team" and targets.has(expected_ids[0]):
+			var hacker: Enemy = targets[expected_ids[0]]
+			var origin := hacker.global_position
+			var nearby := Vector2.ZERO
+			for offset in [Vector2(50, 0), Vector2(-50, 0), Vector2(0, 50), Vector2(0, -50)]:
+				var candidate: Vector2 = origin + offset
+				if river.tiled_loader.is_walkable_position(candidate) and not river.tiled_loader.get_walk_path(origin, candidate).is_empty():
+					nearby = candidate
+					break
+			_check(nearby != Vector2.ZERO, "phase hacker has a walkable nearby player position")
+			if nearby != Vector2.ZERO:
+				river.player.global_position = nearby
+				hacker._start_phase(river.player)
+				_check(hacker.state == Enemy.State.PHASE_WARNING and is_instance_valid(hacker._phase_warning) and hacker._phase_warning.visible, "phase hacker shows a teleport warning")
+				_check(hacker._phase_cooldown > 0.0 and hacker.global_position == origin, "phase hacker starts teleport cooldown before moving")
+				if hacker.state == Enemy.State.PHASE_WARNING:
+					_check(river.tiled_loader.is_walkable_position(hacker._phase_destination), "phase hacker chooses a walkable destination")
+					hacker._finish_phase()
+					_check(hacker.global_position.distance_to(origin) > 8.0, "phase hacker teleports away from its original position")
+					_check(hacker._phase_warning == null, "phase hacker clears the teleport warning")
+					var collision := PhysicsShapeQueryParameters2D.new()
+					collision.shape = hacker._collision.shape
+					collision.transform = Transform2D(0.0, hacker.global_position + hacker._collision.position)
+					collision.collision_mask = 1 | 2 | 8 | 64
+					collision.exclude = [hacker.get_rid()]
+					_check(river.tiled_loader.is_walkable_position(hacker.global_position) and hacker.get_world_2d().direct_space_state.intersect_shape(collision, 1).is_empty(), "phase hacker ends on walkable ground without overlapping a collision")
+		for target_id: String in expected_ids:
+			if not targets.has(target_id):
+				continue
+			var target: Enemy = null
+			for actor in river.actors_root.get_children():
+				if actor is Enemy and actor.persistent_id == target_id and not actor.is_queued_for_deletion():
+					target = actor
+					break
+			_check(target != null, "%s remains available after reload" % target_id)
+			if target == null:
+				continue
+			target.take_damage(999)
+			_check(state.team_defeated_ids.has(target_id), "%s defeat records its stable ID" % target_id)
+			if state.team_defeated_ids.size() == 1:
+				river.capture_player_position()
+				_check(state.save_game() and state.load_game(), "%s persists during a partially cleared mission" % team_job)
+				river.apply_loaded_state()
+				await get_tree().process_frame
+				_check(state.team_job_id == team_job and state.squad_deployed and state.team_defeated_ids.has(target_id), "%s reload retains squad and defeated target" % team_job)
+		_check(state.active_job_ready(team_job), "%s requires its marked targets" % team_job)
+		ui.open_service("river_town_hall", "Brudet Town Hall")
+		var claim_team := _find_button(ui.modal_content, job_name)
+		if claim_team != null:
+			claim_team.pressed.emit()
+		_check(not state.active_jobs.has(team_job) and state.team_job_id.is_empty() and state.team_defeated_ids.is_empty(), "Town Hall pays and clears %s" % team_job)
+		ui.close_modal()
 
 	var river_position := Vector2(1420, 720)
 	river.player.global_position = river_position
@@ -225,12 +325,23 @@ func _run() -> void:
 	_check(state.save_game(), "Brudet position and fishing cooldown save")
 	ui.open_service("travel", "Brudet Travel Agency")
 	var back := _find_button(ui.modal_content, "Return to Paprika")
-	_check(back != null and back.text.contains("free"), "Brudet agency offers a free return")
+	_check(back != null and back.text.contains("1000"), "Brudet agency charges 1,000 gold for return")
 	var before_return := state.gold
+	if before_return >= 1000:
+		state.spend_gold(before_return - 999)
+		ui.open_service("travel", "Brudet Travel Agency")
+		back = _find_button(ui.modal_content, "Return to Paprika")
+	if back != null:
+		back.pressed.emit()
+	_check(game._world_planet == "brudet" and state.gold < 1000, "unaffordable return leaves the player on Brudet")
+	state.add_gold(1000)
+	ui.open_service("travel", "Brudet Travel Agency")
+	back = _find_button(ui.modal_content, "Return to Paprika")
+	var return_balance := state.gold
 	if back != null:
 		back.pressed.emit()
 	await get_tree().process_frame
-	_check(game._world_planet == "paprika" and state.current_planet == "paprika" and state.gold == before_return, "free return restores Paprika without changing gold")
+	_check(game._world_planet == "paprika" and state.current_planet == "paprika" and state.gold == return_balance - 1000, "paid return restores Paprika and charges once")
 	_check(game.world.player.global_position.distance_to(departure) < 32.0 and ui.location_label.text.contains("PAPRIKA"), "return recalls unchanged northern departure point and title")
 	var south_square := Vector2(810, 1372)
 	var road: PackedVector2Array = game.world.tiled_loader.get_walk_path(departure, south_square)
@@ -241,13 +352,19 @@ func _run() -> void:
 	if second_ticket != null:
 		second_ticket.pressed.emit()
 	await get_tree().process_frame
-	_check(game._world_planet == "brudet" and state.gold == before_return and game.world.player.global_position.distance_to(river_position) < 48.0, "second paid trip recalls the saved Brudet position")
+	_check(game._world_planet == "brudet" and state.gold == return_balance - 1000 and game.world.player.global_position.distance_to(river_position) < 48.0, "second paid trip recalls the saved Brudet position")
 	ui.open_service("travel", "Brudet Travel Agency")
 	var second_return := _find_button(ui.modal_content, "Return to Paprika")
 	if second_return != null:
 		second_return.pressed.emit()
+	_check(game._world_planet == "brudet", "second return without a fare is refused")
+	state.add_gold(1000)
+	ui.open_service("travel", "Brudet Travel Agency")
+	second_return = _find_button(ui.modal_content, "Return to Paprika")
+	if second_return != null:
+		second_return.pressed.emit()
 	await get_tree().process_frame
-	_check(game._world_planet == "paprika" and state.gold == before_return, "second return is still free")
+	_check(game._world_planet == "paprika" and state.gold == return_balance - 1000, "second paid return charges 1,000 gold")
 	var load_key := InputEventAction.new()
 	load_key.action = "quick_load"
 	load_key.pressed = true
