@@ -19,7 +19,7 @@ func configure(origin: Vector2, travel_direction: Vector2, attack_damage: int, t
 	collision_layer = 0
 	collision_mask = 1 | (8 | 32 if from_player else 2 | 64)
 	monitoring = true
-	monitorable = false
+	monitorable = true
 	body_entered.connect(_on_body_entered)
 	var collision := CollisionShape2D.new()
 	var shape := CircleShape2D.new()

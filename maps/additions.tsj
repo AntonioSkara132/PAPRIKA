@@ -5,7 +5,7 @@
   "name": "paprika_additions",
   "tilewidth": 80,
   "tileheight": 64,
-  "tilecount": 9,
+  "tilecount": 17,
   "columns": 0,
   "objectalignment": "bottomleft",
   "tiles": [
@@ -62,6 +62,54 @@
       "image": "../assets/art/forest_warning_sign.png",
       "imagewidth": 64,
       "imageheight": 40
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/northern_village/north_house_copper.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/northern_village/north_house_blue.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/northern_village/north_house_green.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/northern_village/north_food_shop.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/northern_village/north_forge.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/northern_village/north_travel_agency.png",
+      "imagewidth": 112,
+      "imageheight": 80
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/northern_village/iron_gear_shop.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/northern_village/north_clothing_shop.png",
+      "imagewidth": 80,
+      "imageheight": 72
     }
   ]
 }

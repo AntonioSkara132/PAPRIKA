@@ -22,6 +22,9 @@ var _rng := RandomNumberGenerator.new()
 var _built := false
 var _defeated := false
 var _respawn_timer := 0.0
+var _river_path := PackedVector2Array()
+var _river_path_index := 0
+var _river_repath_timer := 0.0
 
 func configure(kind: String, texture_path: String, position_in_world: Vector2, stable_id: String) -> void:
 	enemy_id = kind
@@ -82,6 +85,8 @@ func _build(texture_path: String) -> void:
 		_sprite.modulate = Color(0.54, 0.72, 0.50)
 	elif enemy_id in ["bandit", "camp_bandit"]:
 		_sprite.modulate = Color(0.95, 0.62, 0.50) if enemy_id == "bandit" else Color(1.0, 0.35, 0.28)
+	elif _is_river_monster():
+		_sprite.modulate = _base_modulate()
 
 func _physics_process(delta: float) -> void:
 	if _defeated:
@@ -91,6 +96,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_state_time = maxf(0.0, _state_time - delta)
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	_river_repath_timer = maxf(0.0, _river_repath_timer - delta)
 	var player := _nearest_party_target()
 	if player == null:
 		velocity = Vector2.ZERO
@@ -157,12 +163,46 @@ func _nearest_party_target() -> Node2D:
 	return nearest
 
 func _move_toward(target: Vector2, movement_speed: float) -> void:
+	if _is_river_monster():
+		var navigation := _river_navigation()
+		if navigation != null:
+			if _river_repath_timer <= 0.0:
+				_river_path = navigation.get_walk_path(global_position, target)
+				_river_path_index = 0
+				_river_repath_timer = 0.6
+			while _river_path_index < _river_path.size() and global_position.distance_to(_river_path[_river_path_index]) < 5.0:
+				_river_path_index += 1
+			if _river_path_index < _river_path.size():
+				target = _river_path[_river_path_index]
+			else:
+				velocity = Vector2.ZERO
+				return
 	velocity = (target - global_position).normalized() * movement_speed
 	move_and_slide()
 
 func _choose_patrol() -> void:
+	if _is_river_monster() and is_inside_tree():
+		var navigation := _river_navigation()
+		if navigation != null:
+			for attempt in 8:
+				var candidate := spawn_position + Vector2(_rng.randf_range(-38.0, 38.0), _rng.randf_range(-28.0, 28.0))
+				if navigation.is_walkable_position(candidate) and not navigation.get_walk_path(spawn_position, candidate).is_empty():
+					_patrol_target = candidate
+					state = State.PATROL
+					return
+			_patrol_target = spawn_position
+			state = State.IDLE
+			_state_time = 1.0
+			return
 	_patrol_target = spawn_position + Vector2(_rng.randf_range(-38.0, 38.0), _rng.randf_range(-28.0, 28.0))
 	state = State.PATROL
+
+func _is_river_monster() -> bool:
+	return enemy_id in ["finling", "lake_maw", "river_serpent"]
+
+func _river_navigation() -> TiledLoader:
+	var world := get_parent().get_parent() as GameWorld
+	return world.tiled_loader if world != null else null
 
 func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0:
@@ -180,7 +220,7 @@ func _die() -> void:
 	remove_from_group("damageable")
 	var reward := int(definition.get("reward", 0))
 	GameState.add_gold(reward)
-	GameState.record_event(String(definition.get("event", "monster_defeated")))
+	GameState.record_event("river_monster_defeated" if _is_river_monster() else String(definition.get("event", "monster_defeated")))
 	if enemy_id == "camp_bandit":
 		GameState.record_camp_defeat(persistent_id)
 	GameState.notify("Defeated %s. Found %d gold." % [definition.get("name", enemy_id), reward])
@@ -235,4 +275,7 @@ func _base_modulate() -> Color:
 		"zombie": return Color(0.55, 0.86, 0.58)
 		"zombie_bear": return Color(0.54, 0.72, 0.50)
 		"bandit": return Color(0.95, 0.62, 0.50)
+		"finling": return Color(0.70, 0.96, 0.87)
+		"lake_maw": return Color(0.89, 0.83, 0.67)
+		"river_serpent": return Color(0.80, 0.92, 1.0)
 		_: return Color.WHITE

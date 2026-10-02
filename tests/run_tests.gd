@@ -21,9 +21,13 @@ func _initialize() -> void:
 	_run("hacker defeat unlocks camp without bounty", _test_camp_unlock)
 	_run("camp casualties are unique and reward pays once", _test_camp_casualties)
 	_run("recruits, equipment and orders", _test_squad_equipment)
+	_run("buy enough gear for two recruits", _test_buy_another_squad_gear)
 	_run("downed recruit recovers", _test_recruit_recovery)
 	_run("save migration and validation", _test_saves)
+	_run("northern food and clothing", _test_northern_products)
 	_run("travel fare is not an item purchase", _test_travel_fare)
+	_run("planet travel and fare", _test_planet_travel)
+	_run("deployed squad cannot travel", _test_deployed_travel)
 	print("GameState: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -55,6 +59,9 @@ func _test_new_game() -> void:
 	state.field_regrowth["plot"] = 50.0
 	state.defeated_persistent_enemies.append("hacker")
 	state.play_seconds = 70.0
+	state.current_planet = "brudet"
+	state.planet_positions["brudet"] = [7.0, 8.0]
+	state.fishing_ready_at = 90.0
 	state.start_new_game()
 	_check(state.max_health == GameData.STARTING_MAX_HEALTH and state.health == state.max_health, "new game restores full starting health")
 	_check(state.gold == 0 and state.inventory == {"stick": 1, "bread": 1}, "new game restores starting gold and inventory")
@@ -62,6 +69,7 @@ func _test_new_game() -> void:
 	_check(state.active_jobs.is_empty() and state.tracked_job_id == "" and state.completed_unique_jobs.is_empty(), "new game clears jobs")
 	_check(state.player_position == Vector2(320, 220) and state.field_regrowth.is_empty(), "new game resets position and regrowth")
 	_check(state.defeated_persistent_enemies.is_empty() and state.play_seconds == 0.0, "new game clears enemy history and play time")
+	_check(state.current_planet == "paprika" and state.planet_positions["brudet"] == [1450.0, 706.0] and state.fishing_ready_at == 0.0, "new game restores Paprika and resets the Brudet arrival and fishing cooldown")
 	state.free()
 
 
@@ -235,6 +243,7 @@ func _test_squad_equipment() -> void:
 	state.defeated_persistent_enemies.append("hacker_forest")
 	state.accept_job(state.CAMP_JOB)
 	_check(not state.recruit_villager("not_a_villager", Vector2.ZERO), "unknown villagers cannot join")
+	_check(state._valid_recruit_id("resident_25") and not state._valid_recruit_id("resident_26"), "northern recruit IDs extend through resident_25")
 	_check(state.recruit_villager("resident_00", Vector2(813, 610)), "first villager joins the squad")
 	_check(not state.recruit_villager("resident_00", Vector2.ZERO) and not state.deploy_squad(), "same villager cannot join twice and one recruit cannot deploy")
 	_check(state.recruit_villager("resident_01", Vector2(844, 613)) and not state.recruit_villager("resident_02", Vector2.ZERO), "squad holds exactly two distinct villagers")
@@ -250,6 +259,20 @@ func _test_squad_equipment() -> void:
 	_check(state.set_squad_order("player", "hold", Vector2(12, 34)) and state.player_order == "hold" and state.player_hold_position == [12.0, 34.0], "player hold order remembers its location")
 	_check(state.set_squad_order("resident_00", "attack", Vector2(44, 55)) and state.squad_members["resident_00"]["order"] == "attack", "recruit receives attack order")
 	_check(not state.set_squad_order("resident_00", "invalid", Vector2.ZERO), "invalid orders are refused")
+	state.free()
+
+
+func _test_buy_another_squad_gear() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.defeated_persistent_enemies.append("hacker_forest")
+	state.accept_job(state.CAMP_JOB)
+	_check(state.recruit_villager("resident_24", Vector2(1126, 390)) and state.recruit_villager("resident_25", Vector2(1250, 255)), "new northern residents can be recruited by stable ID")
+	state.add_gold(750)
+	_check(state.buy_item("iron_sword") and state.buy_item("iron_sword") and int(state.inventory.get("iron_sword", 0)) == 2, "iron swords can be bought twice")
+	_check(state.equip_recruit("resident_24", "weapon", "iron_sword") and state.equip_recruit("resident_25", "weapon", "iron_sword"), "each recruit receives an independent iron sword")
+	_check(state.reserved_item_count("iron_sword") == 2 and not state.equip_item("iron_sword") and not state.sell_item("iron_sword"), "two reserved copies cannot be reused by player or sold")
+	_check(state.buy_item("iron_sword") and state.equip_item("iron_sword") and state.reserved_item_count("iron_sword") == 3, "buying a third sword equips the player without disarming recruits")
 	state.free()
 
 
@@ -311,6 +334,7 @@ func _test_saves() -> void:
 					backup_file.close()
 					_check(not state.load_game() and state.gold == 42, "wrong-schema backup does not replace live state")
 			_test_save_migration(state)
+			_test_planet_save(state)
 			state.free()
 		for path in [isolated_save, isolated_backup, isolated_save + ".tmp"]:
 			if FileAccess.file_exists(path):
@@ -333,8 +357,8 @@ func _test_save_migration(state) -> void:
 		"inventory": {"stick": 1, "bread": 1},
 		"equipment": {"weapon": "stick", "armor": "", "clothing": ""},
 		"active_job_id": "field_work", "active_job_progress": 3,
-		"completed_unique_jobs": [], "player_position": [350, 240],
-		"field_regrowth": {}, "defeated_persistent_enemies": [], "play_seconds": 12.0,
+		"completed_unique_jobs": [], "player_position": [790, 615],
+		"field_regrowth": {"paprika:51:26": 90.0, "paprika:54:11": 55.0, "brudet:3:30": 20.0}, "defeated_persistent_enemies": [], "play_seconds": 12.0,
 	}
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(legacy_file != null, "schema-one save can be written in the isolated directory")
@@ -343,17 +367,21 @@ func _test_save_migration(state) -> void:
 	legacy_file.store_string(JSON.stringify(legacy_data))
 	legacy_file.close()
 	_check(state.load_game() and state.active_jobs == {"field_work": 3} and state.tracked_job_id == "field_work", "schema-one job and progress migrate without being lost")
+	_check(state.current_planet == "paprika" and state.player_position == Vector2(790, 1383) and state.planet_positions["paprika"] == [790.0, 1383.0] and state.fishing_ready_at == 0.0, "schema-one save moves the old southern position to the expanded map")
+	_check(state.field_regrowth == {"paprika:51:74": 90.0, "paprika:54:11": 55.0, "brudet:3:30": 20.0}, "schema-one migration shifts southern field rows but keeps northern and Brudet field keys")
 	_check(state.accept_job("rabbit_catch") and state.track_job("field_work"), "a second job can be added to a migrated save")
 	state.record_event("rabbit_caught", 2)
-	_check(state.save_game(), "saving a schema-one migration writes schema three")
+	_check(state.save_game(), "saving a schema-one migration writes schema five")
 	var saved_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	var saved_jobs: Dictionary = saved_data.get("active_jobs", {}) if saved_data is Dictionary else {}
-	_check(saved_data is Dictionary and saved_data.get("schema") == 3 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "schema-three save contains each job and tracked selection")
+	_check(saved_data is Dictionary and saved_data.get("schema") == 5 and saved_jobs.size() == 2 and int(saved_jobs.get("field_work", -1)) == 3 and int(saved_jobs.get("rabbit_catch", -1)) == 2 and saved_data.get("tracked_job_id") == "field_work", "schema-five save contains each job and tracked selection")
+	_check(saved_data is Dictionary and saved_data.get("field_regrowth", {}).has("paprika:51:74") and not saved_data.get("field_regrowth", {}).has("paprika:51:122"), "schema-five field keys are not shifted twice on save")
 	_check(saved_data is Dictionary and saved_data.get("squad_recruits") == [] and saved_data.get("squad_deployed") == false and saved_data.get("camp_defeated_ids") == [], "migration initializes empty squad and camp progress")
 	var backup_data = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
 	_check(backup_data is Dictionary and backup_data.get("schema") == 1, "previous schema-one save stays in the backup")
 	state.start_new_game()
-	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema three restores both jobs and tracked selection")
+	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "field_work", "loading schema five restores both jobs and tracked selection")
+	_check(state.player_position == Vector2(790, 1383) and state.field_regrowth.has("paprika:51:74") and not state.field_regrowth.has("paprika:51:122"), "reloading schema five does not shift the southern position or field again")
 	if saved_data is Dictionary:
 		var invalid_tracking: Dictionary = saved_data.duplicate(true)
 		invalid_tracking["tracked_job_id"] = "hacker_bounty"
@@ -376,6 +404,7 @@ func _test_save_migration(state) -> void:
 	schema_two.erase("active_job_progress")
 	schema_two["active_jobs"] = {"field_work": 3, "rabbit_catch": 2}
 	schema_two["tracked_job_id"] = "rabbit_catch"
+	schema_two["player_position"] = [350, 240]
 	var schema_two_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(schema_two_file != null, "schema-two fixture can be written")
 	if schema_two_file == null:
@@ -385,12 +414,119 @@ func _test_save_migration(state) -> void:
 	state.start_new_game()
 	_check(state.load_game() and state.active_jobs == {"field_work": 3, "rabbit_catch": 2} and state.tracked_job_id == "rabbit_catch", "schema-two save restores simultaneous jobs")
 	_check(state.squad_recruits.is_empty() and state.squad_members.is_empty() and not state.squad_deployed and state.controlled_member_id == "player" and state.camp_defeated_ids.is_empty(), "schema-two migration defaults to no squad or camp progress")
-	_check(state.save_game(), "schema-two fixture can be saved as schema three")
+	_check(state.current_planet == "paprika" and state.player_position == Vector2(350, 240) and state.planet_positions["paprika"] == [350.0, 240.0] and state.fishing_ready_at == 0.0, "schema-two save keeps a northern Paprika position and has no fishing cooldown")
+	_check(state.field_regrowth.has("paprika:51:74") and state.field_regrowth.has("paprika:54:11"), "schema-two migration shifts only fields south of row 21")
+	_check(state.save_game(), "schema-two fixture can be saved as schema five")
 	var migrated_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	var migrated_jobs: Dictionary = migrated_two.get("active_jobs", {}) if migrated_two is Dictionary else {}
-	_check(migrated_two is Dictionary and migrated_two.get("schema") == 3 and migrated_two.get("tracked_job_id") == "rabbit_catch" and migrated_jobs.size() == 2 and int(migrated_jobs.get("field_work", -1)) == 3 and int(migrated_jobs.get("rabbit_catch", -1)) == 2, "schema-two jobs survive schema-three serialization")
+	_check(migrated_two is Dictionary and migrated_two.get("schema") == 5 and migrated_two.get("tracked_job_id") == "rabbit_catch" and migrated_jobs.size() == 2 and int(migrated_jobs.get("field_work", -1)) == 3 and int(migrated_jobs.get("rabbit_catch", -1)) == 2, "schema-two jobs survive schema-five serialization")
 	var previous_two = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_BACKUP_PATH))
 	_check(previous_two is Dictionary and previous_two.get("schema") == 2, "schema-two source is kept in the backup")
+	_test_schema_three_mission(state)
+
+
+func _test_schema_three_mission(state) -> void:
+	state.start_new_game()
+	state.defeated_persistent_enemies.append("hacker_forest")
+	_check(state.accept_job(state.CAMP_JOB), "schema-three mission fixture accepts the unlocked camp job")
+	_check(state.recruit_villager("resident_00", Vector2(830, 600)) and state.recruit_villager("resident_25", Vector2(1250, 255)), "schema-three fixture retains old and northern stable recruit IDs")
+	_check(state.add_item("wood_sword") and state.equip_recruit("resident_25", "weapon", "wood_sword") and state.deploy_squad() and state.record_camp_defeat(state.CAMP_IDS[0]), "schema-three fixture has equipped recruits and one camp casualty")
+	state.player_position = Vector2(830, 600)
+	state.planet_positions["paprika"] = [830.0, 600.0]
+	state.field_regrowth = {"paprika:52:30": 60.0, "paprika:54:11": 45.0}
+	_check(state.set_squad_order("player", "hold", Vector2(760, 340)) and state.set_squad_order("resident_00", "hold", Vector2(818, 610)) and state.set_squad_order("resident_25", "hold", Vector2(1250, 255)), "schema-three fixture records southern, office-approach and northern holds")
+	_check(state.save_game(), "deployed squad fixture can be saved")
+	var legacy = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	if not legacy is Dictionary:
+		_check(false, "deployed squad fixture is readable")
+		return
+	legacy["schema"] = 3
+	legacy.erase("current_planet")
+	legacy.erase("planet_positions")
+	legacy.erase("fishing_ready_at")
+	_check(state._valid_save(legacy), "schema-three deployed camp save remains valid")
+	var file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
+	_check(file != null, "schema-three mission fixture can be written")
+	if file == null:
+		return
+	file.store_string(JSON.stringify(legacy))
+	file.close()
+	state.start_new_game()
+	_check(state.load_game() and state.squad_deployed and state.active_jobs.get(state.CAMP_JOB) == 1 and state.camp_defeated_ids == [state.CAMP_IDS[0]], "schema-three save restores a deployed midmission squad and camp progress")
+	_check(state.squad_recruits == ["resident_00", "resident_25"] and state.squad_members["resident_25"]["weapon"] == "wood_sword" and state.inventory["wood_sword"] == 1, "schema-three save keeps recruit identities and reserved equipment")
+	_check(state.current_planet == "paprika" and state.player_position == Vector2(830, 1368) and state.fishing_ready_at == 0.0, "schema-three save moves its southern player position and defaults to Paprika")
+	_check(state.player_hold_position == [760.0, 1108.0] and state.squad_members["resident_00"]["position"] == [830.0, 1368.0] and state.squad_members["resident_00"]["hold_position"] == [818.0, 1378.0], "schema-three migration moves player and recruit holds, including the old office approach")
+	_check(state.squad_members["resident_25"]["position"] == [1250.0, 255.0] and state.squad_members["resident_25"]["hold_position"] == [1250.0, 255.0], "schema-three migration keeps a northern recruit in place")
+	_check(state.field_regrowth == {"paprika:52:78": 60.0, "paprika:54:11": 45.0}, "schema-three migration moves only southern field keys")
+	_check(state.save_game(), "schema-three deployed mission migrates to schema five")
+	var migrated = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(migrated is Dictionary and migrated.get("schema") == 5 and migrated.get("squad_deployed") == true and migrated.get("fishing_ready_at") == 0.0, "schema-five migration preserves deployed squad and initializes fishing cooldown")
+	state.start_new_game()
+	_check(state.load_game() and state.player_position == Vector2(830, 1368) and state.player_hold_position == [760.0, 1108.0] and state.squad_members["resident_00"]["position"] == [830.0, 1368.0] and state.field_regrowth.has("paprika:52:78"), "reloading the migrated squad does not shift coordinates a second time")
+
+
+func _test_planet_save(state) -> void:
+	state.start_new_game()
+	state.add_gold(1200)
+	_check(state.travel_to("brudet", Vector2(790, 615)), "planet save fixture reaches Brudet from the old southern village")
+	state.remember_player_position(Vector2(1475, 735))
+	state.field_regrowth = {"paprika:51:26": 90.0, "brudet:3:30": 20.0}
+	state.play_seconds = 20.0
+	state.fishing_ready_at = 31.5
+	_check(state.save_game(), "Brudet fixture can be saved before migration")
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(saved is Dictionary and saved.get("schema") == 5 and saved.get("current_planet") == "brudet" and saved.get("player_position") == [1475.0, 735.0] and saved.get("planet_positions", {}).get("paprika") == [790.0, 615.0] and saved.get("fishing_ready_at") == 31.5, "fixture records both planets and the absolute fishing deadline")
+	if not saved is Dictionary:
+		return
+	saved["schema"] = 4
+	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
+	_check(legacy_file != null, "schema-four Brudet fixture can be written")
+	if legacy_file == null:
+		return
+	legacy_file.store_string(JSON.stringify(saved))
+	legacy_file.close()
+	state.start_new_game()
+	_check(state.load_game() and state.current_planet == "brudet" and state.player_position == Vector2(1475, 735) and state.gold == 200 and state.fishing_ready_at == 31.5, "schema-four migration leaves active Brudet position, gold and fishing deadline unchanged")
+	_check(state.planet_positions["paprika"] == [790.0, 1383.0], "schema-four migration shifts the inactive Paprika position while on Brudet")
+	_check(state.field_regrowth == {"paprika:51:74": 90.0, "brudet:3:30": 20.0}, "schema-four migration shifts Paprika fields without changing Brudet fields")
+	_check(state.save_game(), "migrated Brudet game can be saved as schema five")
+	var migrated = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(migrated is Dictionary and migrated.get("schema") == 5 and migrated.get("planet_positions", {}).get("paprika") == [790.0, 1383.0], "schema-five save keeps the corrected inactive Paprika position")
+	state.start_new_game()
+	_check(state.load_game() and state.player_position == Vector2(1475, 735) and state.planet_positions["paprika"] == [790.0, 1383.0] and state.field_regrowth.has("paprika:51:74"), "schema-five reload does not shift inactive Paprika coordinates twice")
+	state._process(4.0)
+	_check(state.play_seconds == 24.0 and state.fishing_ready_at == 31.5, "elapsed play time does not reset the fishing deadline")
+	_check(state.travel_to("paprika", Vector2(1475, 735)) and state.player_position == Vector2(790, 1383) and state.fishing_ready_at == 31.5, "free return restores the migrated southern Paprika position without resetting fishing")
+	if migrated is Dictionary:
+		for field in ["current_planet", "planet_positions", "fishing_ready_at"]:
+			var missing: Dictionary = migrated.duplicate(true)
+			missing.erase(field)
+			_check(not state._valid_save(missing), "schema-five save requires %s" % field)
+		var bad_planet: Dictionary = migrated.duplicate(true)
+		bad_planet["current_planet"] = "unknown"
+		_check(not state._valid_save(bad_planet), "unknown saved planet is rejected")
+		var bad_position: Dictionary = migrated.duplicate(true)
+		bad_position["planet_positions"]["paprika"] = [100]
+		_check(not state._valid_save(bad_position), "incomplete saved planet position is rejected")
+		var bad_fishing: Dictionary = migrated.duplicate(true)
+		bad_fishing["fishing_ready_at"] = -1.0
+		_check(not state._valid_save(bad_fishing), "negative fishing deadline is rejected")
+
+
+func _test_northern_products() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	for item_id in ["rye_bread", "berry_pie", "smoked_fish"]:
+		var definition := GameData.item(item_id)
+		_check(definition.get("kind", "") == "food" and int(definition.get("buy", 0)) > 0 and int(definition.get("heal", 0)) > 0, "%s is purchasable healing food" % item_id)
+		state.health = 1
+		if state.add_item(item_id):
+			_check(state.use_food(item_id) and state.health > 1 and not state.inventory.has(item_id), "%s restores health and is consumed" % item_id)
+	var cloth := GameData.item("purple_cloth")
+	_check(cloth.get("kind", "") == "trade" and int(cloth.get("buy", 0)) > 0 and int(cloth.get("sell", 0)) > 0, "purple cloth can be traded but has no crafting recipe")
+	_check(state.add_item("purple_cloth") and not state.equip_item("purple_cloth") and not state.use_food("purple_cloth"), "purple cloth cannot be worn or eaten")
+	_check(GameData.item("purple_tunic").get("kind", "") == "clothing" and state.add_item("purple_tunic") and state.equip_item("purple_tunic"), "purple tunic is a wearable garment")
+	state.free()
 
 
 func _test_travel_fare() -> void:
@@ -401,4 +537,38 @@ func _test_travel_fare() -> void:
 	_check(GameData.item("travel_fare").is_empty() and not state.buy_item("travel_fare"), "travel fare is not a purchasable inventory item")
 	_check(state.gold == GameData.TRAVEL_FARE and state.inventory == before_inventory, "attempted item purchase does not spend fare")
 	_check(state.spend_gold(GameData.TRAVEL_FARE) and state.gold == 0, "generic gold payment can spend the fare")
+	state.free()
+
+
+func _test_planet_travel() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.add_gold(999)
+	var original_inventory: Dictionary = state.inventory.duplicate(true)
+	_check(state.travel_fare("brudet") == 1000 and state.travel_fare("paprika") == -1, "Paprika only offers the 1000-gold Brudet trip")
+	_check(not state.travel_to("brudet", Vector2(1050, 240)) and state.gold == 999 and state.current_planet == "paprika" and state.planet_positions["paprika"] == [320.0, 220.0], "unaffordable trip changes neither gold nor planet positions")
+	state.add_gold(1)
+	_check(not state.travel_to("unknown", Vector2(1050, 240)) and state.gold == 1000 and state.current_planet == "paprika", "unknown destination does not charge a fare")
+	_check(state.travel_to("brudet", Vector2(1050, 240)) and state.gold == 0 and state.current_planet == "brudet" and state.player_position == Vector2(1450, 706), "successful outbound trip charges exactly 1000 gold and reaches Brudet arrival")
+	_check(state.planet_positions["paprika"] == [1050.0, 240.0] and state.inventory == original_inventory, "outbound trip remembers Paprika position without changing inventory")
+	state.remember_player_position(Vector2(1505, 748))
+	_check(state.travel_fare("paprika") == 0 and state.travel_to("paprika", Vector2(1505, 748)) and state.gold == 0 and state.player_position == Vector2(1050, 240), "return trip is free and restores departure position on Paprika")
+	_check(state.planet_positions["brudet"] == [1505.0, 748.0], "return saves the Brudet position")
+	_check(not state.travel_to("paprika", Vector2.ZERO) and state.gold == 0, "same-planet travel is rejected without charging gold")
+	state.add_gold(1000)
+	_check(state.travel_to("brudet", Vector2(1075, 267)) and state.gold == 0 and state.player_position == Vector2(1505, 748) and state.planet_positions["paprika"] == [1075.0, 267.0], "later outbound trip charges again and restores the saved Brudet position")
+	state.free()
+
+
+func _test_deployed_travel() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.add_gold(1000)
+	state.defeated_persistent_enemies.append("hacker_forest")
+	state.accept_job(state.CAMP_JOB)
+	state.recruit_villager("resident_00", Vector2(830, 600))
+	state.recruit_villager("resident_25", Vector2(1250, 255))
+	_check(state.deploy_squad(), "two camp recruits can deploy before the travel check")
+	_check(not state.can_travel("brudet") and not state.travel_to("brudet", Vector2(1050, 240)), "deployed squad cannot leave Paprika")
+	_check(state.gold == 1000 and state.current_planet == "paprika" and state.player_position == Vector2(320, 220) and state.planet_positions["paprika"] == [320.0, 220.0] and state.squad_deployed, "blocked trip preserves fare, position and squad deployment")
 	state.free()

@@ -11,7 +11,16 @@ signal save_finished(success: bool)
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 3
+const SAVE_SCHEMA := 5
+const PLANET_SAVE_SCHEMA := 4
+const SQUAD_SAVE_SCHEMA := 3
+const PAPRIKA_OLD_SOUTH_Y := 352.0
+const PAPRIKA_OLD_SOUTH_ROW := 22
+const PAPRIKA_LAYOUT_SHIFT := 768.0
+const PAPRIKA_FIELD_ROW_SHIFT := 48
+const PLANETS := ["paprika", "brudet"]
+const BRUDET_ARRIVAL := Vector2(1450, 706)
+const BRUDET_FARE := 1000
 const CAMP_JOB := "bandit_camp"
 const CAMP_IDS := ["camp_bandit_0", "camp_bandit_1", "camp_bandit_2"]
 const SQUAD_ORDERS := ["follow", "hold", "attack"]
@@ -26,9 +35,12 @@ var active_jobs: Dictionary = {}
 var tracked_job_id: String = ""
 var completed_unique_jobs: Array[String] = []
 var player_position := Vector2(320, 220)
+var current_planet := "paprika"
+var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y]}
 var field_regrowth: Dictionary = {}
 var defeated_persistent_enemies: Array[String] = []
 var play_seconds: float = 0.0
+var fishing_ready_at: float = 0.0
 var squad_recruits: Array[String] = []
 var squad_members: Dictionary = {}
 var squad_deployed := false
@@ -70,9 +82,12 @@ func start_new_game() -> void:
 	tracked_job_id = ""
 	completed_unique_jobs.clear()
 	player_position = Vector2(320, 220)
+	current_planet = "paprika"
+	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y]}
 	field_regrowth.clear()
 	defeated_persistent_enemies.clear()
 	play_seconds = 0.0
+	fishing_ready_at = 0.0
 	squad_recruits.clear()
 	squad_members.clear()
 	squad_deployed = false
@@ -81,6 +96,43 @@ func start_new_game() -> void:
 	player_hold_position = [0.0, 0.0]
 	camp_defeated_ids.clear()
 	_emit_all()
+
+func travel_fare(destination: String) -> int:
+	if current_planet == "paprika" and destination == "brudet":
+		return BRUDET_FARE
+	if current_planet == "brudet" and destination == "paprika":
+		return 0
+	return -1
+
+func can_travel(destination: String) -> bool:
+	var fare := travel_fare(destination)
+	if fare < 0:
+		notify("That destination is unavailable.")
+		return false
+	if squad_deployed:
+		notify("Finish the deployed squad mission before leaving Paprika.")
+		return false
+	if gold < fare:
+		notify("You need %d gold to travel to Brudet." % fare)
+		return false
+	return true
+
+func remember_player_position(position: Vector2) -> void:
+	player_position = position
+	planet_positions[current_planet] = [position.x, position.y]
+
+func travel_to(destination: String, departure_position: Vector2) -> bool:
+	if not can_travel(destination):
+		return false
+	var fare := travel_fare(destination)
+	planet_positions[current_planet] = [departure_position.x, departure_position.y]
+	current_planet = destination
+	var arrival: Array = planet_positions[destination]
+	player_position = Vector2(float(arrival[0]), float(arrival[1]))
+	if fare > 0:
+		gold -= fare
+		gold_changed.emit(gold)
+	return true
 
 func add_gold(amount: int) -> void:
 	gold = maxi(0, gold + amount)
@@ -340,7 +392,7 @@ func _valid_recruit_id(villager_id: String) -> bool:
 	if parts.size() != 2 or not String(parts[1]).is_valid_int():
 		return false
 	if parts[0] == "resident":
-		return int(parts[1]) >= 0 and int(parts[1]) < 25
+		return int(parts[1]) >= 0 and int(parts[1]) <= 25
 	return parts[0] in ["villager1", "villager2", "villager3", "villager4", "villager5", "villager6"] and int(parts[1]) > 0
 
 func accept_job(job_id: String) -> bool:
@@ -455,8 +507,11 @@ func notify(message: String) -> void:
 	notification_requested.emit(message)
 
 func save_game() -> bool:
+	planet_positions[current_planet] = [player_position.x, player_position.y]
 	var data := {
 		"schema": SAVE_SCHEMA,
+		"current_planet": current_planet,
+		"planet_positions": planet_positions,
 		"health": health,
 		"max_health": max_health,
 		"gold": gold,
@@ -469,6 +524,7 @@ func save_game() -> bool:
 		"field_regrowth": field_regrowth,
 		"defeated_persistent_enemies": defeated_persistent_enemies,
 		"play_seconds": play_seconds,
+		"fishing_ready_at": fishing_ready_at,
 		"squad_recruits": squad_recruits,
 		"squad_members": squad_members,
 		"squad_deployed": squad_deployed,
@@ -513,6 +569,36 @@ func save_game() -> bool:
 	save_finished.emit(success)
 	return success
 
+func _migrate_old_paprika_layout(data: Dictionary) -> Dictionary:
+	var migrated := data.duplicate(true)
+	if int(migrated["schema"]) >= PLANET_SAVE_SCHEMA:
+		var positions: Dictionary = migrated["planet_positions"]
+		positions["paprika"] = _migrate_old_paprika_point(positions["paprika"])
+	if int(migrated["schema"]) < PLANET_SAVE_SCHEMA or String(migrated.get("current_planet", "paprika")) == "paprika":
+		migrated["player_position"] = _migrate_old_paprika_point(migrated["player_position"])
+	if int(migrated["schema"]) >= SQUAD_SAVE_SCHEMA:
+		for villager_id in migrated["squad_members"]:
+			var member: Dictionary = migrated["squad_members"][villager_id]
+			member["position"] = _migrate_old_paprika_point(member["position"])
+			member["hold_position"] = _migrate_old_paprika_point(member["hold_position"])
+		migrated["player_hold_position"] = _migrate_old_paprika_point(migrated["player_hold_position"])
+	var timers: Dictionary = {}
+	for field_id in migrated["field_regrowth"]:
+		var new_id := String(field_id)
+		var parts := new_id.split(":")
+		if parts.size() == 3 and parts[0] == "paprika" and parts[1].is_valid_int() and parts[2].is_valid_int() and int(parts[2]) >= PAPRIKA_OLD_SOUTH_ROW:
+			new_id = "paprika:%s:%d" % [parts[1], int(parts[2]) + PAPRIKA_FIELD_ROW_SHIFT]
+		timers[new_id] = migrated["field_regrowth"][field_id]
+	migrated["field_regrowth"] = timers
+	return migrated
+
+func _migrate_old_paprika_point(point: Array) -> Array:
+	var x := float(point[0])
+	var y := float(point[1])
+	# Players could stand beside the old work-office door just above the inserted rows.
+	var near_old_work_office := x >= 712.0 and x <= 808.0 and y >= 330.0 and y < PAPRIKA_OLD_SOUTH_Y
+	return [x, y + PAPRIKA_LAYOUT_SHIFT] if y >= PAPRIKA_OLD_SOUTH_Y or near_old_work_office else point.duplicate()
+
 func load_game() -> bool:
 	var source := SAVE_PATH
 	if not FileAccess.file_exists(source):
@@ -526,6 +612,8 @@ func load_game() -> bool:
 	if not _valid_save(data):
 		notify("The save file is invalid.")
 		return false
+	if int(data["schema"]) < SAVE_SCHEMA:
+		data = _migrate_old_paprika_layout(data)
 	max_health = maxi(1, int(data.get("max_health", GameData.STARTING_MAX_HEALTH)))
 	health = clampi(int(data.get("health", max_health)), 0, max_health)
 	gold = maxi(0, int(data.get("gold", 0)))
@@ -546,11 +634,15 @@ func load_game() -> bool:
 		completed_unique_jobs.append(String(job_id))
 	var pos: Array = data.get("player_position", [320, 220])
 	player_position = Vector2(float(pos[0]), float(pos[1])) if pos.size() >= 2 else Vector2(320, 220)
+	current_planet = String(data.get("current_planet", "paprika"))
+	planet_positions = data.get("planet_positions", {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y]}).duplicate(true)
+	planet_positions[current_planet] = [player_position.x, player_position.y]
 	field_regrowth = data.get("field_regrowth", {}).duplicate(true)
 	defeated_persistent_enemies.clear()
 	for enemy_id in data.get("defeated_persistent_enemies", []):
 		defeated_persistent_enemies.append(String(enemy_id))
 	play_seconds = maxf(0.0, float(data.get("play_seconds", 0.0)))
+	fishing_ready_at = float(data.get("fishing_ready_at", 0.0))
 	squad_recruits.clear()
 	for villager_id in data.get("squad_recruits", []):
 		squad_recruits.append(String(villager_id))
@@ -570,7 +662,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -581,6 +673,19 @@ func _valid_save(data: Variant) -> bool:
 		return false
 	if location.size() != 2 or not _is_number(location[0]) or not _is_number(location[1]):
 		return false
+	if schema >= PLANET_SAVE_SCHEMA:
+		var planet = data.get("current_planet", null)
+		var positions = data.get("planet_positions", null)
+		if not planet is String or not PLANETS.has(planet) or not positions is Dictionary or positions.size() != PLANETS.size():
+			return false
+		for planet_id in PLANETS:
+			if not positions.has(planet_id) or not _valid_point(positions[planet_id]):
+				return false
+		if planet == "brudet" and data.get("squad_deployed", false):
+			return false
+		var fishing_time = data.get("fishing_ready_at", null)
+		if not _is_number(fishing_time) or float(fishing_time) < 0.0:
+			return false
 	for number_field in ["health", "max_health", "gold", "play_seconds"]:
 		if not _is_number(data.get(number_field, null)) or float(data[number_field]) < 0.0:
 			return false
@@ -618,7 +723,7 @@ func _valid_save(data: Variant) -> bool:
 		return false
 	for job_id in jobs:
 		var progress = jobs[job_id]
-		if schema < SAVE_SCHEMA and job_id == CAMP_JOB:
+		if schema < SQUAD_SAVE_SCHEMA and job_id == CAMP_JOB:
 			return false
 		if not job_id is String or not GameData.JOBS.has(job_id) or not _is_number(progress):
 			return false
@@ -634,14 +739,14 @@ func _valid_save(data: Variant) -> bool:
 	for completed_id in unique_jobs:
 		if not completed_id is String or not GameData.JOBS.has(completed_id):
 			return false
-		if schema < SAVE_SCHEMA and completed_id == CAMP_JOB:
+		if schema < SQUAD_SAVE_SCHEMA and completed_id == CAMP_JOB:
 			return false
 		if jobs.has(completed_id) and not bool(GameData.job(completed_id).get("repeatable", false)):
 			return false
 	for enemy_id in defeated:
 		if not enemy_id is String:
 			return false
-	if schema == SAVE_SCHEMA and not _valid_squad_save(data, jobs, item_counts, gear):
+	if schema >= SQUAD_SAVE_SCHEMA and not _valid_squad_save(data, jobs, item_counts, gear):
 		return false
 	return true
 

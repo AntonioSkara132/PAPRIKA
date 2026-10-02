@@ -10,6 +10,9 @@ var map_size := Vector2.ZERO
 var _navigation: AStarGrid2D
 var _collision_footprints: Array[Rect2] = []
 var tile_size := Vector2i(16, 16)
+var _map_field_prefix := "paprika"
+var map_loaded := false
+var _missing_texture := false
 var _tilesets: Array[Dictionary] = []
 var _texture_cache: Dictionary = {}
 var _tile_root: Node2D
@@ -27,8 +30,9 @@ func load_map(path: String) -> bool:
 		push_error("Could not parse Tiled map: %s" % path)
 		return false
 	if bool(data.get("infinite", false)) or String(data.get("orientation", "")) != "orthogonal":
-		push_error("Paprika supports only finite orthogonal Tiled maps.")
+		push_error("Craft supports only finite orthogonal Tiled maps.")
 		return false
+	_map_field_prefix = path.get_file().get_basename()
 	tile_size = Vector2i(int(data.get("tilewidth", 16)), int(data.get("tileheight", 16)))
 	map_size = Vector2(int(data.get("width", 0)) * tile_size.x, int(data.get("height", 0)) * tile_size.y)
 	if map_size.x <= 0 or map_size.y <= 0:
@@ -56,9 +60,12 @@ func load_map(path: String) -> bool:
 		layer_index += 1
 	_add_outer_boundaries()
 	_build_navigation()
-	return true
+	map_loaded = not _missing_texture
+	return map_loaded
 
 func clear_map() -> void:
+	map_loaded = false
+	_missing_texture = false
 	_tilesets.clear()
 	_texture_cache.clear()
 	_collision_footprints.clear()
@@ -131,9 +138,10 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		layer_node.add_child(sprite)
 		var local_id := _local_tile_id(gid)
-		if GameData.CROP_BY_TILE_ID.has(local_id):
-			_create_field_plot(cell, local_id, sprite, texture, layer_name != "Private Fields")
-		if local_id == 5 or local_id == 6 or (layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]):
+		if layer_name in ["Common Fields", "Private Fields"] and GameData.CROP_BY_TILE_ID.has(local_id):
+			_create_field_plot(cell, local_id, sprite, texture, layer_name == "Common Fields")
+		if (layer_name == "Water" or local_id in [5, 6]
+				or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]):
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -142,7 +150,7 @@ func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_t
 	field.name = "Field_%d_%d" % [cell.x, cell.y]
 	field.position = Vector2(cell.x * tile_size.x + tile_size.x * 0.5, cell.y * tile_size.y + tile_size.y * 0.5)
 	_field_root.add_child(field)
-	field.configure("paprika:%d:%d" % [cell.x, cell.y], crop_id, common, sprite, ready_texture, _texture_for_gid(_gid_for_local_tile(4)))
+	field.configure("%s:%d:%d" % [_map_field_prefix, cell.x, cell.y], crop_id, common, sprite, ready_texture, _texture_for_gid(_gid_for_local_tile(4)))
 
 func _create_object_layer(layer: Dictionary) -> void:
 	for object_value in layer.get("objects", []):
@@ -169,7 +177,7 @@ func _create_object_layer(layer: Dictionary) -> void:
 		if name == "rabbit":
 			actor_spawn_requested.emit("rabbit", feet, texture_path, "rabbit_%d" % int(object.get("id", 0)))
 			continue
-		if name in ["wolf", "zombie", "zombie_bear", "bandit", "hacker"]:
+		if name in ["wolf", "zombie", "zombie_bear", "bandit", "hacker", "finling", "lake_maw", "river_serpent"]:
 			actor_spawn_requested.emit("enemy", feet, texture_path, "%s_%d" % [name, int(object.get("id", 0))])
 			continue
 		var service := _service_for_object(name)
@@ -196,6 +204,8 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	holder.add_child(sprite)
+	if name in ["stone_bridge", "arrow_target"]:
+		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
 	elif name.begins_with("tree"):
@@ -216,11 +226,19 @@ func _record_service_collisions(service_node: WorldService) -> void:
 func _service_for_object(name: String) -> Dictionary:
 	match name:
 		"food_shop": return {"id": "food", "name": "Paprika Food Shop"}
+		"north_food_shop": return {"id": "north_food", "name": "Northern Food Shop"}
 		"forge": return {"id": "forge", "name": "Forge & Armor"}
+		"north_forge": return {"id": "north_forge", "name": "Northern Forge"}
 		"mercenary": return {"id": "mercenary", "name": "Mercenary Center"}
 		"work_office": return {"id": "work_office", "name": "Village Work Office"}
 		"clothing_shop": return {"id": "clothing", "name": "Clothing & Armor"}
-		"travel": return {"id": "travel", "name": "Paprika Travel Agency"}
+		"north_clothing_shop": return {"id": "north_clothing", "name": "Northern Clothier"}
+		"travel": return {"id": "travel", "name": "Brudet Travel Agency" if _map_field_prefix == "brudet" else "Paprika Travel Agency"}
+		"river_market": return {"id": "river_market", "name": "Brudet Market"}
+		"river_library": return {"id": "river_library", "name": "Brudet Library"}
+		"military_hq": return {"id": "military_hq", "name": "Military Headquarters"}
+		"river_town_hall": return {"id": "river_town_hall", "name": "Brudet Town Hall"}
+		"fishing_pond": return {"id": "fishing_pond", "name": "Fishing Pond"}
 		_: return {}
 
 func _add_outer_boundaries() -> void:
@@ -256,6 +274,13 @@ func _build_navigation() -> void:
 		for y in range(first_y, last_y + 1):
 			for x in range(first_x, last_x + 1):
 				_navigation.set_point_solid(Vector2i(x, y))
+
+func is_walkable_position(world_position: Vector2) -> bool:
+	if _navigation == null:
+		return false
+	var local := to_local(world_position)
+	var cell := Vector2i(floori(local.x / tile_size.x), floori(local.y / tile_size.y))
+	return _navigation.is_in_boundsv(cell) and not _navigation.is_point_solid(cell)
 
 func get_walk_path(start: Vector2, destination: Vector2) -> PackedVector2Array:
 	var path := PackedVector2Array()
@@ -328,6 +353,8 @@ func _texture_for_gid(gid: int) -> Texture2D:
 		var sheet := load(sheet_path) as Texture2D
 		if sheet == null:
 			push_error("Could not load Tiled texture: %s" % sheet_path)
+			_missing_texture = true
+			_texture_cache[gid] = null
 			return null
 		var columns := int(definition.get("columns", 1))
 		var tw := int(definition.get("tilewidth", tile_size.x))
@@ -339,6 +366,9 @@ func _texture_for_gid(gid: int) -> Texture2D:
 	else:
 		var image_path := _collection_image_path(definition, local_id, folder)
 		texture = load(image_path) as Texture2D
+		if texture == null:
+			push_error("Could not load Tiled texture: %s" % image_path)
+			_missing_texture = true
 	_texture_cache[gid] = texture
 	return texture
 

@@ -1,15 +1,20 @@
 class_name GameUI
 extends CanvasLayer
 
+signal travel_requested(destination: String)
+
 const INK := Color("1c1730")
 const PANEL := Color(0.07, 0.065, 0.12, 0.94)
 const CREAM := Color("f7f1dd")
 const GOLD := Color("f5c34c")
 const CYAN := Color("5fd6d3")
 const RED := Color("d94b4b")
+const RECRUIT_PAGE_SIZE := 10
+const NORTH_REGION_Y := 352.0
 
 var health_bar: ProgressBar
 var status_label: Label
+var location_label: Label
 var equipment_label: Label
 var job_label: Label
 var squad_label: Label
@@ -23,6 +28,8 @@ var modal_content: VBoxContainer
 var _notification_timer: Timer
 var _active_service_id := ""
 var _active_service_name := ""
+var _recruit_region := "All"
+var _recruit_page := 0
 var _squad_refresh_elapsed := 0.0
 
 func _process(delta: float) -> void:
@@ -58,15 +65,20 @@ func set_interaction_prompt(text: String) -> void:
 	prompt_panel.visible = not text.is_empty()
 
 func open_service(service_id: String, display_name: String) -> void:
+	if service_id != _active_service_id:
+		_recruit_region = "All"
+		_recruit_page = 0
 	_active_service_id = service_id
 	_active_service_name = display_name
 	_open_modal(display_name)
 	match service_id:
-		"food": _build_food_shop()
-		"forge": _build_gear_shop(false)
-		"clothing": _build_gear_shop(true)
-		"work_office", "mercenary": _build_job_board(service_id)
+		"food", "north_food": _build_food_shop(service_id == "north_food")
+		"forge", "north_forge", "clothing", "north_clothing": _build_gear_shop(service_id)
+		"work_office", "mercenary", "military_hq": _build_job_board(service_id)
+		"river_market": _build_river_market()
 		"travel": _build_travel_agency()
+		"river_library": _build_river_library()
+		"river_town_hall": _build_river_town_hall()
 		_: _add_body("This service is not available yet.")
 	_add_close_button()
 
@@ -107,7 +119,7 @@ func open_jobs() -> void:
 	_active_service_name = "Current Jobs"
 	_open_modal(_active_service_name)
 	if GameState.active_jobs.is_empty():
-		_add_body("You have no active jobs. Visit the WORK office or mercenary center.")
+		_add_body("You have no active jobs. Visit the market or Military Headquarters." if GameState.current_planet == "brudet" else "You have no active jobs. Visit the WORK office or mercenary center.")
 	else:
 		var job_ids := GameState.active_jobs.keys()
 		job_ids.sort()
@@ -157,9 +169,9 @@ func _build_hud() -> void:
 
 	var title_panel := _panel_at(Vector2(246, 7), Vector2(148, 24), GOLD)
 	root.add_child(title_panel)
-	var title := _label("PAPRIKA VILLAGE", 11, CREAM)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_panel.add_child(title)
+	location_label = _label("", 11, CREAM)
+	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_panel.add_child(location_label)
 
 	var job_panel := _panel_at(Vector2(404, 7), Vector2(228, 62))
 	root.add_child(job_panel)
@@ -240,9 +252,14 @@ func _connect_state() -> void:
 	GameState.notification_requested.connect(_show_notification)
 
 func _refresh_all() -> void:
+	refresh_location()
 	_refresh_status()
 	_refresh_job()
 	_refresh_squad()
+
+func refresh_location() -> void:
+	location_label.text = "BRUDET RIVER CITY" if GameState.current_planet == "brudet" else "PAPRIKA VILLAGE"
+	_refresh_job()
 
 func _refresh_status() -> void:
 	health_bar.max_value = GameState.max_health
@@ -256,7 +273,7 @@ func _refresh_status() -> void:
 func _refresh_job() -> void:
 	_refresh_squad()
 	if GameState.active_jobs.is_empty():
-		job_label.text = "JOBS\nNo active jobs — visit WORK"
+		job_label.text = "JOBS\nNo active jobs — visit HQ or market" if GameState.current_planet == "brudet" else "JOBS\nNo active jobs — visit WORK"
 		return
 	var job_id := GameState.tracked_job_id
 	var definition := GameData.job(job_id)
@@ -293,10 +310,10 @@ func _open_modal(title: String) -> void:
 	modal_overlay.visible = true
 	_add_heading(title)
 
-func _build_food_shop() -> void:
+func _build_food_shop(northern: bool = false) -> void:
 	_add_body("Fresh food and produce trading. Food restores health.")
 	_add_heading("Buy")
-	for item_id in ["bread", "stew"]:
+	for item_id in (["rye_bread", "berry_pie", "smoked_fish"] if northern else ["bread", "stew"]):
 		var definition := GameData.item(item_id)
 		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell produce")
@@ -306,54 +323,94 @@ func _build_food_shop() -> void:
 		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
 		button.disabled = owned <= 0
 
-func _build_gear_shop(clothing_shop: bool) -> void:
-	var sections := {}
-	if clothing_shop:
-		_add_body("Medieval clothes and fitted armor for forest travel.")
-		sections = {
-			"Clothing": ["red_tunic", "blue_tunic", "green_tunic"],
-			"Armor": ["wood_armor", "bronze_armor", "iron_armor"],
-		}
-	else:
-		_add_body("Swords, spears, and bows. Each tier gives stronger attacks.")
-		sections = {
-			"Swords": ["wood_sword", "bronze_sword", "iron_sword"],
-			"Spears": ["wood_spear", "bronze_spear", "iron_spear"],
-			"Bows": ["wood_bow", "bronze_bow", "iron_bow"],
-		}
+func _build_gear_shop(service_id: String) -> void:
+	var sections: Dictionary
+	match service_id:
+		"clothing":
+			_add_body("Clothes and fitted armor for forest travel.")
+			sections = {"Clothing": ["red_tunic", "blue_tunic", "green_tunic"], "Armor": ["wood_armor", "bronze_armor"]}
+		"north_clothing":
+			_add_body("Northern tailoring and fitted armor for forest travel.")
+			sections = {"Clothing": ["purple_tunic"], "Armor": ["wood_armor", "bronze_armor"]}
+		"north_forge":
+			_add_body("Swords, spears, bows, and iron armor for northern adventurers.")
+			sections = {"Swords": ["wood_sword", "bronze_sword", "iron_sword"], "Spears": ["wood_spear", "bronze_spear", "iron_spear"], "Bows": ["wood_bow", "bronze_bow", "iron_bow"], "Armor": ["iron_armor"]}
+		_:
+			_add_body("Swords, spears, and bows. Each tier gives stronger attacks.")
+			sections = {"Swords": ["wood_sword", "bronze_sword"], "Spears": ["wood_spear", "bronze_spear"], "Bows": ["wood_bow", "bronze_bow"]}
 	for section: String in sections:
 		_add_heading(section)
 		for item_id: String in sections[section]:
 			var definition := GameData.item(item_id)
-			var owned := int(GameState.inventory.get(item_id, 0)) > 0
+			var owned := int(GameState.inventory.get(item_id, 0))
 			var equipped := GameState.equipment.values().has(item_id)
-			var label_text := "%s" % definition["name"]
-			if equipped:
-				label_text += " — equipped"
-			elif owned:
-				label_text += " — equip"
-			else:
-				label_text += " — %d gold" % int(definition["buy"])
-			_add_action_button(label_text, func() -> void: _buy_or_equip(item_id))
+			var available := owned - GameState.reserved_item_count(item_id)
+			var equip_text := "Equipped %s" % definition["name"] if equipped else "Equip %s (%d available)" % [definition["name"], available]
+			var equip_button := _add_action_button(equip_text, func() -> void: GameState.equip_item(item_id); _reopen_service())
+			equip_button.disabled = equipped or available <= 0
+			_add_action_button("Buy another %s — %d gold" % [definition["name"], int(definition["buy"])], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	if service_id == "north_clothing":
+		_add_heading("Cloth trading")
+		var cloth := GameData.item("purple_cloth")
+		_add_action_button("Buy %s — %d gold" % [cloth["name"], cloth["buy"]], func() -> void: GameState.buy_item("purple_cloth"); _reopen_service())
+		var owned := int(GameState.inventory.get("purple_cloth", 0))
+		var sell_button := _add_action_button("Sell %s x%d — %d gold" % [cloth["name"], owned, cloth["sell"]], func() -> void: GameState.sell_item("purple_cloth"); _reopen_service())
+		sell_button.disabled = owned <= 0
 
 func _build_job_board(service_id: String) -> void:
 	_add_body("Accept several jobs at once. Return here to claim jobs issued here.")
-	if service_id == "work_office":
-		_add_heading("Village work")
-		for job_id in ["field_work", "rabbit_catch"]:
-			_add_job_button(job_id)
-	else:
-		_add_heading("Mercenary bounties")
-		for job_id in ["forest_patrol", "bandit_bounty", "hacker_bounty", GameState.CAMP_JOB]:
-			_add_job_button(job_id)
-		if GameState.active_jobs.has(GameState.CAMP_JOB):
-			_add_camp_roster(true)
+	match service_id:
+		"work_office":
+			_add_heading("Village work")
+			for job_id in ["field_work", "rabbit_catch"]:
+				_add_job_button(job_id)
+		"military_hq":
+			_add_heading("River patrol")
+			_add_body("Practice with the arrow target beside headquarters. Defeat fishlike monsters near the waterways to complete a patrol.")
+			_add_job_button("river_patrol")
+		"mercenary":
+			_add_heading("Mercenary bounties")
+			for job_id in ["forest_patrol", "bandit_bounty", "hacker_bounty", GameState.CAMP_JOB]:
+				_add_job_button(job_id)
+			if GameState.active_jobs.has(GameState.CAMP_JOB):
+				_add_camp_roster(true)
+
+func _build_river_market() -> void:
+	_add_body("Fresh catches, river food, and fishing supplies.")
+	_add_heading("Buy")
+	for item_id in ["fishing_rod", "fish_stew", "olive_bread", "citrus"]:
+		var definition := GameData.item(item_id)
+		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	_add_heading("Sell")
+	for item_id in ["river_fish", "potato", "carrot", "tomato", "grape"]:
+		var definition := GameData.item(item_id)
+		var owned := int(GameState.inventory.get(item_id, 0))
+		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
+		button.disabled = owned <= 0
+	_add_heading("Fishing work")
+	_add_job_button("fishing_work")
 
 func _build_travel_agency() -> void:
-	_add_body("A ship ticket to a neighboring Cauliflower Confederation planet costs %d gold." % GameData.TRAVEL_FARE)
-	_add_body("No destination is available in this version of Craft. Your gold will not be charged.")
-	var unavailable := _add_action_button("Destinations unavailable — keep your gold", func() -> void: GameState.notify("Paprika is the only available planet for now."))
-	unavailable.disabled = false
+	if GameState.current_planet == "brudet":
+		_add_body("Return to Paprika free of charge. Your Paprika position is saved for the return trip.")
+		_add_action_button("Return to Paprika — free", func() -> void: travel_requested.emit("paprika"))
+	else:
+		_add_body("Visit the river city of Brudet. The fare is %d gold; you need not pay to return." % GameState.travel_fare("brudet"))
+		_add_body("Finish a deployed squad mission before leaving Paprika.")
+		_add_action_button("Visit Brudet — %d gold" % GameState.travel_fare("brudet"), func() -> void: travel_requested.emit("brudet"))
+
+func _build_river_library() -> void:
+	_add_heading("Craft and its history")
+	_add_body("Craft is a game people play while hibernating aboard an interstellar voyage. Its roughly fifty flat planets have breathable space between them.")
+	_add_body("The New Republic holds twenty-four planets and has its capital on Blockovia. Breece holds seven, Engineria five, the Cauliflower Confederation six, Saint Confederation five, and two worlds are independent.")
+	_add_body("The former unified Republic split after the self-modification machine Block was destroyed. Paprika belongs to the Cauliflower Confederation; Brudet's political status is not recorded here.")
+	_add_heading("Field guide")
+	_add_body("The bridges cross the main river. Water cannot be walked across elsewhere. A fishing rod from the market lets you catch fish at ponds; wait before casting again.")
+	_add_body("Buy food or sell a catch at the market. The Military Headquarters offers river-monster patrols, and its arrow target is safe for practice. Save with F5 and load with F9.")
+
+func _build_river_town_hall() -> void:
+	_add_body("Welcome to Brudet's river city. The market sells food and fishing rods; the nearby library has local advice and Craft history.")
+	_add_body("Cross the river using the stone bridges. Visit the green Military Headquarters for patrol work and the arrow target beside it for practice.")
 
 func _add_job_button(job_id: String) -> void:
 	var definition := GameData.job(job_id)
@@ -414,15 +471,42 @@ func _add_camp_roster(at_mercenary: bool) -> void:
 		_add_body("Villagers are unavailable. Return after the world loads.")
 		return
 	var villagers: Array[Villager] = []
+	var south_count := 0
+	var north_count := 0
 	for actor in world.actors_root.get_children():
 		if actor is Villager and not GameState.squad_recruits.has(actor.villager_id):
-			villagers.append(actor)
-	villagers.sort_custom(func(a: Villager, b: Villager) -> bool:
-		return a.villager_name < b.villager_name or (a.villager_name == b.villager_name and a.villager_id < b.villager_id)
-	)
-	for villager in villagers:
+			var resident := actor as Villager
+			if resident.home_position.y < NORTH_REGION_Y:
+				north_count += 1
+			else:
+				south_count += 1
+			if _recruit_region == "All" or (_recruit_region == "North") == (resident.home_position.y < NORTH_REGION_Y):
+				villagers.append(resident)
+	for region in ["All", "South", "North"]:
+		var count := north_count + south_count if region == "All" else (north_count if region == "North" else south_count)
+		var region_button := _add_action_button("%s villagers (%d)%s" % [region, count, " — viewing" if region == _recruit_region else ""], func() -> void: _select_recruit_region(region))
+		region_button.disabled = region == _recruit_region
+	villagers.sort_custom(func(a: Villager, b: Villager) -> bool: return a.villager_id < b.villager_id)
+	var page_count := maxi(1, ceili(float(villagers.size()) / RECRUIT_PAGE_SIZE))
+	_recruit_page = clampi(_recruit_page, 0, page_count - 1)
+	_add_body("%s villagers — page %d/%d" % [_recruit_region, _recruit_page + 1, page_count])
+	for index in range(_recruit_page * RECRUIT_PAGE_SIZE, mini((_recruit_page + 1) * RECRUIT_PAGE_SIZE, villagers.size())):
+		var villager := villagers[index]
 		var villager_id := villager.villager_id
 		_add_action_button("Recruit %s (%s)" % [villager.villager_name, villager_id], func() -> void: _recruit(villager_id))
+	if _recruit_page > 0:
+		_add_action_button("Previous villagers", func() -> void: _turn_recruit_page(-1))
+	if _recruit_page + 1 < page_count:
+		_add_action_button("Next villagers", func() -> void: _turn_recruit_page(1))
+
+func _select_recruit_region(region: String) -> void:
+	_recruit_region = region
+	_recruit_page = 0
+	_reopen_service()
+
+func _turn_recruit_page(direction: int) -> void:
+	_recruit_page += direction
+	_reopen_service()
 
 func _add_recruit_gear_buttons(villager_id: String, slot: String) -> void:
 	var member: Dictionary = GameState.squad_members.get(villager_id, {})
@@ -470,15 +554,8 @@ func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
 		GameState.notify("%s equipped: %s." % [_member_name(villager_id), _gear_name(item_id)])
 	_reopen_service()
 
-func _buy_or_equip(item_id: String) -> void:
-	if int(GameState.inventory.get(item_id, 0)) > 0:
-		GameState.equip_item(item_id)
-	elif GameState.buy_item(item_id):
-		GameState.equip_item(item_id)
-	_reopen_service()
-
 func _reopen_service() -> void:
-	if _active_service_id in ["food", "forge", "clothing", "work_office", "mercenary", "travel"]:
+	if _active_service_id in ["food", "north_food", "forge", "north_forge", "clothing", "north_clothing", "work_office", "mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel"]:
 		open_service(_active_service_id, _active_service_name)
 	elif _active_service_id == "inventory":
 		_refresh_inventory_panel()

@@ -7,10 +7,12 @@ signal respawned
 
 const SPEED := 90.0
 const INTERACTION_DISTANCE := 31.0
-const RESPAWN_POSITION := Vector2(838, 620)
+const RESPAWN_POSITION := Vector2(838, 1388)
 
 var facing := Vector2.DOWN
 var map_bounds := Rect2(0, 0, 640, 368)
+var respawn_position := RESPAWN_POSITION
+var respawn_location_name := "Paprika village"
 var _sprite: Sprite2D
 var _armor_overlay: Sprite2D
 var _attack_cooldown := 0.0
@@ -119,12 +121,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			world.attack_as(active)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
-		if active == self:
-			if not GameState.use_food("bread"):
-				GameState.use_food("stew")
-		elif active is Villager:
-			if not GameState.heal_recruit(active.villager_id, "bread"):
-				GameState.heal_recruit(active.villager_id, "stew")
+		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus"]:
+			if active == self and GameState.use_food(food_id):
+				break
+			if active is Villager and GameState.heal_recruit(active.villager_id, food_id):
+				break
 		get_viewport().set_input_as_handled()
 
 func _attack(preferred_target: Node2D = null) -> void:
@@ -188,11 +189,11 @@ func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> v
 
 func _respawn() -> void:
 	GameState.set_controlled_member("player")
-	global_position = RESPAWN_POSITION
+	global_position = respawn_position
 	GameState.player_position = global_position
 	GameState.restore_health()
 	respawned.emit()
-	GameState.notify("You were defeated and woke up safely in Paprika village.")
+	GameState.notify("You were defeated and woke up safely in %s." % respawn_location_name)
 
 func _update_nearest_interactable() -> void:
 	var world := get_parent().get_parent() as GameWorld
@@ -231,7 +232,7 @@ func _update_nearest_interactable() -> void:
 func _refresh_appearance() -> void:
 	var outfit := String(GameState.equipment.get("clothing", ""))
 	var color_name := String(GameData.item(outfit).get("color", ""))
-	var texture_path := "res://assets/art/player_%s.png" % color_name
+	var texture_path := "res://assets/art/northern_village/player_purple.png" if color_name == "purple" else "res://assets/art/player_%s.png" % color_name
 	if not color_name.is_empty() and ResourceLoader.exists(texture_path):
 		_sprite.texture = load(texture_path) as Texture2D
 	else:

@@ -2,8 +2,19 @@ class_name GameWorld
 extends Node2D
 
 const MAP_PATH := "res://maps/paprika.tmj"
-const VILLAGE_OFFSET := Vector2(512, 352)
-const VILLAGER_COUNT := 25
+const VILLAGE_OFFSET := Vector2(512, 1120)
+const SOUTH_SHIFT := Vector2(0, 768)
+const NORTH_REGION_Y := 352.0
+const VILLAGER_COUNT := 40
+const NORTH_RESIDENT_POSITIONS := [
+	Vector2(512, 238), Vector2(548, 238), Vector2(590, 238), Vector2(630, 218),
+	Vector2(730, 234), Vector2(770, 290), Vector2(800, 300), Vector2(500, 332),
+	Vector2(544, 332), Vector2(584, 332), Vector2(624, 332), Vector2(680, 332),
+	Vector2(1080, 238), Vector2(1120, 238), Vector2(1160, 238), Vector2(1200, 222),
+	Vector2(1240, 222), Vector2(1280, 222), Vector2(1320, 238), Vector2(1360, 238),
+	Vector2(1080, 335), Vector2(1120, 335), Vector2(1160, 335), Vector2(1200, 335),
+	Vector2(1320, 335),
+]
 const CAMP_SPAWNS := [Vector2(285, 231), Vector2(318, 251), Vector2(351, 238)]
 const CAMP_TEXTURE := "res://assets/art/bandit.png"
 const REPATH_SECONDS := 0.45
@@ -37,6 +48,7 @@ func _ready() -> void:
 	_spawn_population_to_target()
 	if player == null:
 		_spawn_player(VILLAGE_OFFSET + Vector2(326, 268), "res://art/concepts/source/player.png")
+	_assign_villager_routines()
 	GameState.squad_changed.connect(_sync_squad)
 	_sync_squad()
 
@@ -52,7 +64,8 @@ func capture_player_position() -> void:
 
 func apply_loaded_state() -> void:
 	if player != null:
-		player.global_position = GameState.player_position
+		player.global_position = _safe_loaded_position(GameState.player_position)
+		GameState.player_position = player.global_position
 	_squad_ai.clear()
 	for actor in actors_root.get_children():
 		if actor is Enemy and actor.enemy_id == "camp_bandit":
@@ -61,9 +74,15 @@ func apply_loaded_state() -> void:
 	for villager_id in GameState.squad_recruits:
 		var villager := find_villager(villager_id)
 		if villager != null:
-			var position_data: Array = GameState.squad_members[villager_id]["position"]
-			villager.global_position = Vector2(float(position_data[0]), float(position_data[1]))
+			var member: Dictionary = GameState.squad_members[villager_id]
+			var position_data: Array = member["position"]
+			villager.global_position = _safe_loaded_position(Vector2(float(position_data[0]), float(position_data[1])))
+			member["position"] = [villager.global_position.x, villager.global_position.y]
+			GameState.squad_members[villager_id] = member
 	_sync_squad()
+
+func _safe_loaded_position(saved: Vector2) -> Vector2:
+	return saved if tiled_loader.is_walkable_position(saved) else _nearby_open_position(saved)
 
 func _sync_hacker() -> void:
 	if _hacker_spawn.is_empty():
@@ -145,7 +164,10 @@ func _sync_squad() -> void:
 		if not actor is Villager:
 			continue
 		var villager := actor as Villager
+		var was_deployed := villager.squad_member
 		villager.squad_member = GameState.squad_deployed and GameState.squad_recruits.has(villager.villager_id)
+		if villager.squad_member and not was_deployed:
+			villager.suspend_routine()
 		villager.collision_layer = 4 | 64 if villager.squad_member and not GameState.recruit_recovering(villager.villager_id) else 4
 		if villager.squad_member and not GameState.recruit_recovering(villager.villager_id):
 			villager.add_to_group("party_target")
@@ -396,12 +418,29 @@ func _spawn_population_to_target() -> void:
 		Vector2(125, 315), Vector2(190, 325), Vector2(250, 320), Vector2(315, 318),
 		Vector2(380, 320), Vector2(445, 315), Vector2(525, 305),
 	]
-	var needed := VILLAGER_COUNT - _villager_count
-	for index in needed:
-		var base: Vector2 = safe_points[index % safe_points.size()]
-		var ring: int = index / safe_points.size()
-		var offset := Vector2((ring * 7 + index * 3) % 17 - 8, (ring * 11 + index * 5) % 13 - 6)
-		_spawn_villager(base + offset + VILLAGE_OFFSET, textures[index % textures.size()], "resident_%02d" % index)
+	for index in range(26):
+		var position: Vector2
+		if index == 0:
+			position = safe_points[0] + Vector2(-8, -6) + VILLAGE_OFFSET
+		else:
+			position = _nearby_open_position(NORTH_RESIDENT_POSITIONS[index - 1])
+		_spawn_villager(position, textures[index % textures.size()], "resident_%02d" % index)
+	if _villager_count != VILLAGER_COUNT:
+		push_error("Expected %d Paprika villagers, found %d." % [VILLAGER_COUNT, _villager_count])
+
+func _nearby_open_position(position: Vector2) -> Vector2:
+	if tiled_loader.is_walkable_position(position):
+		return position
+	for radius in range(1, 9):
+		for y in range(-radius, radius + 1):
+			for x in range(-radius, radius + 1):
+				if maxi(absi(x), absi(y)) != radius:
+					continue
+				var candidate := Vector2(floorf(position.x / 16.0 + x) * 16.0 + 8.0, floorf(position.y / 16.0 + y) * 16.0 + 8.0)
+				if tiled_loader.is_walkable_position(candidate):
+					return candidate
+	push_error("No walkable space near %s." % position)
+	return position
 
 func _routine_points() -> Array[Vector2]:
 	var points: Array[Vector2] = [
@@ -410,8 +449,61 @@ func _routine_points() -> Array[Vector2]:
 		Vector2(130, 275), Vector2(605, 825), Vector2(730, 850),
 	]
 	for index in points.size():
-		points[index] += VILLAGE_OFFSET if index < 8 else Vector2.ZERO
+		points[index] += VILLAGE_OFFSET if index < 8 else SOUTH_SHIFT
 	return points
+
+func _assign_villager_routines() -> void:
+	var services: Dictionary = {}
+	var map_objects := tiled_loader.get_node_or_null("MapObjects")
+	for node in map_objects.get_children():
+		if node is WorldService:
+			services[node.service_id] = node.get_interaction_position()
+	var residents: Array[Villager] = []
+	for actor in actors_root.get_children():
+		if actor is Villager:
+			residents.append(actor)
+	residents.sort_custom(func(a: Villager, b: Villager) -> bool: return a.villager_id < b.villager_id)
+	var fields := tiled_loader.get_common_field_positions()
+	var roles := ["market", "craft", "runner", "neighbor"]
+	var civilian_index := 0
+	for villager in residents:
+		var northern := villager.home_position.y < NORTH_REGION_Y
+		villager.configure_fields(fields, northern)
+		var role := "farmer" if villager.is_farmer else String(roles[civilian_index % roles.size()])
+		if not villager.is_farmer:
+			civilian_index += 1
+		var offset := Vector2((civilian_index % 3 - 1) * 5, (civilian_index % 2) * 4)
+		var east := northern and villager.home_position.x > 900.0
+		var square := (Vector2(1150, 390) if east else Vector2(790, 286)) if northern else Vector2(810, 604) + SOUTH_SHIFT
+		var home := {"kind": "home", "position": villager.home_position, "wait": 2.0}
+		var plaza := {"kind": "square", "position": square + offset, "wait": 4.0}
+		var food := "north_clothing" if east else ("north_food" if northern else "food")
+		var second_market := "north_clothing" if east else ("north_forge" if northern else "clothing")
+		var forge := "north_forge" if northern else "forge"
+		var runner := "travel" if east else ("north_food" if northern else "work_office")
+		var runner_return := "north_clothing" if east else ("north_forge" if northern else "food")
+		var stops: Array[Dictionary] = []
+		match role:
+			"farmer":
+				stops = [plaza, home]
+			"market":
+				stops = [home, _service_routine_stop(services, food, Vector2(-22, 17), "food", 4.0), plaza,
+					_service_routine_stop(services, second_market, Vector2(22, 17), "clothing", 3.0)]
+			"craft":
+				stops = [home, _service_routine_stop(services, forge, Vector2(23, 17), "forge", 4.0), plaza,
+					_service_routine_stop(services, "travel" if east else ("north_food" if northern else "work_office"), Vector2(-22, 17), "work", 3.0)]
+			"runner":
+				stops = [home, _service_routine_stop(services, runner, Vector2(22, 17), "work", 2.0), plaza,
+					_service_routine_stop(services, runner_return, Vector2(-24, 17), "travel", 3.0)]
+			"neighbor":
+				stops = [home, plaza, {"kind": "square", "position": square + Vector2(35, 0) + offset, "wait": 5.0},
+					_service_routine_stop(services, food, Vector2(22, 17), "food", 2.0)]
+		villager.configure_routine(role, stops)
+
+func _service_routine_stop(services: Dictionary, service_id: String, offset: Vector2, kind: String, wait: float) -> Dictionary:
+	if not services.has(service_id):
+		return {}
+	return {"kind": kind, "position": Vector2(services[service_id]) + offset, "wait": wait}
 
 func _on_player_respawned() -> void:
 	for actor in actors_root.get_children():

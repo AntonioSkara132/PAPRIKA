@@ -1,0 +1,139 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "brudet_objects",
+  "tilewidth": 112,
+  "tileheight": 96,
+  "tilecount": 21,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/river_planet/river_town_hall.png",
+      "imagewidth": 112,
+      "imageheight": 96
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/river_planet/river_market.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/river_planet/river_townhouse.png",
+      "imagewidth": 64,
+      "imageheight": 88
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/river_planet/river_library.png",
+      "imagewidth": 96,
+      "imageheight": 88
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/river_planet/town_center_fountain.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/river_planet/military_hq.png",
+      "imagewidth": 96,
+      "imageheight": 96
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/river_planet/arrow_target.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/river_planet/stone_bridge.png",
+      "imagewidth": 96,
+      "imageheight": 48
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/river_planet/lake_patch.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/river_planet/fishing_pond.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/river_planet/fishing_boat.png",
+      "imagewidth": 48,
+      "imageheight": 24
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/river_planet/reed_cluster.png",
+      "imagewidth": 24,
+      "imageheight": 16
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/river_planet/terraced_field.png",
+      "imagewidth": 80,
+      "imageheight": 48
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/river_planet/olive_tree.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/river_planet/crop_bundle.png",
+      "imagewidth": 16,
+      "imageheight": 16
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/river_planet/river_villager_sunhat.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/river_planet/river_villager_shawl.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/river_planet/river_fisherman.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/river_planet/finling.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/river_planet/lake_maw.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/river_planet/river_serpent.png",
+      "imagewidth": 48,
+      "imageheight": 24
+    }
+  ]
+}

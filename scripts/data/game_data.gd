@@ -13,6 +13,15 @@ const ITEMS := {
 	"rabbit_meat": {"name": "Rabbit Meat", "kind": "produce", "buy": 0, "sell": 7},
 	"bread": {"name": "Bread", "kind": "food", "buy": 5, "sell": 2, "heal": 6},
 	"stew": {"name": "Vegetable Stew", "kind": "food", "buy": 12, "sell": 5, "heal": 14},
+	"rye_bread": {"name": "Rye Bread", "kind": "food", "buy": 7, "sell": 3, "heal": 8},
+	"berry_pie": {"name": "Berry Pie", "kind": "food", "buy": 16, "sell": 7, "heal": 18},
+	"smoked_fish": {"name": "Smoked Fish", "kind": "food", "buy": 10, "sell": 4, "heal": 12},
+	"purple_cloth": {"name": "Purple Cloth", "kind": "trade", "buy": 14, "sell": 6},
+	"river_fish": {"name": "River Fish", "kind": "produce", "buy": 0, "sell": 9},
+	"fish_stew": {"name": "Fish Stew", "kind": "food", "buy": 20, "sell": 8, "heal": 20},
+	"olive_bread": {"name": "Olive Bread", "kind": "food", "buy": 9, "sell": 4, "heal": 9},
+	"citrus": {"name": "Citrus Fruit", "kind": "food", "buy": 6, "sell": 2, "heal": 5},
+	"fishing_rod": {"name": "Fishing Rod", "kind": "tool", "buy": 65, "sell": 30},
 	"stick": {"name": "Sturdy Stick", "kind": "weapon", "buy": 0, "power": 1, "reach": 24.0, "cooldown": 0.52},
 	"militia_club": {"name": "Militia Club", "kind": "weapon", "buy": 0, "power": 1, "reach": 24.0, "cooldown": 0.55},
 	"wood_sword": {"name": "Wooden Sword", "kind": "weapon", "buy": 20, "power": 1, "reach": 27.0, "cooldown": 0.40},
@@ -30,6 +39,7 @@ const ITEMS := {
 	"red_tunic": {"name": "Red Villager Tunic", "kind": "clothing", "buy": 18, "color": "red"},
 	"blue_tunic": {"name": "Blue Villager Tunic", "kind": "clothing", "buy": 18, "color": "blue"},
 	"green_tunic": {"name": "Green Villager Tunic", "kind": "clothing", "buy": 18, "color": "green"},
+	"purple_tunic": {"name": "Purple Villager Tunic", "kind": "clothing", "buy": 24, "color": "purple"},
 }
 
 const JOBS := {
@@ -87,6 +97,24 @@ const JOBS := {
 		"issuer": "mercenary",
 		"repeatable": false,
 	},
+	"river_patrol": {
+		"name": "Clear River Monsters",
+		"description": "Defeat three fishlike monsters near Brudet's waterways.",
+		"event": "river_monster_defeated",
+		"target": 3,
+		"reward": 85,
+		"issuer": "military_hq",
+		"repeatable": true,
+	},
+	"fishing_work": {
+		"name": "Bring in Three Fish",
+		"description": "Catch three river fish with a fishing rod at Brudet's ponds.",
+		"event": "river_fish_caught",
+		"target": 3,
+		"reward": 30,
+		"issuer": "river_market",
+		"repeatable": true,
+	},
 }
 
 const ENEMIES := {
@@ -96,6 +124,9 @@ const ENEMIES := {
 	"bandit": {"name": "Bandit", "level": 3, "max_health": 38, "damage": 9, "speed": 52.0, "event": "bandit_defeated", "reward": 20},
 	"camp_bandit": {"name": "Camp Bandit", "level": 3, "max_health": 32, "damage": 7, "speed": 45.0, "event": "bandit_defeated", "reward": 12},
 	"hacker": {"name": "Hacker", "level": 5, "max_health": 110, "damage": 18, "speed": 58.0, "event": "hacker_defeated", "reward": 100},
+	"finling": {"name": "Finling", "level": 2, "max_health": 14, "damage": 4, "speed": 50.0, "event": "river_monster_defeated", "reward": 6},
+	"lake_maw": {"name": "Lake Maw", "level": 3, "max_health": 42, "damage": 8, "speed": 36.0, "event": "river_monster_defeated", "reward": 16},
+	"river_serpent": {"name": "River Serpent", "level": 3, "max_health": 30, "damage": 7, "speed": 60.0, "event": "river_monster_defeated", "reward": 12},
 }
 
 const CROP_BY_TILE_ID := {
