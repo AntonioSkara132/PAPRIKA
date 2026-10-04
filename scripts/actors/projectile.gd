@@ -17,7 +17,7 @@ func configure(origin: Vector2, travel_direction: Vector2, attack_damage: int, t
 	max_distance = attack_range
 	from_player = player_owned
 	collision_layer = 0
-	collision_mask = 1 | (8 | 32 if from_player else 2 | 64)
+	collision_mask = 1 | (8 | 32 if from_player else 2 | 4 | 64)
 	monitoring = true
 	monitorable = true
 	body_entered.connect(_on_body_entered)
@@ -41,6 +41,8 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 func _on_body_entered(body: Node) -> void:
+	if body is CollisionObject2D and (body.collision_layer & collision_mask) == 0:
+		return
 	if _hit_ids.has(body.get_instance_id()):
 		return
 	_hit_ids[body.get_instance_id()] = true

@@ -1,11 +1,12 @@
-# Space Military Base — art concept
+# Confederation Military Art
 
-Concept art for a possible future Cauliflower Confederation military location. **These sprites are not connected to a map, tileset, collision system, or mission.** The scene image is a visual arrangement, not a playable layout.
+The smaller training station has playable exterior and barracks maps at `maps/station.tmj` and `maps/station_barracks.tmj`. It uses an ordinary transport ship, two noninteractive warships, ten exterior barracks (only one can be entered), and soldiers drawn at the same 16×24 scale as Paprika's player and villagers. Their muted military-green tunics include small medieval details. Station-specific terrain, the open block-built practice cannon, training props and barracks furnishings are in the game. The larger three-ship base in `scene_concept.png` remains concept art, not a playable location or battlefield.
 
 ## Preview
 
-- `contact_sheet.png` — all sprites at native pixel size, with names and dimensions.
-- `scene_concept.png` — one possible arrangement of HQ, stores, cafeteria, barracks, training lanes, and three ship berths. Stone paving covers the main courtyard; the ship apron is metal, while brown earth is reserved for the practice range.
+- `contact_sheet.png` — the original concept sprites at native pixel size, with names and dimensions. The newer 16×24 station character variants and training props are generated separately.
+- `scene_concept.png` — one possible arrangement of HQ, stores, cafeteria, barracks, training lanes, and three ship berths. It depicts the larger unplayable base, not the current station.
+- `art/concepts/station_world_layout.png` and `art/concepts/station_barracks_layout.png` — previews rendered from the playable Tiled maps.
 - The corresponding `.svg` files are editable preview sources. The contact sheet uses stone backgrounds for base assets and earth backgrounds for training props.
 
 ## Sprites
@@ -29,16 +30,16 @@ Concept art for a possible future Cauliflower Confederation military location. *
 | `munitions_crate.png` | 32×32 | Marked weapons-supply crate |
 | `training_sandbags.png` | 48×24 | Low practice-lane cover |
 
-Each sprite has a matching editable `source/<name>.svg`. The shapes use integer pixel coordinates and a limited palette; exports preserve transparency outside each sprite.
+The original concept sprites have matching editable `source/<name>.svg` files with integer pixel coordinates and a limited palette. The playable station's 16×24 people and small training props are drawn by `source/build_station_people.py`; this keeps each face, tunic and medieval uniform detail at the same pixel scale as the villagers.
 
 ## Regeneration
 
-Run from the project root:
+To rebuild the playable station's people and small training props, run from the project root:
 
 ```sh
-python assets/art/space_military_base/source/build_assets.py
+/usr/bin/python3 assets/art/space_military_base/source/build_station_people.py
 ```
 
-The source script contains the palette, individual drawing instructions, and the contact-sheet and scene layout. It writes only inside `assets/art/space_military_base/` and uses ImageMagick `convert` to export the PNGs. Changes to an individual SVG can also be rendered with `convert -background none source/<name>.svg <name>.png`, but running the script again will replace those SVG edits; make repeatable changes in `build_assets.py`.
+This Pillow script draws only those station sprites. Its 16×24 characters follow the same head, body and feet proportions as the village sprites. `build_assets.py` is the older generator for the original concept art; do not run it to update station sprites or maps.
 
-The ships, pads, buildings, and props still need placement and collision choices before any future game integration. No map or gameplay files were changed for this art pass.
+The playable station uses the ordinary transport rather than a warship, and its exterior shows a lit, irregular edge against space. The compact barracks interior has gray flooring, neutral carpet, front windows, and ten paired beds and chests. Station terrain, buildings and furnishings have editable `source/station_*.svg` files; station people and training props are defined in `source/build_station_people.py`, with exported PNGs beside this README. Collision and interaction rules are in `scripts/world/tiled_loader.gd` and the station world scripts. The original art generator predates station-specific additions: **do not rerun it over station art or maps**.

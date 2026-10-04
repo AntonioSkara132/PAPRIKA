@@ -5,7 +5,7 @@
   "name": "paprika_additions",
   "tilewidth": 80,
   "tileheight": 64,
-  "tilecount": 17,
+  "tilecount": 18,
   "columns": 0,
   "objectalignment": "bottomleft",
   "tiles": [
@@ -110,6 +110,12 @@
       "image": "../assets/art/northern_village/north_clothing_shop.png",
       "imagewidth": 80,
       "imageheight": 72
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/northern_village/north_mercenary.png",
+      "imagewidth": 96,
+      "imageheight": 64
     }
   ]
 }

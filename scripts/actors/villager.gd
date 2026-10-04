@@ -3,6 +3,9 @@ extends CharacterBody2D
 
 const WALK_SPEED := 30.0
 const NORTH_REGION_Y := 352.0
+const CIVILIAN_MAX_HEALTH := 12
+const CIVILIAN_FLEE_SECONDS := 5.0
+const CIVILIAN_RECOVERY_SECONDS := 6.0
 
 var villager_id: String = ""
 var villager_name: String = "Villager"
@@ -18,6 +21,9 @@ var facing := Vector2.DOWN
 var attack_cooldown := 0.0
 var _invulnerability := 0.0
 var _was_squad_member := false
+var civilian_health := CIVILIAN_MAX_HEALTH
+var _civilian_flee_time := 0.0
+var _civilian_recovery_time := 0.0
 var _target := Vector2.ZERO
 var _wait_time := 0.0
 var _sprite: Sprite2D
@@ -78,6 +84,7 @@ func configure(texture_path: String, stable_id: String, spawn_position: Vector2,
 
 func _ready() -> void:
 	add_to_group("interactable")
+	add_to_group("civilian")
 	if not _built:
 		configure("res://art/concepts/source/villager1.png", str(get_instance_id()), global_position)
 	_navigation = get_tree().get_first_node_in_group("tiled_world") as TiledLoader
@@ -115,7 +122,7 @@ func _build(texture_path: String) -> void:
 		return
 	_built = true
 	collision_layer = 4
-	collision_mask = 1
+	collision_mask = 1 | 16
 	_sprite = Sprite2D.new()
 	_sprite.texture = load(texture_path) as Texture2D
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -153,6 +160,29 @@ func _physics_process(delta: float) -> void:
 		if world != null:
 			world.step_squad_actor(self, delta)
 		return
+	if _civilian_recovery_time > 0.0:
+		_civilian_recovery_time -= delta
+		velocity = Vector2.ZERO
+		if _civilian_recovery_time <= 0.0:
+			civilian_health = CIVILIAN_MAX_HEALTH
+			_wait_time = 0.0
+			_sprite.modulate = Color.WHITE
+			_choose_next_target()
+		return
+	if _civilian_flee_time > 0.0:
+		_civilian_flee_time -= delta
+		if _civilian_flee_time <= 0.0:
+			_wait_time = 0.0
+			_choose_next_target()
+		else:
+			_animate_work(0.0, false)
+			_animate_activity(0.0, false)
+			if _path_dirty:
+				_refresh_path()
+			if not _path.is_empty():
+				_follow_path(delta)
+			z_index = 100 + int(global_position.y)
+			return
 	if _wait_time > 0.0:
 		_wait_time -= delta
 		velocity = Vector2.ZERO
@@ -271,10 +301,30 @@ func resume_routine() -> void:
 	activity_kind = ""
 	_choose_next_target()
 
-func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> void:
-	if not squad_member or _invulnerability > 0.0 or GameState.recruit_recovering(villager_id):
+func is_civilian_target() -> bool:
+	return not squad_member and _civilian_recovery_time <= 0.0 and visible
+
+func take_damage(raw_damage: int, source_position: Vector2 = Vector2.ZERO) -> void:
+	if _invulnerability > 0.0:
 		return
-	if not GameState.damage_recruit(villager_id, raw_damage):
+	if not squad_member:
+		if _civilian_recovery_time > 0.0:
+			return
+		civilian_health = maxi(0, civilian_health - maxi(0, raw_damage))
+		_invulnerability = 0.6
+		if civilian_health <= 0:
+			_civilian_recovery_time = CIVILIAN_RECOVERY_SECONDS
+			_civilian_flee_time = 0.0
+			global_position = home_position
+			velocity = Vector2.ZERO
+			_sprite.modulate = Color(0.75, 0.75, 0.75)
+		else:
+			_sprite.modulate = Color(1.0, 0.45, 0.45)
+			var tween := create_tween()
+			tween.tween_property(_sprite, "modulate", Color.WHITE, 0.30)
+			_flee_from(source_position)
+		return
+	if GameState.recruit_recovering(villager_id) or not GameState.damage_recruit(villager_id, raw_damage):
 		return
 	_invulnerability = 0.6
 	if GameState.recruit_recovering(villager_id):
@@ -287,6 +337,34 @@ func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> v
 		_sprite.modulate = Color(1.0, 0.45, 0.45)
 		var tween := create_tween()
 		tween.tween_property(_sprite, "modulate", Color.WHITE, 0.30)
+
+func _flee_from(source_position: Vector2) -> void:
+	if _navigation == null:
+		_navigation = get_tree().get_first_node_in_group("tiled_world") as TiledLoader
+	_civilian_flee_time = CIVILIAN_FLEE_SECONDS
+	_wait_time = 0.0
+	_working_target = false
+	activity_kind = ""
+	var away := (global_position - source_position).normalized()
+	if away == Vector2.ZERO:
+		away = Vector2.RIGHT
+	var best := -INF
+	var destination := home_position
+	for direction in [away, away.rotated(PI * 0.25), away.rotated(-PI * 0.25), away.rotated(PI * 0.5), away.rotated(-PI * 0.5)]:
+		var candidate: Vector2 = global_position + direction * 56.0
+		if _navigation == null or not _navigation.is_walkable_position(candidate):
+			continue
+		var route := _navigation.get_walk_path(global_position, candidate)
+		if route.is_empty() or route[-1].distance_to(candidate) > 8.0:
+			continue
+		var score: float = candidate.distance_to(source_position) - route.size() * 2.0
+		if score > best:
+			best = score
+			destination = candidate
+	_target = destination
+	_path_dirty = true
+	_path.clear()
+	_path_index = 0
 
 func show_swing(reach: float) -> void:
 	var line := Line2D.new()

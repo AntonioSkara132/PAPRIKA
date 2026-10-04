@@ -5,7 +5,7 @@
   "name": "brudet_objects",
   "tilewidth": 112,
   "tileheight": 96,
-  "tilecount": 21,
+  "tilecount": 27,
   "columns": 0,
   "objectalignment": "bottomleft",
   "tiles": [
@@ -134,6 +134,42 @@
       "image": "../assets/art/river_planet/river_serpent.png",
       "imagewidth": 48,
       "imageheight": 24
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/river_planet/river_forge.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/river_planet/armored_zombie.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/river_planet/armed_zombie.png",
+      "imagewidth": 20,
+      "imageheight": 24
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/zombie.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/river_planet/swamp_pool.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/river_planet/marsh_willow.png",
+      "imagewidth": 40,
+      "imageheight": 56
     }
   ]
 }

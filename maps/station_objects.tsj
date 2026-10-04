@@ -1,0 +1,253 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "station_objects",
+  "tilewidth": 160,
+  "tileheight": 96,
+  "tilecount": 40,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/space_military_base/warship_scout.png",
+      "imagewidth": 96,
+      "imageheight": 56
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/space_military_base/warship_escort.png",
+      "imagewidth": 96,
+      "imageheight": 56
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/space_military_base/landing_pad_one.png",
+      "imagewidth": 112,
+      "imageheight": 64
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/space_military_base/landing_pad_two.png",
+      "imagewidth": 112,
+      "imageheight": 64
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/space_military_base/barracks_a.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/space_military_base/weapons_storage.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/space_military_base/cafeteria.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/space_military_base/headquarters.png",
+      "imagewidth": 112,
+      "imageheight": 96
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/space_military_base/station_instructor.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/space_military_base/station_guard.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/space_military_base/training_ground.png",
+      "imagewidth": 128,
+      "imageheight": 80
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/space_military_base/training_arrow_target.png",
+      "imagewidth": 32,
+      "imageheight": 40
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/space_military_base/training_sandbags.png",
+      "imagewidth": 48,
+      "imageheight": 24
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/space_military_base/munitions_crate.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/space_military_base/watchtower.png",
+      "imagewidth": 48,
+      "imageheight": 80
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/space_military_base/base_gate.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/space_military_base/station_track_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/space_military_base/station_spar_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/space_military_base/station_squad_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/space_military_base/station_range_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/space_military_base/station_tnt_pile.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/space_military_base/station_cannon.png",
+      "imagewidth": 80,
+      "imageheight": 40
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/space_military_base/station_trap_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/space_military_base/station_bed.png",
+      "imagewidth": 32,
+      "imageheight": 40
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/space_military_base/station_chest.png",
+      "imagewidth": 20,
+      "imageheight": 18
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/space_military_base/station_window.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/space_military_base/station_exit.png",
+      "imagewidth": 24,
+      "imageheight": 16
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/space_military_base/station_dummy.png",
+      "imagewidth": 24,
+      "imageheight": 40
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/space_military_base/station_mess_table.png",
+      "imagewidth": 64,
+      "imageheight": 32
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/space_military_base/barracks_b.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/space_military_base/station_planet.png",
+      "imagewidth": 96,
+      "imageheight": 96
+    },
+    {
+      "id": 31,
+      "image": "../art/concepts/source/spaceship.png",
+      "imagewidth": 112,
+      "imageheight": 56
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/space_military_base/station_soldier_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/space_military_base/station_soldier_2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/space_military_base/station_soldier_3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/space_military_base/station_soldier_4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/space_military_base/station_soldier_5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/space_military_base/station_soldier_6.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/space_military_base/station_cannon_flag.png",
+      "imagewidth": 24,
+      "imageheight": 28
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/space_military_base/station_cook.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    }
+  ]
+}

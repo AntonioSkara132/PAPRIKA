@@ -15,6 +15,7 @@ var respawn_position := RESPAWN_POSITION
 var respawn_location_name := "Paprika village"
 var _sprite: Sprite2D
 var _armor_overlay: Sprite2D
+var _held_mine_icon: Sprite2D
 var _attack_cooldown := 0.0
 var _invulnerability := 0.0
 var _position_report_timer := 0.0
@@ -34,6 +35,7 @@ func _ready() -> void:
 	if not _built:
 		_build("res://art/concepts/source/player.png")
 	GameState.equipment_changed.connect(_refresh_appearance)
+	GameState.military_changed.connect(_refresh_appearance)
 	_refresh_appearance()
 
 func _build(texture_path: String) -> void:
@@ -41,7 +43,7 @@ func _build(texture_path: String) -> void:
 		return
 	_built = true
 	collision_layer = 2
-	collision_mask = 1
+	collision_mask = 1 | 16
 	_sprite = Sprite2D.new()
 	_sprite.name = "Sprite"
 	_sprite.texture = load(texture_path) as Texture2D
@@ -57,6 +59,15 @@ func _build(texture_path: String) -> void:
 	_armor_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_armor_overlay.visible = false
 	add_child(_armor_overlay)
+	_held_mine_icon = Sprite2D.new()
+	_held_mine_icon.name = "HeldPracticeMine"
+	_held_mine_icon.texture = load("res://assets/art/space_military_base/station_mine_icon.png") as Texture2D
+	_held_mine_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_held_mine_icon.centered = false
+	_held_mine_icon.position = Vector2(-4, -31)
+	_held_mine_icon.z_index = 10
+	_held_mine_icon.visible = false
+	add_child(_held_mine_icon)
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(8, 6)
@@ -89,7 +100,9 @@ func _physics_process(delta: float) -> void:
 			velocity = Vector2.ZERO
 			return
 		var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-		velocity = input_direction * SPEED
+		var training_run := GameState.current_planet == "station" and String(GameState.military_stage) == "run"
+		var sprinting := training_run and Input.is_action_pressed("station_sprint")
+		velocity = input_direction * (SPEED * 1.55 if sprinting else SPEED)
 		if input_direction.length_squared() > 0.01:
 			facing = _cardinal(input_direction)
 		move_and_slide()
@@ -115,7 +128,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.notify("There is nothing nearby to interact with.")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("attack"):
-		if active == self:
+		if active == self and GameState.military_trap_equipped:
+			if world != null and world.has_method("place_practice_mine"):
+				world.call("place_practice_mine")
+			else:
+				GameState.notify("Toy practice mine placement is only available outside at the station.")
+		elif active == self:
 			_attack()
 		elif world != null:
 			world.attack_as(active)
@@ -132,6 +150,9 @@ func _attack(preferred_target: Node2D = null) -> void:
 	if _attack_cooldown > 0.0:
 		return
 	var weapon := GameState.weapon_definition()
+	if weapon.is_empty():
+		GameState.notify("Equip a weapon before attacking.")
+		return
 	var power := int(weapon.get("power", 1))
 	var attack_damage: int = {1: 4, 2: 10, 3: 24}.get(power, 4)
 	var reach := float(weapon.get("reach", 24.0))
@@ -232,11 +253,13 @@ func _update_nearest_interactable() -> void:
 func _refresh_appearance() -> void:
 	var outfit := String(GameState.equipment.get("clothing", ""))
 	var color_name := String(GameData.item(outfit).get("color", ""))
-	var texture_path := "res://assets/art/northern_village/player_purple.png" if color_name == "purple" else "res://assets/art/player_%s.png" % color_name
-	if not color_name.is_empty() and ResourceLoader.exists(texture_path):
+	var texture_path := "res://assets/art/space_military_base/player_uniform.png" if outfit == "military_uniform" else ("res://assets/art/northern_village/player_purple.png" if color_name == "purple" else "res://assets/art/player_%s.png" % color_name)
+	if (not color_name.is_empty() or outfit == "military_uniform") and ResourceLoader.exists(texture_path):
 		_sprite.texture = load(texture_path) as Texture2D
 	else:
 		_sprite.texture = load("res://art/concepts/source/player.png") as Texture2D
+	if _held_mine_icon != null:
+		_held_mine_icon.visible = GameState.military_trap_equipped
 	var armor_id := String(GameState.equipment.get("armor", ""))
 	_armor_overlay.visible = not armor_id.is_empty()
 	if _armor_overlay.visible:

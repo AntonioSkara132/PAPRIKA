@@ -3,12 +3,15 @@ extends Node2D
 const WORLD_SCRIPTS := {
 	"paprika": "res://scripts/world/game_world.gd",
 	"brudet": "res://scripts/world/brudet_world.gd",
+	"station": "res://scripts/world/station_world.gd",
+	"station_barracks": "res://scripts/world/station_barracks_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
 var world: Node
 var game_ui: CanvasLayer
 var _world_planet := ""
+var _world_area := "exterior"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -23,6 +26,10 @@ func _ready() -> void:
 		add_child(game_ui)
 		if game_ui.has_signal("travel_requested"):
 			game_ui.connect("travel_requested", _on_travel_requested)
+		if game_ui.has_signal("station_area_requested"):
+			game_ui.connect("station_area_requested", _on_station_area_requested)
+		if game_ui.has_signal("station_action_requested"):
+			game_ui.connect("station_action_requested", _on_station_action_requested)
 	GameState.notify("Welcome to Paprika. Visit the JOBS center to find work.")
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -39,8 +46,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("quick_load") and not get_tree().paused:
 		if GameState.load_game():
 			_close_ui()
-			if _world_planet != GameState.current_planet:
-				_switch_world(GameState.current_planet)
+			if _world_planet != GameState.current_planet or _world_area != GameState.current_area:
+				_switch_world(GameState.current_planet, false, Vector2.ZERO, GameState.current_area)
 			elif world != null and world.has_method("apply_loaded_state"):
 				world.apply_loaded_state()
 			if game_ui != null:
@@ -63,41 +70,68 @@ func _on_travel_requested(destination: String) -> void:
 			game_ui.refresh_location()
 		GameState.notify("Arrived on %s." % destination.capitalize())
 
+func _on_station_area_requested(area: String) -> void:
+	if GameState.current_planet != "station" or area == GameState.current_area or area not in ["exterior", "barracks"]:
+		return
+	if world != null and world.has_method("capture_player_position"):
+		world.capture_player_position()
+	var departure := GameState.player_position
+	_close_ui()
+	if _switch_world("station", false, departure, area, true) and game_ui != null:
+		game_ui.refresh_location()
+
+func _on_station_action_requested(action: String) -> void:
+	_close_ui()
+	if GameState.current_planet == "station" and world != null and world.has_method("handle_station_action"):
+		world.handle_station_action(action)
+
 func _close_ui() -> void:
 	if game_ui != null and game_ui.has_method("close_modal"):
 		game_ui.call("close_modal")
 
-func _switch_world(planet: String, traveling: bool = false, departure: Vector2 = Vector2.ZERO) -> bool:
-	if not WORLD_SCRIPTS.has(planet):
+func _switch_world(planet: String, traveling: bool = false, departure: Vector2 = Vector2.ZERO, area: String = "exterior", changing_area: bool = false) -> bool:
+	var location := "station_barracks" if planet == "station" and area == "barracks" else planet
+	if not WORLD_SCRIPTS.has(location):
 		GameState.notify("That destination is unavailable.")
 		return false
-	var world_script := load(String(WORLD_SCRIPTS[planet]))
+	var world_script := load(String(WORLD_SCRIPTS[location]))
 	if world_script == null:
-		GameState.notify("The %s world is unavailable." % planet.capitalize())
+		GameState.notify("The %s world is unavailable." % location.replace("_", " ").capitalize())
 		return false
 	var saved_position := GameState.player_position
 	var next_world: Node = world_script.new()
-	next_world.name = "PaprikaWorld" if planet == "paprika" else "BrudetWorld"
+	next_world.name = {
+		"paprika": "PaprikaWorld",
+		"brudet": "BrudetWorld",
+		"station": "StationWorld",
+		"station_barracks": "StationBarracksWorld",
+	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader
 	if loader == null or not loader.map_loaded or not next_world.has_method("apply_loaded_state") or next_world.get("player") == null:
 		remove_child(next_world)
 		next_world.queue_free()
 		GameState.player_position = saved_position
-		GameState.notify("The %s world could not be loaded." % planet.capitalize())
+		GameState.notify("The %s world could not be loaded." % location.replace("_", " ").capitalize())
 		return false
 	GameState.player_position = saved_position
-	if traveling and not GameState.travel_to(planet, departure):
+	var transition_ok := true
+	if traveling:
+		transition_ok = GameState.travel_to(planet, departure)
+	elif changing_area:
+		transition_ok = GameState.enter_military_barracks(departure) if area == "barracks" else GameState.exit_military_barracks(departure)
+	if not transition_ok:
 		remove_child(next_world)
 		next_world.queue_free()
 		return false
-	if world != null or traveling:
+	if world != null or traveling or changing_area:
 		next_world.apply_loaded_state()
 	if world != null:
 		remove_child(world)
 		world.queue_free()
 	world = next_world
 	_world_planet = planet
+	_world_area = area
 	return true
 
 func _ensure_input_actions() -> void:
@@ -106,6 +140,7 @@ func _ensure_input_actions() -> void:
 		"move_right": [KEY_D, KEY_RIGHT],
 		"move_up": [KEY_W, KEY_UP],
 		"move_down": [KEY_S, KEY_DOWN],
+		"station_sprint": [KEY_SHIFT],
 		"interact": [KEY_E],
 		"attack": [KEY_SPACE],
 		"inventory": [KEY_I],

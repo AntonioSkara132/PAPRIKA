@@ -37,7 +37,7 @@ func _build(texture_path: String) -> void:
 		return
 	_built = true
 	collision_layer = 32
-	collision_mask = 1
+	collision_mask = 1 | 16
 	_sprite = Sprite2D.new()
 	_sprite.texture = load(texture_path) as Texture2D
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

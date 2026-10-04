@@ -42,11 +42,8 @@ func _run() -> void:
 	_check(farmers.size() >= 4, "both settlements have common-field farmers")
 	_check(rabbits >= 5, "the forest has at least five rabbits")
 	_check(enemies >= 8, "the extended forest has wolves, monsters, a bandit and a hacker")
-	var road_monsters := 0
-	for actor in world.actors_root.get_children():
-		if actor is Enemy and actor.enemy_id in ["zombie", "zombie_bear"] and actor.spawn_position.y >= 400.0 and actor.spawn_position.y < 1100.0 and absf(actor.spawn_position.x - 832.0) <= 220.0 and actor.visible:
-			road_monsters += 1
-	_check(road_monsters >= 3, "at least three visible forest monsters can be encountered beside the long road")
+	_check_forest_rabbits(world)
+	_check_forest_enemies(world)
 	var farm_targets := world.tiled_loader.get_common_field_positions()
 	var reachable_farmers := 0
 	var routes_with_blocked_waypoints := 0
@@ -101,7 +98,7 @@ func _run() -> void:
 	_check(private_field != null, "private field exists")
 	var entrances_reachable := true
 	_check(not services.has("iron_gear"), "no separate iron outfitter remains in Paprika")
-	for service_id in ["food", "forge", "clothing", "work_office", "mercenary", "travel"]:
+	for service_id in ["food", "forge", "clothing", "work_office", "mercenary", "north_mercenary", "travel"]:
 		_check(services.has(service_id), "%s can be visited" % service_id)
 		if services.has(service_id):
 			var door: Vector2 = services[service_id].get_interaction_position()
@@ -210,7 +207,7 @@ func _run() -> void:
 	_check(forest_rabbits.size() >= 6, "enough rabbits for both hunting and the catch job")
 	if forest_rabbits.size() >= 6:
 		var prey := forest_rabbits[0]
-		_check(prey.collision_layer == 32, "rabbit has a distinct projectile hit layer")
+		_check(prey.collision_layer == 32 and (prey.collision_mask & 16) != 0, "rabbit has a distinct projectile hit layer and cannot cross water")
 		world.player.global_position = prey.global_position + Vector2(-16, 0)
 		world.player.facing = Vector2.RIGHT
 		_check(world.player._nearest_damageable(24) == prey, "a nearby rabbit can be targeted with a melee weapon")
@@ -326,6 +323,81 @@ func _run() -> void:
 	game.free()
 	get_tree().quit(0 if failures == 0 else 1)
 
+func _check_forest_rabbits(world: GameWorld) -> void:
+	var rabbits_by_id: Dictionary = {}
+	for actor in world.actors_root.get_children():
+		if actor is Rabbit:
+			rabbits_by_id[actor.rabbit_id] = actor
+	var added_ids := ["rabbit_509", "rabbit_510", "rabbit_511", "rabbit_512", "rabbit_513"]
+	var source = JSON.parse_string(FileAccess.get_file_as_string(GameWorld.MAP_PATH))
+	var path_tiles: Array = []
+	if source is Dictionary:
+		for layer in source["layers"]:
+			if String(layer.get("name", "")) == "Paths and Plaza":
+				path_tiles = layer["data"]
+				break
+	var reachable := true
+	var placed_off_road := true
+	for rabbit_id in added_ids:
+		var rabbit: Rabbit = rabbits_by_id.get(rabbit_id)
+		_check(rabbit != null and rabbit.visible, "%s keeps its stable mid-forest spawn" % rabbit_id)
+		if rabbit == null:
+			reachable = false
+			placed_off_road = false
+			continue
+		var spawn := rabbit.home_position
+		var cell := Vector2i(floori(spawn.x / 16.0), floori(spawn.y / 16.0))
+		var tile_index := cell.y * 104 + cell.x
+		var on_pavement := tile_index >= 0 and tile_index < path_tiles.size() and int(path_tiles[tile_index]) != 0
+		placed_off_road = placed_off_road and spawn.y >= 600.0 and spawn.y < 1100.0 and not on_pavement
+		var road_start := Vector2(832.0, floorf(spawn.y / 16.0) * 16.0 + 8.0)
+		var route := world.tiled_loader.get_walk_path(road_start, spawn)
+		reachable = reachable and world.tiled_loader.is_walkable_position(spawn) and world.tiled_loader.is_walkable_position(road_start) and not route.is_empty() and route[-1].distance_to(spawn) <= 16.0
+	_check(not path_tiles.is_empty() and placed_off_road, "five additional rabbits live on unpaved tiles in the middle of the forest")
+	_check(reachable, "every added rabbit has a dry, walkable route from the forest road")
+
+func _check_forest_enemies(world: GameWorld) -> void:
+	var road_ids: Dictionary = {}
+	var road_monsters := 0
+	var off_road_monsters := 0
+	var ambient_bandit: Enemy
+	for actor in world.actors_root.get_children():
+		if not actor is Enemy or not actor.visible:
+			continue
+		var enemy := actor as Enemy
+		if enemy.persistent_id == "bandit_232":
+			ambient_bandit = enemy
+		var forest := enemy.spawn_position.y >= 400.0 and enemy.spawn_position.y < 1100.0
+		if not forest:
+			continue
+		var beside_road := absf(enemy.spawn_position.x - 832.0) <= 220.0
+		if enemy.enemy_id in ["zombie", "zombie_bear"] and beside_road:
+			road_monsters += 1
+			road_ids[enemy.persistent_id] = true
+		if enemy.enemy_id in ["wolf", "zombie", "zombie_bear"] and absf(enemy.spawn_position.x - 832.0) >= 260.0:
+			off_road_monsters += 1
+	_check(road_monsters == GameState.ROAD_IDS.size() and road_ids.size() == GameState.ROAD_IDS.size(), "the road has exactly three distinct marked monsters, without extra zombie spawns")
+	for target_id in GameState.ROAD_IDS:
+		_check(road_ids.has(target_id), "road target %s is visible beside the road" % target_id)
+	_check(off_road_monsters >= 4, "additional wolves and zombies inhabit the forest away from the road")
+	_check(ambient_bandit != null and ambient_bandit.enemy_id in ["bandit_spear", "bandit_bow", "bandit_sword"] and ambient_bandit._weapon_visual != null and ambient_bandit._weapon_visual.points.size() >= 2 and int(ambient_bandit.definition.get("armor", 0)) > 0, "original Paprika bandit keeps its stable ID and now wears armor and carries a role-specific weapon")
+	if ambient_bandit != null:
+		var spawn := ambient_bandit.spawn_position
+		var south_route := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, spawn)
+		_check(spawn.y > 800.0 and spawn.distance_to(Player.RESPAWN_POSITION) < 650.0 and not south_route.is_empty() and south_route[-1].distance_to(spawn) <= 16.0, "southern bandit bounty has a walkable approach near the first village")
+		var source = JSON.parse_string(FileAccess.get_file_as_string(GameWorld.MAP_PATH))
+		var path_tiles: Array = []
+		var map_width := 0
+		if source is Dictionary:
+			map_width = int(source.get("width", 0))
+			for layer in source["layers"]:
+				if String(layer.get("name", "")) == "Paths and Plaza":
+					path_tiles = layer["data"]
+					break
+		var cell := Vector2i(floori(spawn.x / 16.0), floori(spawn.y / 16.0))
+		var tile_index := cell.y * map_width + cell.x
+		_check(map_width > 0 and tile_index >= 0 and tile_index < path_tiles.size() and int(path_tiles[tile_index]) == 0 and world.tiled_loader.is_walkable_position(spawn), "southern bandit stands on a walkable unpaved forest tile")
+
 func _check_northern_shops(ui: GameUI, world: GameWorld) -> void:
 	var state := GameState
 	state.add_gold(2000)
@@ -337,9 +409,9 @@ func _check_northern_shops(ui: GameUI, world: GameWorld) -> void:
 		bread.pressed.emit()
 		_check(int(state.inventory.get("rye_bread", 0)) == 1, "northern food purchase enters shared inventory")
 	ui.open_service("forge", "Forge")
-	for name in ["Wooden Sword", "Bronze Sword", "Wooden Spear", "Bronze Spear", "Wooden Bow", "Bronze Bow"]:
+	for name in ["Wooden Sword", "Wooden Spear", "Wooden Bow", "Wooden Armor"]:
 		_check(_find_button(ui.modal_content, "Buy another " + name) != null, "southern forge stocks %s" % name)
-	for name in ["Iron Sword", "Iron Spear", "Iron Bow", "Iron Armor"]:
+	for name in ["Bronze Sword", "Iron Sword", "Iron Spear", "Iron Bow", "Iron Armor"]:
 		_check(_find_button(ui.modal_content, "Buy another " + name) == null, "southern forge does not stock %s" % name)
 	ui.open_service("clothing", "Clothing & Armor")
 	_check(_find_button(ui.modal_content, "Iron Armor") == null, "southern clothing shop does not sell iron armor")
@@ -358,18 +430,20 @@ func _check_northern_shops(ui: GameUI, world: GameWorld) -> void:
 			equip_tunic.pressed.emit()
 		_check(state.equipment["clothing"] == "purple_tunic" and world.player._sprite.texture.resource_path.ends_with("northern_village/player_purple.png"), "purple tunic changes player appearance")
 	ui.open_service("north_forge", "Northern Forge")
-	for name in ["Wooden Sword", "Bronze Sword", "Iron Sword", "Wooden Spear", "Bronze Spear", "Iron Spear", "Wooden Bow", "Bronze Bow", "Iron Bow", "Iron Armor"]:
+	for name in ["Bronze Sword", "Bronze Spear", "Bronze Bow", "Bronze Armor"]:
 		_check(_find_button(ui.modal_content, "Buy another " + name) != null, "northern forge stocks %s" % name)
-	var sword := _find_button(ui.modal_content, "Buy another Iron Sword")
+	for name in ["Wooden Sword", "Iron Sword", "Iron Spear", "Iron Bow", "Iron Armor"]:
+		_check(_find_button(ui.modal_content, "Buy another " + name) == null, "northern forge does not stock %s" % name)
+	var sword := _find_button(ui.modal_content, "Buy another Bronze Sword")
 	if sword != null:
 		sword.pressed.emit()
-		sword = _find_button(ui.modal_content, "Buy another Iron Sword")
+		sword = _find_button(ui.modal_content, "Buy another Bronze Sword")
 		sword.pressed.emit()
-		_check(int(state.inventory.get("iron_sword", 0)) == 2, "buy-another action stocks two independent iron swords")
+		_check(int(state.inventory.get("bronze_sword", 0)) == 2, "buy-another action stocks two independent bronze swords")
 	ui.close_modal()
 
 func _check_northern_village(world: GameWorld, services: Dictionary, fields: Array[FieldPlot]) -> void:
-	var north_services := ["north_food", "north_forge", "north_clothing"]
+	var north_services := ["north_food", "north_forge", "north_clothing", "north_mercenary"]
 	var original_position := world.player.global_position
 	var ui := get_tree().get_first_node_in_group("game_ui") as GameUI
 	for service_id in north_services:
@@ -527,6 +601,82 @@ func _check_villager_routines(world: GameWorld) -> void:
 		farmer._choose_next_target()
 		_check(farmer._working_target and farmer.activity_kind == "field", "farmers return to common field work")
 
+func _check_road_mission(world: GameWorld, ui: GameUI) -> void:
+	var state := GameState
+	ui.open_service("mercenary", "Mercenary Center")
+	var road_button := _find_button(ui.modal_content, "Clear the Forest Road")
+	_check(road_button != null and not road_button.disabled, "southern mercenary center offers the road squad mission")
+	_check(_find_button(ui.modal_content, "Clear the Bandit Camp") == null, "southern board does not issue the northern camp mission")
+	if road_button == null:
+		ui.close_modal()
+		return
+	road_button.pressed.emit()
+	_check(state.team_job_id == state.ROAD_JOB and state.active_jobs.has(state.ROAD_JOB), "road mission starts at the southern mercenary center")
+	_check_job_direction(ui, state.ROAD_JOB)
+	ui.open_service("mercenary", "Mercenary Center")
+	var south: Array[Villager] = []
+	var north: Villager
+	for actor in world.actors_root.get_children():
+		if actor is Villager:
+			if actor.home_position.y < GameWorld.NORTH_REGION_Y and north == null:
+				north = actor
+			elif actor.home_position.y >= GameWorld.NORTH_REGION_Y:
+				south.append(actor)
+	_check(south.size() == 15 and north != null, "road mission has fifteen southern residents and separate northern residents")
+	_check(north != null and _find_button(ui.modal_content, "(" + north.villager_id + ")") == null, "southern board excludes northern villagers")
+	if south.size() < 2 or north == null:
+		ui.close_modal()
+		return
+	_check(not world.recruit(north.villager_id), "road squad rejects a northern recruit")
+	for index in 2:
+		var recruit := _find_button(ui.modal_content, "(" + south[index].villager_id + ")")
+		_check(recruit != null, "southern roster offers recruit %s" % south[index].villager_id)
+		if recruit != null:
+			recruit.pressed.emit()
+	_check(state.squad_recruits.size() == 2, "road squad recruits two southern residents")
+	var deploy := _find_button(ui.modal_content, "Deploy squad")
+	_check(deploy != null and not deploy.disabled, "southern board can deploy the road squad")
+	if deploy != null:
+		deploy.pressed.emit()
+	ui.close_modal()
+	_check(state.squad_deployed, "southern recruits deploy for the road cleanup")
+	if not state.squad_deployed:
+		return
+	var targets: Dictionary = {}
+	for actor in world.actors_root.get_children():
+		if actor is Enemy and state.ROAD_IDS.has(actor.persistent_id) and not actor.is_queued_for_deletion():
+			targets[actor.persistent_id] = actor
+	_check(targets.size() == state.ROAD_IDS.size(), "the road squad uses three existing enemies rather than spawning duplicates")
+	for target_id in state.ROAD_IDS:
+		if not targets.has(target_id):
+			continue
+		var target: Enemy = targets[target_id]
+		_check(target.get_node_or_null("RoadTargetMarker") != null, "%s receives a road mission marker" % target_id)
+		target.take_damage(999)
+		_check(state.team_defeated_ids.count(target_id) == 1 and not target.visible, "%s is counted once and stays down during the mission" % target_id)
+		if state.team_defeated_ids.size() == 1:
+			world.capture_player_position()
+			_check(state.save_game() and state.load_game(), "partly cleared road mission saves and loads")
+			world.apply_loaded_state()
+			await get_tree().process_frame
+			_check(state.team_job_id == state.ROAD_JOB and state.squad_deployed and state.team_defeated_ids == [target_id], "reload keeps road targets and southern recruits without duplication")
+	_check(state.active_job_ready(state.ROAD_JOB) and state.team_defeated_ids.size() == state.ROAD_IDS.size(), "exactly three distinct road kills complete the mission")
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
+	var camp_before_claim := _find_button(ui.modal_content, "Clear the Bandit Camp")
+	_check(camp_before_claim != null and camp_before_claim.disabled and not state.camp_unlocked, "road defeats alone do not unlock the camp before the southern reward is claimed")
+	ui.close_modal()
+	var reward := int(GameData.job(state.ROAD_JOB)["reward"])
+	var before_claim := state.gold
+	_check(not state.claim_job("north_mercenary", state.ROAD_JOB) and state.gold == before_claim and state.active_jobs.has(state.ROAD_JOB), "northern board cannot pay the completed southern road mission")
+	ui.open_service("mercenary", "Mercenary Center")
+	var claim := _find_button(ui.modal_content, "Clear the Forest Road")
+	_check(claim != null and claim.text.contains("CLAIM"), "southern board offers the completed road reward")
+	if claim != null:
+		claim.pressed.emit()
+	ui.close_modal()
+	_check(state.gold == before_claim + reward and not state.squad_deployed and not state.active_jobs.has(state.ROAD_JOB), "southern mercenary pays road reward and releases the squad")
+	_check(state.camp_unlocked and not state.completed_unique_jobs.has(state.CAMP_JOB), "claiming the southern road reward unlocks the northern camp mission")
+
 func _check_squad_mission(world: GameWorld) -> void:
 	var state := GameState
 	state.start_new_game()
@@ -536,66 +686,74 @@ func _check_squad_mission(world: GameWorld) -> void:
 	_check(ui != null, "camp mission has a mercenary board")
 	if ui == null:
 		return
-	ui.open_service("mercenary", "Mercenary Center")
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
 	var locked_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
-	_check(locked_button != null and locked_button.disabled and locked_button.text.contains("locked"), "mercenary board displays a locked camp mission before hacker defeat")
+	_check(locked_button != null and locked_button.disabled and locked_button.text.contains("locked"), "northern camp starts locked until the road reward is claimed")
 	ui.close_modal()
-	_check(not state.accept_job(state.CAMP_JOB), "camp remains locked before the hacker is defeated")
+	_check(not state.accept_job(state.CAMP_JOB), "camp cannot be accepted before road cleanup pays out")
+	ui.open_service("mercenary", "Mercenary Center")
+	var locked_hacker := _find_button(ui.modal_content, "The Hacker")
+	_check(locked_hacker != null and locked_hacker.disabled, "solo Paprika hacker bounty starts locked until the camp reward is claimed")
+	ui.close_modal()
 	var hacker: Enemy
 	for actor in world.actors_root.get_children():
 		if actor is Enemy and actor.enemy_id == "hacker" and not actor.is_queued_for_deletion():
 			hacker = actor
 			break
-	_check(hacker != null, "hacker remains available for camp unlock test")
+	_check(hacker != null, "hacker remains available for the early-defeat test")
 	if hacker == null:
 		return
 	hacker.take_damage(999)
-	_check(state.hacker_defeated() and not state.completed_unique_jobs.has("hacker_bounty") and not state.active_jobs.has("hacker_bounty"), "defeating the hacker unlocks the mission without bounty acceptance or payment")
-	ui.open_service("mercenary", "Mercenary Center")
+	_check(not hacker.visible and not state.hacker_defeated() and not state.camp_unlocked and not state.active_jobs.has("hacker_bounty"), "defeating the hacker early neither unlocks the camp nor completes the locked bounty")
+	hacker._physics_process(Enemy.RESPAWN_SECONDS + 0.1)
+	_check(hacker.visible and hacker.health == hacker.max_health and hacker.is_in_group("damageable"), "the early-defeated hacker respawns for the later solo bounty")
+	await _check_road_mission(world, ui)
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
 	var available_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
-	_check(available_button != null and not available_button.disabled, "mercenary board unlocks camp mission after hacker defeat")
+	_check(available_button != null and not available_button.disabled, "claiming road cleanup makes the northern camp mission available")
 	if available_button != null and not available_button.disabled:
 		available_button.pressed.emit()
-	_check(state.active_jobs.has(state.CAMP_JOB), "camp mission accepts from mercenary board")
-	var first := world.find_villager("resident_00")
-	var second := world.find_villager("resident_01")
-	_check(first != null and second != null and first != second, "two distinct villagers can be found by stable ID")
-	if first == null or second == null:
+	_check(state.active_jobs.has(state.CAMP_JOB), "camp mission accepts from the northern board")
+	_check_job_direction(ui, state.CAMP_JOB)
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
+	var first := world.find_villager("resident_01")
+	var second := world.find_villager("resident_02")
+	var southerner := world.find_villager("resident_00")
+	_check(first != null and second != null and southerner != null and first != second, "northern recruits and a southern resident have distinct stable IDs")
+	if first == null or second == null or southerner == null:
 		return
-	var south_button := _find_button(ui.modal_content, "South villagers")
-	_check(south_button != null, "mercenary roster can filter southern residents")
-	if south_button != null:
-		south_button.pressed.emit()
+	_check(first.home_position.y < GameWorld.NORTH_REGION_Y and second.home_position.y < GameWorld.NORTH_REGION_Y, "camp recruits live in the northern village")
+	_check(_find_button(ui.modal_content, "(" + southerner.villager_id + ")") == null and not world.recruit(southerner.villager_id), "northern board excludes and rejects southern villagers")
 	var next_button := _find_button(ui.modal_content, "Next villagers")
-	_check(next_button != null, "large village roster has another page")
+	_check(next_button != null, "northern village roster has another page")
 	if next_button != null:
 		next_button.pressed.emit()
 		var previous_button := _find_button(ui.modal_content, "Previous villagers")
-		_check(previous_button != null, "roster can navigate back to the first page")
+		_check(previous_button != null, "northern roster can return to its first page")
 		if previous_button != null:
 			previous_button.pressed.emit()
 	var first_recruit := _find_button(ui.modal_content, "(" + first.villager_id + ")")
-	_check(first_recruit != null and first_recruit.text.begins_with("Recruit "), "southern page lists original villager by stable ID")
+	_check(first_recruit != null and first_recruit.text.begins_with("Recruit "), "northern board lists its first villager")
 	if first_recruit != null:
 		first_recruit.pressed.emit()
-	var north_button := _find_button(ui.modal_content, "North villagers")
-	_check(north_button != null, "mercenary roster can filter northern residents")
-	if north_button != null:
-		north_button.pressed.emit()
 	var second_recruit := _find_button(ui.modal_content, "(" + second.villager_id + ")")
-	_check(second_recruit != null and second_recruit.text.begins_with("Recruit "), "northern page lists relocated villager by stable ID")
+	_check(second_recruit != null and second_recruit.text.begins_with("Recruit "), "northern board lists its second villager")
 	if second_recruit != null:
 		second_recruit.pressed.emit()
-	_check(state.squad_recruits == [first.villager_id, second.villager_id], "board buttons recruit exactly two distinct villagers")
+	_check(state.squad_recruits == [first.villager_id, second.villager_id], "northern board recruits exactly two local villagers")
 	_check(not world.recruit(first.villager_id) and not world.recruit("not_a_villager"), "duplicate and unknown recruits are rejected")
 	var deploy_button := _find_button(ui.modal_content, "Deploy squad")
 	_check(deploy_button != null and not deploy_button.disabled, "mercenary board offers deployment with two recruits")
 	if deploy_button != null:
 		deploy_button.pressed.emit()
 	ui.close_modal()
-	_check(state.squad_deployed and first.squad_member and second.squad_member, "deploy button activates both villagers as squad members")
+	_check(state.squad_deployed and first.squad_member and second.squad_member, "deploy button activates both northern villagers as squad members")
 	if not state.squad_deployed:
 		return
+	var marker := world.actors_root.get_node_or_null("BanditCamp") as Node2D
+	var marker_route := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, marker.global_position) if marker != null else PackedVector2Array()
+	_check(marker != null and marker.visible and marker.get_child_count() >= 2, "deployed camp has a visible tent and fire marker")
+	_check(marker != null and marker.global_position.y >= 500.0 and marker.global_position.y <= 1050.0 and absf(marker.global_position.x - 832.0) > 300.0 and not marker_route.is_empty() and marker_route[-1].distance_to(marker.global_position) < 40.0, "camp lies deep off the forest road but has a walkable approach")
 	var suspended_index := first._routine_index
 	_check(first._was_squad_member and not first._activity_prop.visible and not first._hoe.visible, "deployed recruit suspends civilian activity before a physics tick")
 	first._physics_process(1.0 / 60.0)
@@ -604,21 +762,25 @@ func _check_squad_mission(world: GameWorld) -> void:
 	var camp: Array[Enemy] = _live_camp_bandits(world)
 	_check(camp.size() == 3, "three distinct camp bandits spawn on deployment")
 	var camp_ids: Dictionary = {}
+	var camp_kinds: Dictionary = {}
 	var all_routes := true
 	for enemy in camp:
 		camp_ids[enemy.persistent_id] = true
+		camp_kinds[enemy.enemy_id] = true
 		var path := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, enemy.spawn_position)
 		if path.is_empty() or path[-1].distance_to(enemy.spawn_position) > 18.0:
 			all_routes = false
 	_check(camp_ids.size() == 3 and camp_ids.has(state.CAMP_IDS[0]) and camp_ids.has(state.CAMP_IDS[1]) and camp_ids.has(state.CAMP_IDS[2]), "camp bandits have unique persistent identities")
+	_check(camp_kinds.has("bandit_spear") and camp_kinds.has("bandit_bow") and camp_kinds.has("bandit_sword"), "camp contains distinct red-spear, blue-bow and purple-sword bandits")
 	_check(all_routes, "every camp spawn is reachable from the village")
+	_check_transferred_weapon_attack(world, first, camp)
 	_check(world.controlled_actor() == world.player and world.select_member(1) and world.controlled_actor() == first, "control switches from player to first recruit")
 	_check(first.get_node_or_null("Camera") is Camera2D and world.select_member(2) and world.controlled_actor() == second and second.get_node_or_null("Camera") is Camera2D, "camera follows the selected recruit")
 	_check(world.select_member(0) and world.controlled_actor() == world.player and world.player.get_node_or_null("Camera") is Camera2D, "control and camera return to the player")
 	var party_key := InputEventAction.new()
 	party_key.action = "party_first"
 	party_key.pressed = true
-	ui.open_service("mercenary", "Mercenary Center")
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
 	world._unhandled_input(party_key)
 	_check(world.controlled_actor() == world.player, "party hotkey does not change control while a menu is open")
 	var attack_key := InputEventAction.new()
@@ -736,9 +898,14 @@ func _check_squad_mission(world: GameWorld) -> void:
 	for enemy in remaining:
 		enemy.take_damage(999)
 	_check(state.active_job_ready(state.CAMP_JOB) and state.camp_defeated_ids.size() == 3, "defeating remaining distinct camp bandits completes the mission")
+	ui.open_service("mercenary", "Mercenary Center")
+	var hacker_before_claim := _find_button(ui.modal_content, "The Hacker")
+	_check(hacker_before_claim != null and hacker_before_claim.disabled and not state.accept_job("hacker_bounty"), "camp kills alone do not unlock the solo hacker bounty before claiming the reward")
+	ui.close_modal()
 	var reward := int(GameData.job(state.CAMP_JOB)["reward"])
 	var before_claim := state.gold
-	ui.open_service("mercenary", "Mercenary Center")
+	_check(not state.claim_job("mercenary", state.CAMP_JOB) and state.gold == before_claim and state.active_jobs.has(state.CAMP_JOB), "southern board cannot pay the completed northern camp mission")
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
 	var claim_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
 	_check(claim_button != null and claim_button.text.contains("CLAIM") and not claim_button.disabled, "mercenary board offers claim after all three camp kills")
 	if claim_button != null and not claim_button.disabled:
@@ -747,14 +914,104 @@ func _check_squad_mission(world: GameWorld) -> void:
 	var completed_button := _find_button(ui.modal_content, "Clear the Bandit Camp")
 	_check(completed_button != null and completed_button.disabled and completed_button.text.contains("completed"), "claimed camp mission is marked completed on mercenary board")
 	ui.close_modal()
-	_check(not state.claim_job("mercenary", state.CAMP_JOB) and state.gold == before_claim + reward and not state.squad_deployed, "camp reward cannot pay twice and squad is released")
+	_check(not state.claim_job("north_mercenary", state.CAMP_JOB) and state.gold == before_claim + reward and not state.squad_deployed, "camp reward cannot pay twice and northern squad is released")
 	_check(not first.squad_member and not first._was_squad_member and first._can_reach(first._target), "released recruit resumes a reachable civilian stop from the current position")
+	await _check_paprika_hacker_bounty(world, ui, hacker)
+
+
+func _check_paprika_hacker_bounty(world: GameWorld, ui: GameUI, hacker: Enemy) -> void:
+	var state := GameState
+	ui.open_service("mercenary", "Mercenary Center")
+	var offer := _find_button(ui.modal_content, "The Hacker")
+	_check(offer != null and not offer.disabled and state.completed_unique_jobs.has(state.CAMP_JOB), "claiming the northern camp reward unlocks the solo Paprika hacker bounty")
+	if offer == null or offer.disabled:
+		ui.close_modal()
+		return
+	offer.pressed.emit()
+	_check(state.active_jobs.has("hacker_bounty") and state.team_job_id.is_empty() and not state.squad_deployed, "solo hacker bounty starts without recruiting a squad")
+	_check_job_direction(ui, "hacker_bounty")
+	_check(is_instance_valid(hacker) and not hacker.is_queued_for_deletion() and hacker.visible and hacker.health == hacker.max_health, "early-defeated hacker remains available as the later bounty target")
+	world.capture_player_position()
+	_check(state.save_game() and state.load_game(), "accepted solo Paprika hacker bounty survives saving")
+	world.apply_loaded_state()
+	await get_tree().process_frame
+	_check(state.active_jobs.has("hacker_bounty") and not state.active_job_ready("hacker_bounty") and not state.hacker_defeated(), "solo bounty reload retains its unfinished target")
+	if not is_instance_valid(hacker) or hacker.is_queued_for_deletion():
+		return
+	hacker.take_damage(999)
+	_check(state.hacker_defeated() and state.active_job_ready("hacker_bounty") and hacker.is_queued_for_deletion(), "defeating the unlocked hacker completes the solo bounty and prevents another respawn")
+	ui.open_service("mercenary", "Mercenary Center")
+	var claim := _find_button(ui.modal_content, "The Hacker")
+	_check(claim != null and claim.text.contains("CLAIM"), "southern mercenary center offers the solo hacker reward")
+	var before_claim := state.gold
+	if claim != null:
+		claim.pressed.emit()
+	_check(state.gold == before_claim + int(GameData.job("hacker_bounty")["reward"]) and state.completed_unique_jobs.has("hacker_bounty") and not state.active_jobs.has("hacker_bounty"), "claiming the solo hacker bounty pays once and marks it completed")
+	ui.close_modal()
+
+
+func _check_job_direction(ui: GameUI, job_id: String) -> void:
+	var hint := String(GameData.job(job_id).get("location_hint", ""))
+	_check(not hint.is_empty() and ui.notification_label.text.contains(hint), "%s acceptance notice names its destination" % job_id)
+	ui.open_jobs()
+	_check(not hint.is_empty() and _has_text(ui.modal_content, hint), "%s job list keeps its destination visible" % job_id)
+	ui.close_modal()
+
+
+func _check_transferred_weapon_attack(world: GameWorld, recruit: Villager, camp: Array[Enemy]) -> void:
+	if camp.is_empty():
+		return
+	var state := GameState
+	_check(state.add_item("bronze_sword") and state.equip_item("bronze_sword") and state.remove_item("stick"), "player equips a single bronze sword with no spare weapon")
+	var ui := get_tree().get_first_node_in_group("game_ui") as GameUI
+	_check(ui != null, "recruit equipment can be changed at the mercenary board")
+	if ui == null:
+		return
+	ui.open_service("north_mercenary", "Northern Mercenary Center")
+	var transfer := _find_button(ui.modal_content, "Weapon: Bronze Sword (take from you)")
+	_check(transfer != null and not transfer.disabled, "mercenary board offers the player's equipped sword to the recruit")
+	if transfer != null and not transfer.disabled:
+		transfer.pressed.emit()
+	ui.close_modal()
+	_check(state.equipment["weapon"] == "" and state.squad_members[recruit.villager_id]["weapon"] == "bronze_sword" and state.reserved_item_count("bronze_sword") == 1, "weapon transfer leaves the player unarmed and reserves the recruit's copy")
+	var target: Enemy = camp[0]
+	var original_target_position := target.global_position
+	var original_target_health := target.health
+	var original_player_position := world.player.global_position
+	var original_player_facing := world.player.facing
+	var original_player_cooldown := world.player._attack_cooldown
+	var original_recruit_facing := recruit.facing
+	var original_recruit_cooldown := recruit.attack_cooldown
+	target.global_position = recruit.global_position + Vector2(18, 0)
+	world.player.global_position = recruit.global_position
+	world.player.facing = Vector2.RIGHT
+	recruit.facing = Vector2.RIGHT
+	recruit.attack_cooldown = 0.0
+	world.player._attack_cooldown = 0.0
+	var space_key := InputEventKey.new()
+	space_key.physical_keycode = KEY_SPACE
+	space_key.pressed = true
+	_check(space_key.is_action_pressed("attack") and world.select_member(1), "Space selects the attack action while the first recruit is controlled")
+	world.player._unhandled_input(space_key)
+	var bronze_damage := maxi(1, 10 - int(target.definition.get("armor", 0)))
+	_check(target.health == original_target_health - bronze_damage and is_equal_approx(recruit.attack_cooldown, 0.36), "controlled recruit's Space attack uses the transferred bronze sword's damage and cooldown")
+	world.select_member(0)
+	var health_after_recruit := target.health
+	world.player._unhandled_input(space_key)
+	_check(target.health == health_after_recruit and world.player._attack_cooldown == 0.0 and state.weapon_definition().is_empty(), "unarmed player's Space attack cannot use the transferred sword")
+	target.global_position = original_target_position
+	target.health = original_target_health
+	world.player.global_position = original_player_position
+	world.player.facing = original_player_facing
+	world.player._attack_cooldown = original_player_cooldown
+	recruit.facing = original_recruit_facing
+	recruit.attack_cooldown = original_recruit_cooldown
 
 
 func _live_camp_bandits(world: GameWorld) -> Array[Enemy]:
 	var bandits: Array[Enemy] = []
 	for actor in world.actors_root.get_children():
-		if actor is Enemy and actor.enemy_id == "camp_bandit" and not actor.is_queued_for_deletion():
+		if actor is Enemy and GameState.CAMP_IDS.has(actor.persistent_id) and not actor.is_queued_for_deletion():
 			bandits.append(actor)
 	return bandits
 
@@ -827,6 +1084,8 @@ func _check_visual_map(world: GameWorld) -> void:
 	var northern_ships: Dictionary = {}
 	var southern_office := false
 	var iron_outfitter := false
+	var northern_mercenary := 0
+	var southern_mercenary := 0
 	var unique_ids: Dictionary = {}
 	var sign_clearance := true
 	for object_value in objects:
@@ -844,6 +1103,10 @@ func _check_visual_map(world: GameWorld) -> void:
 			southern_office = is_equal_approx(float(placed["y"]), 1122.0)
 		if name == "iron_gear_shop":
 			iron_outfitter = true
+		if name == "mercenary" and float(placed["y"]) > 1100.0:
+			southern_mercenary += 1
+		if name == "north_mercenary" and float(placed["y"]) < 350.0:
+			northern_mercenary += 1
 		if name == "fountain" and float(placed["y"]) < 350.0:
 			northern_fountain = true
 		if name == "common_field_sign":
@@ -872,6 +1135,7 @@ func _check_visual_map(world: GameWorld) -> void:
 	_check(northern_ships.size() == 2, "both original spaceships now stand on the northern landing apron")
 	_check(southern_office, "original work office ID 51 moves to y=1122 with the southern village")
 	_check(not iron_outfitter, "iron outfitter ID 255 is removed from the map")
+	_check(southern_mercenary == 1 and northern_mercenary == 1, "each Paprika village has its own mercenary center")
 	_check(northern_fountain, "a distinct northern village square has a fountain")
 	_check(forest_signs == 4 and sign_clearance, "all four full-width FOREST signs are clear of buildings and trees")
 	_check(common_signs == 3 and private_signs == 1 and warning_signs == 3, "both villages' fields and three forest approaches have signs")
@@ -881,6 +1145,14 @@ func _check_visual_map(world: GameWorld) -> void:
 		if sprite != null and sprite.texture != null and sprite.texture.resource_path.ends_with("/forest_sign.png") and sprite.texture.get_width() == 48:
 			visible_forest_signs += 1
 	_check(visible_forest_signs == 4, "runtime loads all four wider FOREST sign sprites")
+
+func _has_text(container: Node, text_part: String) -> bool:
+	for child in container.get_children():
+		if child is Label and child.text.contains(text_part):
+			return true
+		if _has_text(child, text_part):
+			return true
+	return false
 
 func _find_button(container: Node, text_part: String) -> Button:
 	for child in container.get_children():

@@ -2,6 +2,8 @@ class_name GameUI
 extends CanvasLayer
 
 signal travel_requested(destination: String)
+signal station_area_requested(area: String)
+signal station_action_requested(action: String)
 
 const INK := Color("1c1730")
 const PANEL := Color(0.07, 0.065, 0.12, 0.94)
@@ -28,7 +30,6 @@ var modal_content: VBoxContainer
 var _notification_timer: Timer
 var _active_service_id := ""
 var _active_service_name := ""
-var _recruit_region := "All"
 var _recruit_page := 0
 var _squad_refresh_elapsed := 0.0
 
@@ -66,20 +67,25 @@ func set_interaction_prompt(text: String) -> void:
 
 func open_service(service_id: String, display_name: String) -> void:
 	if service_id != _active_service_id:
-		_recruit_region = "All"
 		_recruit_page = 0
 	_active_service_id = service_id
 	_active_service_name = display_name
 	_open_modal(display_name)
 	match service_id:
 		"food", "north_food": _build_food_shop(service_id == "north_food")
-		"forge", "north_forge", "clothing", "north_clothing": _build_gear_shop(service_id)
-		"work_office", "mercenary": _build_job_board(service_id)
+		"forge", "north_forge", "river_forge", "clothing", "north_clothing": _build_gear_shop(service_id)
+		"work_office", "mercenary", "north_mercenary": _build_job_board(service_id)
 		"river_market": _build_river_market()
 		"travel": _build_travel_agency()
 		"river_library": _build_river_library()
 		"river_town_hall": _build_river_town_hall()
 		"military_hq": _build_military_hq()
+		"station_ship": _build_station_ship()
+		"station_depot": _build_station_depot()
+		"station_barracks": _build_station_barracks()
+		"station_canteen": _build_station_canteen()
+		"station_track", "station_spar", "station_squad_spar", "station_range", "station_cannon_start", "station_tnt_pile", "station_cannon", "station_trap_pad": _build_station_training(service_id)
+		"player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit": _build_barracks_fixture(service_id)
 		_: _add_body("This service is not available yet.")
 	_add_close_button()
 
@@ -101,10 +107,21 @@ func open_inventory() -> void:
 		var definition := GameData.item(item_id)
 		var kind := String(definition.get("kind", ""))
 		var suffix := ""
-		if GameState.equipment.values().has(item_id):
+		if GameState.equipment.values().has(item_id) or (item_id == "practice_mine" and GameState.military_trap_equipped):
 			suffix = "  [equipped]"
+		var assigned := GameState.reserved_item_count(item_id) - (1 if GameState.equipment.values().has(item_id) else 0)
+		if assigned > 0:
+			suffix += "  [squad x%d]" % assigned
 		var button_text := "%s x%d%s" % [definition.get("name", item_id), amount, suffix]
-		if kind in ["weapon", "armor", "clothing"]:
+		if item_id == "practice_mine":
+			var action_text := "Unequip" if GameState.military_trap_equipped else "Equip"
+			var mine_button := _add_action_button("%s — %s" % [button_text, action_text], func() -> void:
+				if not GameState.military_equip_practice_mine(not GameState.military_trap_equipped):
+					GameState.notify("The practice mine can only be equipped during an active trap drill.")
+				_refresh_inventory_panel()
+			)
+			mine_button.disabled = GameState.current_planet != "station" or GameState.military_stage != "trap" or not GameState.military_trap_round_active
+		elif kind in ["weapon", "armor", "clothing"]:
 			_add_action_button(button_text, func() -> void: GameState.equip_item(item_id); _refresh_inventory_panel())
 		elif kind == "food":
 			_add_action_button(button_text + " — use", func() -> void: GameState.use_food(item_id); _refresh_inventory_panel())
@@ -119,8 +136,14 @@ func open_jobs() -> void:
 	_active_service_id = "jobs_detail"
 	_active_service_name = "Current Jobs"
 	_open_modal(_active_service_name)
+	if GameState.current_planet == "station":
+		_add_heading("Military training")
+		_add_body(_station_stage_title())
+		_add_body("Where: %s" % _station_stage_hint())
+		_add_body("Civilian jobs remain saved and can be continued after returning to Brudet.")
 	if GameState.active_jobs.is_empty():
-		_add_body("You have no active jobs. Visit the market or Town Hall." if GameState.current_planet == "brudet" else "You have no active jobs. Visit the WORK office or mercenary center.")
+		if GameState.current_planet != "station":
+			_add_body("You have no active jobs. Visit the market or Town Hall." if GameState.current_planet == "brudet" else "You have no active jobs. Visit the WORK office or mercenary center.")
 	else:
 		var job_ids := GameState.active_jobs.keys()
 		job_ids.sort()
@@ -129,11 +152,14 @@ func open_jobs() -> void:
 			var tracked := job_id == GameState.tracked_job_id
 			_add_heading("%s%s" % [definition.get("name", job_id), " [tracked]" if tracked else ""])
 			_add_body(String(definition.get("description", "")))
+			var hint := String(definition.get("location_hint", ""))
+			if not hint.is_empty():
+				_add_body("Where: %s" % hint)
 			_add_body("Progress: %d / %d%s   Reward: %d gold\nReturn to: %s" % [int(GameState.active_jobs[job_id]), int(definition.get("target", 1)), " — ready" if GameState.active_job_ready(job_id) else "", int(definition.get("reward", 0)), String(definition.get("issuer", "work_office")).replace("_", " ").capitalize()])
 			if not tracked:
 				_add_action_button("Track %s" % definition.get("name", job_id), func() -> void: GameState.track_job(job_id); _refresh_jobs_panel())
 			if job_id == GameState.team_job_id:
-				var issuer := "mercenary center" if job_id == GameState.CAMP_JOB else "Brudet Town Hall"
+				var issuer := "northern mercenary center" if job_id == GameState.CAMP_JOB else ("first-village mercenary center" if job_id == GameState.ROAD_JOB else "Brudet Town Hall")
 				_add_body("The squad mission cannot be abandoned after deployment." if GameState.squad_deployed else "Recruit two villagers at the %s before deploying." % issuer)
 				if GameState.squad_deployed:
 					_add_team_roster(false)
@@ -181,7 +207,7 @@ func _build_hud() -> void:
 	job_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	job_panel.add_child(job_label)
 
-	var notice_panel := _panel_at(Vector2(112, 75), Vector2(416, 39), CYAN)
+	var notice_panel := _panel_at(Vector2(80, 75), Vector2(480, 52), CYAN)
 	notice_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(notice_panel)
 	notification_label = _label("", 10, CREAM)
@@ -211,7 +237,7 @@ func _build_hud() -> void:
 	squad_panel.add_child(squad_label)
 	squad_panel.visible = false
 
-	var controls := _label("WASD move   E interact   SPACE attack   I pack   J jobs   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 7, Color(0.92, 0.88, 0.78, 0.92))
+	var controls := _label("WASD move   E interact   SPACE attack / place mine   I pack   J jobs   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
 	controls.position = Vector2(8, 349)
 	controls.size = Vector2(624, 10)
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -250,6 +276,7 @@ func _connect_state() -> void:
 	GameState.inventory_changed.connect(_refresh_status)
 	GameState.equipment_changed.connect(_refresh_status)
 	GameState.job_changed.connect(_refresh_job)
+	GameState.military_changed.connect(_refresh_job)
 	GameState.squad_changed.connect(_refresh_squad)
 	GameState.notification_requested.connect(_show_notification)
 
@@ -260,20 +287,27 @@ func _refresh_all() -> void:
 	_refresh_squad()
 
 func refresh_location() -> void:
-	location_label.text = "BRUDET RIVER CITY" if GameState.current_planet == "brudet" else "PAPRIKA VILLAGE"
+	match GameState.current_planet:
+		"brudet": location_label.text = "BRUDET RIVER CITY"
+		"station": location_label.text = "MILITARY BARRACKS" if GameState.current_area == "barracks" else "TRAINING STATION"
+		_: location_label.text = "PAPRIKA VILLAGE"
 	_refresh_job()
 
 func _refresh_status() -> void:
 	health_bar.max_value = GameState.max_health
 	health_bar.value = GameState.health
 	status_label.text = "YOU HP %d/%d    GOLD %d" % [GameState.health, GameState.max_health, GameState.gold]
-	var weapon: String = GameData.item(String(GameState.equipment.get("weapon", "stick"))).get("name", "Stick")
+	var weapon_id := String(GameState.equipment.get("weapon", ""))
+	var weapon: String = GameData.item(weapon_id).get("name", "Unarmed") if not weapon_id.is_empty() else "Unarmed"
 	var armor_id := String(GameState.equipment.get("armor", ""))
 	var armor: String = GameData.item(armor_id).get("name", "No armor") if not armor_id.is_empty() else "No armor"
 	equipment_label.text = "YOUR GEAR: %s | %s" % [weapon, armor]
 
 func _refresh_job() -> void:
 	_refresh_squad()
+	if GameState.current_planet == "station":
+		job_label.text = "TRAINING — J TO VIEW\n%s\n%s" % [_station_stage_title(), _station_stage_hint()]
+		return
 	if GameState.active_jobs.is_empty():
 		job_label.text = "JOBS\nNo active jobs — visit Town Hall or market" if GameState.current_planet == "brudet" else "JOBS\nNo active jobs — visit WORK"
 		return
@@ -329,17 +363,20 @@ func _build_gear_shop(service_id: String) -> void:
 	var sections: Dictionary
 	match service_id:
 		"clothing":
-			_add_body("Clothes and fitted armor for forest travel.")
-			sections = {"Clothing": ["red_tunic", "blue_tunic", "green_tunic"], "Armor": ["wood_armor", "bronze_armor"]}
+			_add_body("Southern clothes and wooden armor for forest travel.")
+			sections = {"Clothing": ["red_tunic", "blue_tunic", "green_tunic"], "Armor": ["wood_armor"]}
 		"north_clothing":
-			_add_body("Northern tailoring and fitted armor for forest travel.")
-			sections = {"Clothing": ["purple_tunic"], "Armor": ["wood_armor", "bronze_armor"]}
+			_add_body("Northern tailoring and bronze armor for forest travel.")
+			sections = {"Clothing": ["purple_tunic"], "Armor": ["bronze_armor"]}
 		"north_forge":
-			_add_body("Swords, spears, bows, and iron armor for northern adventurers.")
-			sections = {"Swords": ["wood_sword", "bronze_sword", "iron_sword"], "Spears": ["wood_spear", "bronze_spear", "iron_spear"], "Bows": ["wood_bow", "bronze_bow", "iron_bow"], "Armor": ["iron_armor"]}
+			_add_body("Bronze swords, spears, bows, and armor.")
+			sections = {"Swords": ["bronze_sword"], "Spears": ["bronze_spear"], "Bows": ["bronze_bow"], "Armor": ["bronze_armor"]}
+		"river_forge":
+			_add_body("Brudet's iron swords, spears, bows, and armor.")
+			sections = {"Swords": ["iron_sword"], "Spears": ["iron_spear"], "Bows": ["iron_bow"], "Armor": ["iron_armor"]}
 		_:
-			_add_body("Swords, spears, and bows. Each tier gives stronger attacks.")
-			sections = {"Swords": ["wood_sword", "bronze_sword"], "Spears": ["wood_spear", "bronze_spear"], "Bows": ["wood_bow", "bronze_bow"]}
+			_add_body("Wooden swords, spears, bows, and armor.")
+			sections = {"Swords": ["wood_sword"], "Spears": ["wood_spear"], "Bows": ["wood_bow"], "Armor": ["wood_armor"]}
 	for section: String in sections:
 		_add_heading(section)
 		for item_id: String in sections[section]:
@@ -367,9 +404,15 @@ func _build_job_board(service_id: String) -> void:
 			for job_id in ["field_work", "rabbit_catch"]:
 				_add_job_button(job_id)
 		"mercenary":
-			_add_heading("Mercenary bounties")
-			for job_id in ["forest_patrol", "bandit_bounty", "hacker_bounty", GameState.CAMP_JOB]:
+			_add_heading("Southern mercenary jobs")
+			for job_id in ["forest_patrol", "bandit_bounty", GameState.ROAD_JOB, "hacker_bounty"]:
 				_add_job_button(job_id)
+			if GameState.team_job_id == GameState.ROAD_JOB:
+				_add_team_roster(true)
+		"north_mercenary":
+			_add_heading("Northern mercenary mission")
+			_add_body("The bandit camp lies west of the middle forest road. Claim the southern road cleanup reward first, then recruit two northern villagers.")
+			_add_job_button(GameState.CAMP_JOB)
 			if GameState.team_job_id == GameState.CAMP_JOB:
 				_add_team_roster(true)
 
@@ -404,41 +447,157 @@ func _build_river_library() -> void:
 	_add_body("The former unified Republic split after the self-modification machine Block was destroyed. Paprika and Brudet belong to the Cauliflower Confederation, which is why ships travel between them.")
 	_add_heading("Field guide")
 	_add_body("The bridges cross the main river. Water cannot be walked across elsewhere. A fishing rod from the market lets you catch fish at ponds; wait before casting again.")
-	_add_body("Buy food or sell a catch at the market. Town Hall offers civilian cleanup jobs. The Military Headquarters handles future enlistment and has an arrow target for practice. Save with F5 and load with F9.")
+	_add_body("Buy food or sell a catch at the market; Brudet's forge sells iron equipment. Town Hall offers civilian cleanup jobs outside town. The Military Headquarters offers enlistment at the playable training station and has an arrow target for practice. Save with F5 and load with F9.")
 
 func _build_river_town_hall() -> void:
 	_add_body("Welcome to Brudet's river city. The market sells food and fishing rods; the nearby library has local advice and Craft history.")
-	_add_body("Cross the river using the stone bridges. Town Hall pays for river-monster patrols and civilian cleanup squads.")
-	_add_heading("River patrol")
+	_add_body("Cross the river using the stone bridges; river monsters can swim across open water. Town Hall pays for patrols and missions outside the city.")
+	_add_heading("Solo work")
 	_add_job_button("river_patrol")
+	_add_job_button(GameState.BRUDET_SOLO_HACKER_JOB)
 	_add_heading("Three-person cleanup squads")
 	_add_body("Choose one team job, recruit two local residents, equip them, and deploy. Each job has its own marked targets; finish the job before traveling.")
-	for job_id in GameState.BRUDET_TEAM_IDS:
+	for job_id in ["brudet_monster_team", "brudet_bandit_team"]:
 		_add_job_button(job_id)
+	if GameState.team_job_id == "brudet_hacker_team":
+		_add_heading("Existing hacker squad mission")
+		_add_job_button(GameState.team_job_id)
 	if GameState.BRUDET_TEAM_IDS.has(GameState.team_job_id):
 		_add_team_roster(true)
 
 func _build_military_hq() -> void:
-	_add_body("The Cauliflower Confederation is recruiting during the war with the Republic. Enlistment will take recruits to a training space station and then a battlefield; that journey is not available yet.")
-	_add_body("Practice at the arrow target beside headquarters. Civilian cleanup work is available at Town Hall.")
-	_add_action_button("Ask about joining the military", func() -> void: GameState.notify("Military enlistment and the training station are not available yet."))
+	_add_body("The Cauliflower Confederation is recruiting during the war with the Republic. Enlist at the training station before any battlefield assignment.")
+	_add_body("Joining takes you straight to the station beside a regular ship. The depot issues a uniform; your bunk and footlocker are in the barracks. Dismiss civilian recruits or finish a deployed squad mission before leaving.")
+	_add_body("Practice at the arrow target beside headquarters. Civilian cleanup work remains at Town Hall.")
+	_add_action_button("Return to the training station" if GameState.military_stage != "none" else "Join the Military", func() -> void: travel_requested.emit("station"))
+
+func _build_station_ship() -> void:
+	var graduated := GameState.military_stage == "graduated"
+	_add_body("This regular Confederation ship brought you from Brudet. Your earlier position there is saved.")
+	_add_body("Complete the station drills and sleep in your bunk before taking the return trip." if not graduated else "Basic training is complete. Your return to Brudet is free; belongings left in your footlocker remain there until you collect them.")
+	var button := _add_action_button("Return to Brudet — free", func() -> void: travel_requested.emit("brudet"))
+	button.disabled = not graduated
+
+func _build_station_depot() -> void:
+	_add_body("Report here for your military-green uniform. Put your civilian belongings in your assigned barracks footlocker before training.")
+	_add_action_button("Receive your military uniform", func() -> void: station_action_requested.emit("station_depot"))
+
+func _build_station_barracks() -> void:
+	_add_body("Your bunk and footlocker are inside. The other nine beds belong to fellow recruits.")
+	_add_action_button("Enter the barracks", func() -> void: station_area_requested.emit("barracks"))
+
+func _build_station_canteen() -> void:
+	_add_body("The canteen serves a meal after each completed training drill.")
+	_add_body("Meals earned: %d" % int(GameState.military_meal_credits))
+	var button := _add_action_button("Collect a meal", func() -> void: station_action_requested.emit("station_canteen"))
+	button.disabled = int(GameState.military_meal_credits) <= 0
+
+func _build_station_training(service_id: String) -> void:
+	var instructions := {
+		"station_track": "Run the marked circuit. Hold Shift to sprint during the timed section.",
+		"station_spar": "Spar with a partner. Training hits are nonlethal.",
+		"station_squad_spar": "Fight alongside two recruits against three cadets. Order allies with Q, R and T.",
+		"station_range": "Use the issued training bow to hit moving targets.",
+		"station_cannon_start": "Start the round here. Then press E at the supply pile to take a game-only charge, at the cannon to load it, and again to fire.",
+		"station_tnt_pile": "During an active round, press E here to take one game-only charge to the cannon.",
+		"station_cannon": "During an active round, press E to load a charge or fire at the marked range target.",
+		"station_trap_pad": "Start practice, use I to equip the toy practice mine, then press Space on the dummy's lane.",
+	}
+	_add_body(String(instructions.get(service_id, "Follow the instructor's directions.")))
+	_add_body("Current objective: %s" % _station_stage_title())
+	var stage := String(GameState.military_stage)
+	var needed := {
+		"station_track": "run", "station_spar": "spar", "station_squad_spar": "squad",
+		"station_range": "range", "station_cannon_start": "cannon", "station_tnt_pile": "cannon", "station_cannon": "cannon", "station_trap_pad": "trap",
+	}
+	if service_id == "station_trap_pad" and GameState.military_trap_round_active:
+		var restart_button := _add_action_button("Restart practice", func() -> void: station_action_requested.emit("station_trap_restart"))
+		restart_button.disabled = stage != "trap"
+		return
+	var cannon_active := service_id == "station_cannon_start" and GameState.military_cannon_round_active
+	var button_text := "Cannon round already active" if cannon_active else "Use training station"
+	var button := _add_action_button(button_text, func() -> void: station_action_requested.emit(service_id))
+	button.disabled = stage != String(needed.get(service_id, "")) or cannon_active
+
+func _build_barracks_fixture(service_id: String) -> void:
+	match service_id:
+		"barracks_exit":
+			_add_action_button("Leave the barracks", func() -> void: station_area_requested.emit("exterior"))
+		"player_chest":
+			_add_body("This is your assigned footlocker. Your personal gear stays here during training, with its original counts preserved.")
+			var stage := String(GameState.military_stage)
+			if stage == "barracks":
+				_add_action_button("Store personal belongings", func() -> void: station_action_requested.emit("player_chest"))
+			elif stage == "graduated":
+				if GameState.military_storage.is_empty():
+					_add_body("Your footlocker is empty.")
+				else:
+					_add_action_button("Retrieve stored belongings", func() -> void: station_action_requested.emit("player_chest"))
+			else:
+				_add_body("You can retrieve your belongings after completing training and sleeping.")
+		"player_bed":
+			var stage := String(GameState.military_stage)
+			_add_body("Finish every drill before sleeping." if stage not in ["sleep", "graduated"] else "Rest after a long day of training.")
+			var button := _add_action_button("Sleep in your bunk", func() -> void: station_action_requested.emit("player_bed"))
+			button.disabled = stage not in ["sleep", "graduated"]
+		"recruit_bed", "recruit_chest":
+			_add_body("This bunk belongs to another recruit. Your bed and footlocker are marked nearby.")
+
+func _station_stage_title() -> String:
+	var stage := String(GameState.military_stage)
+	var titles := {
+		"depot": "Get your uniform at the depot",
+		"barracks": "Store your belongings in the barracks",
+		"run": "Run the training-field circuit",
+		"spar": "Spar with a partner",
+		"squad": "Train in a three-on-three squad bout",
+		"range": "Shoot the moving targets",
+		"cannon": "Practice at the cannon range",
+		"trap": "Equip the toy practice mine and place it in the dummy's lane",
+		"sleep": "Sleep in your barracks bed",
+		"graduated": "Basic training complete",
+	}
+	return String(titles.get(stage, "Report to the station instructor"))
+
+func _station_stage_hint() -> String:
+	var hints := {
+		"depot": "Depot east of the landing pad",
+		"barracks": "Your footlocker inside the barracks, west of the depot",
+		"run": "Running field south of the landing pad",
+		"spar": "Sparring ring south of the courtyard",
+		"squad": "Squad ring east of the sparring ring",
+		"range": "Moving-target range in the eastern training grounds",
+		"cannon": "Cannon range flag, supply pile and cannon in the southeast range",
+		"trap": "Trap practice pad south of the squad ring; use I and Space",
+		"sleep": "Your bed inside the barracks",
+		"graduated": "Regular ship by the landing pad for a free return",
+	}
+	return String(hints.get(GameState.military_stage, "Military Headquarters on Brudet"))
 
 func _add_job_button(job_id: String) -> void:
 	var definition := GameData.job(job_id)
+	var active := GameState.active_jobs.has(job_id)
+	var complete := not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id)
+	var camp_locked := job_id == GameState.CAMP_JOB and not GameState.camp_unlocked and not active
+	var hacker_locked := job_id == "hacker_bounty" and not GameState.completed_unique_jobs.has(GameState.CAMP_JOB) and not active
+	var team_conflict := bool(definition.get("team", false)) and not GameState.team_job_id.is_empty() and GameState.team_job_id != job_id
+	var solo_conflict := (job_id == GameState.BRUDET_SOLO_HACKER_JOB and not GameState.team_job_id.is_empty()) or (bool(definition.get("team", false)) and GameState.active_jobs.has(GameState.BRUDET_SOLO_HACKER_JOB))
 	var text_value := "%s — %d gold" % [definition["name"], definition["reward"]]
-	if GameState.active_jobs.has(job_id):
+	if active:
 		text_value += " — CLAIM" if GameState.active_job_ready(job_id) else " — %d/%d" % [int(GameState.active_jobs[job_id]), int(definition["target"])]
-	elif not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id):
+	elif complete:
 		text_value += " — completed"
-	elif job_id == "hacker_bounty" and GameState.hacker_defeated():
-		text_value = "%s — already defeated" % definition["name"]
-	elif job_id == GameState.CAMP_JOB and not GameState.hacker_defeated():
-		text_value += " — locked: defeat the hacker"
-	elif bool(definition.get("team", false)) and not GameState.team_job_id.is_empty() and GameState.team_job_id != job_id:
-		text_value += " — finish current squad mission"
+	elif camp_locked:
+		text_value += " — locked: claim road cleanup"
+	elif hacker_locked:
+		text_value += " — locked: clear the bandit camp"
+	elif team_conflict or solo_conflict:
+		text_value += " — finish current mission"
 	var button := _add_action_button(text_value, func() -> void: _job_action(job_id))
 	button.tooltip_text = String(definition.get("description", ""))
-	button.disabled = (not bool(definition.get("repeatable", false)) and GameState.completed_unique_jobs.has(job_id)) or (job_id == "hacker_bounty" and GameState.hacker_defeated() and not GameState.active_jobs.has(job_id)) or (job_id == GameState.CAMP_JOB and not GameState.hacker_defeated()) or (bool(definition.get("team", false)) and not GameState.team_job_id.is_empty() and GameState.team_job_id != job_id)
+	button.disabled = complete or camp_locked or hacker_locked or team_conflict or (solo_conflict and not active)
+	if active and not String(definition.get("location_hint", "")).is_empty():
+		_add_body("Where: %s" % definition["location_hint"])
 
 func _job_action(job_id: String) -> void:
 	if GameState.active_jobs.has(job_id):
@@ -457,9 +616,10 @@ func _add_team_roster(at_issuer: bool) -> void:
 	_add_heading("Three-person squad — %s" % GameData.job(job_id).get("name", job_id))
 	if GameState.squad_deployed:
 		if job_id == GameState.CAMP_JOB:
-			_add_body("Defeat all three camp bandits in the northwest forest. Camp: %d/3. Return here to claim the reward when all three fall." % GameState.camp_defeated_ids.size())
+			_add_body("Defeat all three bandits at the forest camp. Camp: %d/3. Return here to claim the reward when all three fall." % GameState.camp_defeated_ids.size())
 		else:
-			_add_body("Clear the marked targets: %d/%d. Return to Town Hall for your reward." % [GameState.team_defeated_ids.size(), GameState.BRUDET_TEAM_IDS[job_id].size()])
+			var target_ids: Array = GameState.ROAD_IDS if job_id == GameState.ROAD_JOB else GameState.BRUDET_TEAM_IDS[job_id]
+			_add_body("Clear the marked targets: %d/%d. Return to %s for your reward." % [GameState.team_defeated_ids.size(), target_ids.size(), "this mercenary center" if job_id == GameState.ROAD_JOB else "Town Hall"])
 	else:
 		_add_body("Choose exactly two villagers below, equip them from your pack, then deploy. The mission cannot be abandoned after deployment.")
 	for index in GameState.squad_recruits.size():
@@ -482,7 +642,7 @@ func _add_team_roster(at_issuer: bool) -> void:
 	if GameState.squad_deployed:
 		return
 	if GameState.squad_recruits.size() == 2:
-		var destination := "northwest camp" if job_id == GameState.CAMP_JOB else "marked cleanup targets"
+		var destination := "forest camp" if job_id == GameState.CAMP_JOB else ("road targets" if job_id == GameState.ROAD_JOB else "marked cleanup targets")
 		_add_action_button("Deploy squad — lead them to the %s" % destination, func() -> void: GameState.deploy_squad(); _reopen_service())
 		return
 	_add_heading("Available villagers (%d/2 recruited)" % GameState.squad_recruits.size())
@@ -491,29 +651,16 @@ func _add_team_roster(at_issuer: bool) -> void:
 		_add_body("Villagers are unavailable. Return after the world loads.")
 		return
 	var villagers: Array[Villager] = []
-	var south_count := 0
-	var north_count := 0
+	var region := GameState.team_recruit_region(job_id)
 	for actor in world.actors_root.get_children():
 		if actor is Villager and not GameState.squad_recruits.has(actor.villager_id):
 			var resident := actor as Villager
-			if GameState.current_planet == "brudet":
+			if GameState.current_planet == "brudet" or (resident.home_position.y < NORTH_REGION_Y) == (region == "north"):
 				villagers.append(resident)
-			else:
-				if resident.home_position.y < NORTH_REGION_Y:
-					north_count += 1
-				else:
-					south_count += 1
-				if _recruit_region == "All" or (_recruit_region == "North") == (resident.home_position.y < NORTH_REGION_Y):
-					villagers.append(resident)
-	if GameState.current_planet == "paprika":
-		for region in ["All", "South", "North"]:
-			var count := north_count + south_count if region == "All" else (north_count if region == "North" else south_count)
-			var region_button := _add_action_button("%s villagers (%d)%s" % [region, count, " — viewing" if region == _recruit_region else ""], func() -> void: _select_recruit_region(region))
-			region_button.disabled = region == _recruit_region
 	villagers.sort_custom(func(a: Villager, b: Villager) -> bool: return a.villager_id < b.villager_id)
 	var page_count := maxi(1, ceili(float(villagers.size()) / RECRUIT_PAGE_SIZE))
 	_recruit_page = clampi(_recruit_page, 0, page_count - 1)
-	_add_body("%s villagers — page %d/%d" % [_recruit_region, _recruit_page + 1, page_count])
+	_add_body("%s villagers — page %d/%d" % [region.capitalize(), _recruit_page + 1, page_count])
 	for index in range(_recruit_page * RECRUIT_PAGE_SIZE, mini((_recruit_page + 1) * RECRUIT_PAGE_SIZE, villagers.size())):
 		var villager := villagers[index]
 		var villager_id := villager.villager_id
@@ -522,11 +669,6 @@ func _add_team_roster(at_issuer: bool) -> void:
 		_add_action_button("Previous villagers", func() -> void: _turn_recruit_page(-1))
 	if _recruit_page + 1 < page_count:
 		_add_action_button("Next villagers", func() -> void: _turn_recruit_page(1))
-
-func _select_recruit_region(region: String) -> void:
-	_recruit_region = region
-	_recruit_page = 0
-	_reopen_service()
 
 func _turn_recruit_page(direction: int) -> void:
 	_recruit_page += direction
@@ -545,8 +687,10 @@ func _add_recruit_gear_buttons(villager_id: String, slot: String) -> void:
 		if String(GameData.item(item_id).get("kind", "")) != slot or item_id == current_id:
 			continue
 		var available := int(GameState.inventory[item_id]) - GameState.reserved_item_count(item_id)
-		var button := _add_action_button("%s: %s (%d available)" % [slot.capitalize(), _gear_name(item_id), available], func() -> void: _equip_recruit(villager_id, slot, item_id))
-		button.disabled = available <= 0
+		var from_player: bool = available <= 0 and GameState.equipment.get(slot, "") == item_id
+		var label := "%s: %s (take from you)" % [slot.capitalize(), _gear_name(item_id)] if from_player else "%s: %s (%d available)" % [slot.capitalize(), _gear_name(item_id), available]
+		var button := _add_action_button(label, func() -> void: _equip_recruit(villager_id, slot, item_id))
+		button.disabled = available <= 0 and not from_player
 
 func _world() -> GameWorld:
 	var world := get_tree().get_first_node_in_group("game_world") as GameWorld
@@ -574,12 +718,16 @@ func _recruit(villager_id: String) -> void:
 	_reopen_service()
 
 func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
+	var was_equipped_by_player: bool = GameState.equipment.get(slot, "") == item_id
 	if GameState.equip_recruit(villager_id, slot, item_id):
-		GameState.notify("%s equipped: %s." % [_member_name(villager_id), _gear_name(item_id)])
+		var message := "%s equipped: %s." % [_member_name(villager_id), _gear_name(item_id)]
+		if was_equipped_by_player and GameState.equipment.get(slot, "") != item_id:
+			message += " You no longer have that %s equipped." % slot
+		GameState.notify(message)
 	_reopen_service()
 
 func _reopen_service() -> void:
-	if _active_service_id in ["food", "north_food", "forge", "north_forge", "clothing", "north_clothing", "work_office", "mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel"]:
+	if _active_service_id in ["food", "north_food", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel"]:
 		open_service(_active_service_id, _active_service_name)
 	elif _active_service_id == "inventory":
 		_refresh_inventory_panel()

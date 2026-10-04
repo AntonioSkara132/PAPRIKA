@@ -1,0 +1,13 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "station_interior",
+  "tilewidth": 16,
+  "tileheight": 16,
+  "tilecount": 16,
+  "columns": 8,
+  "image": "../assets/art/space_military_base/station_interior.png",
+  "imagewidth": 128,
+  "imageheight": 32
+}

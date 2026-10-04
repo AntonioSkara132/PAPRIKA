@@ -15,7 +15,8 @@ const NORTH_RESIDENT_POSITIONS := [
 	Vector2(1080, 335), Vector2(1120, 335), Vector2(1160, 335), Vector2(1200, 335),
 	Vector2(1320, 335),
 ]
-const CAMP_SPAWNS := [Vector2(285, 231), Vector2(318, 251), Vector2(351, 238)]
+const CAMP_SPAWNS := [Vector2(389, 763), Vector2(442, 787), Vector2(466, 826)]
+const CAMP_CENTER := Vector2(430, 789)
 const CAMP_TEXTURE := "res://assets/art/bandit.png"
 const REPATH_SECONDS := 0.45
 
@@ -50,7 +51,9 @@ func _ready() -> void:
 		_spawn_player(VILLAGE_OFFSET + Vector2(326, 268), "res://art/concepts/source/player.png")
 	_assign_villager_routines()
 	GameState.squad_changed.connect(_sync_squad)
+	GameState.job_changed.connect(_sync_hacker)
 	_sync_squad()
+	_sync_hacker()
 
 func capture_player_position() -> void:
 	if player != null:
@@ -68,7 +71,7 @@ func apply_loaded_state() -> void:
 		GameState.player_position = player.global_position
 	_squad_ai.clear()
 	for actor in actors_root.get_children():
-		if actor is Enemy and actor.enemy_id == "camp_bandit":
+		if actor is Enemy and GameState.CAMP_IDS.has(actor.persistent_id):
 			actor.queue_free()
 	_sync_hacker()
 	for villager_id in GameState.squad_recruits:
@@ -87,7 +90,7 @@ func _safe_loaded_position(saved: Vector2) -> Vector2:
 func _sync_hacker() -> void:
 	if _hacker_spawn.is_empty():
 		return
-	var defeated := GameState.defeated_persistent_enemies.has(String(_hacker_spawn["id"]))
+	var defeated := GameState.completed_unique_jobs.has("hacker_bounty") or GameState.active_job_ready("hacker_bounty")
 	var found := false
 	for actor in actors_root.get_children():
 		if actor is Enemy and actor.enemy_id == "hacker" and not actor.is_queued_for_deletion():
@@ -106,7 +109,11 @@ func find_villager(villager_id: String) -> Villager:
 
 func recruit(villager_id: String) -> bool:
 	var villager := find_villager(villager_id)
-	return villager != null and GameState.recruit_villager(villager_id, villager.global_position)
+	if villager == null:
+		return false
+	if GameState.current_planet == "paprika" and (villager.home_position.y < NORTH_REGION_Y) != (GameState.team_recruit_region(GameState.team_job_id) == "north"):
+		return false
+	return GameState.recruit_villager(villager_id, villager.global_position)
 
 func controlled_actor() -> CharacterBody2D:
 	if GameState.controlled_member_id != "player":
@@ -184,6 +191,7 @@ func _sync_squad() -> void:
 	if get_tree().get_first_node_in_group("game_ui") != null:
 		player._update_nearest_interactable()
 	_sync_camp()
+	_sync_road_targets()
 	squad_control_changed.emit()
 
 func _sync_camp() -> void:
@@ -193,7 +201,7 @@ func _sync_camp() -> void:
 			_camp_marker.queue_free()
 			_camp_marker = null
 		for actor in actors_root.get_children():
-			if actor is Enemy and actor.enemy_id == "camp_bandit":
+			if actor is Enemy and GameState.CAMP_IDS.has(actor.persistent_id):
 				actor.queue_free()
 		return
 	if not is_instance_valid(_camp_marker):
@@ -209,18 +217,40 @@ func _sync_camp() -> void:
 				break
 		if not exists:
 			var position := _camp_walk_position(CAMP_SPAWNS[index])
-			_spawn_enemy("camp_bandit", position, CAMP_TEXTURE, stable_id)
+			if position.is_finite():
+				_spawn_enemy(["bandit_spear", "bandit_bow", "bandit_sword"][index], position, CAMP_TEXTURE, stable_id)
+
+func _sync_road_targets() -> void:
+	var active := GameState.squad_deployed and GameState.team_job_id == GameState.ROAD_JOB
+	for actor in actors_root.get_children():
+		if not actor is Enemy or not GameState.ROAD_IDS.has(actor.persistent_id):
+			continue
+		var marker := actor.get_node_or_null("RoadTargetMarker") as Label
+		if marker == null:
+			marker = Label.new()
+			marker.name = "RoadTargetMarker"
+			marker.text = "ROAD TARGET"
+			marker.position = Vector2(-43, -43)
+			marker.size = Vector2(86, 14)
+			marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			marker.add_theme_font_size_override("font_size", 8)
+			marker.add_theme_color_override("font_color", Color("ffe071"))
+			actor.add_child(marker)
+		marker.visible = active and not GameState.team_defeated_ids.has(actor.persistent_id)
+		if active and GameState.team_defeated_ids.has(actor.persistent_id):
+			actor.restore_road_defeat()
 
 func _camp_walk_position(desired: Vector2) -> Vector2:
 	var path := tiled_loader.get_walk_path(Player.RESPAWN_POSITION, desired)
-	if not path.is_empty():
-		return path[-1]
-	return desired
+	if not path.is_empty() and path[-1].distance_to(desired) <= 16.0 and tiled_loader.is_walkable_position(desired):
+		return desired
+	push_error("Paprika bandit camp spawn is not reachable: %s" % desired)
+	return Vector2(INF, INF)
 
 func _build_camp_marker() -> void:
 	_camp_marker = Node2D.new()
 	_camp_marker.name = "BanditCamp"
-	_camp_marker.position = Vector2(320, 210)
+	_camp_marker.position = CAMP_CENTER
 	_camp_marker.z_index = 40
 	actors_root.add_child(_camp_marker)
 	var tent := Polygon2D.new()
@@ -328,7 +358,7 @@ func _cardinal(direction: Vector2) -> Vector2:
 
 func _actor_reach(member_id: String) -> float:
 	var weapon := GameState.weapon_definition() if member_id == "player" else GameData.item(String(GameState.squad_members[member_id]["weapon"]))
-	return float(weapon.get("reach", 24.0))
+	return float(weapon.get("reach", 0.0))
 
 func attack_as(actor: CharacterBody2D) -> void:
 	if actor == player:

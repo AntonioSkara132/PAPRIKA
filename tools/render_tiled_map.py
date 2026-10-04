@@ -76,8 +76,11 @@ for layer in m["layers"]:
             tile = get_tile(obj.get("gid", 0))
             if tile is None:
                 continue
+            object_size = (round(obj.get("width", tile.width)), round(obj.get("height", tile.height)))
+            if tile.size != object_size:
+                tile = tile.resize(object_size, Image.Resampling.NEAREST)
             x = round(obj["x"])
-            y = round(obj["y"] - obj.get("height", tile.height))
+            y = round(obj["y"] - object_size[1])
             out.alpha_composite(tile, (x, y))
     elif layer["type"] == "imagelayer" and layer.get("image"):
         image = Image.open(base / layer["image"]).convert("RGBA")

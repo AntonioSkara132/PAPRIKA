@@ -8,7 +8,9 @@ const FLIP_MASK := 0x0FFFFFFF
 
 var map_size := Vector2.ZERO
 var _navigation: AStarGrid2D
+var _amphibious_navigation: AStarGrid2D
 var _collision_footprints: Array[Rect2] = []
+var _solid_footprints: Array[Rect2] = []
 var tile_size := Vector2i(16, 16)
 var _map_field_prefix := "paprika"
 var map_loaded := false
@@ -19,6 +21,7 @@ var _tile_root: Node2D
 var _object_root: Node2D
 var _field_root: Node2D
 var _collision_body: StaticBody2D
+var _water_body: StaticBody2D
 
 func _ready() -> void:
 	add_to_group("tiled_world")
@@ -69,7 +72,9 @@ func clear_map() -> void:
 	_tilesets.clear()
 	_texture_cache.clear()
 	_collision_footprints.clear()
+	_solid_footprints.clear()
 	_navigation = null
+	_amphibious_navigation = null
 	while get_child_count() > 0:
 		get_child(0).free()
 
@@ -88,6 +93,11 @@ func _build_roots() -> void:
 	_collision_body.collision_layer = 1
 	_collision_body.collision_mask = 0
 	add_child(_collision_body)
+	_water_body = StaticBody2D.new()
+	_water_body.name = "WaterCollision"
+	_water_body.collision_layer = 16
+	_water_body.collision_mask = 0
+	add_child(_water_body)
 
 func _load_tilesets(references: Array, base_dir: String) -> bool:
 	for reference_value in references:
@@ -140,8 +150,9 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 		var local_id := _local_tile_id(gid)
 		if layer_name in ["Common Fields", "Private Fields"] and GameData.CROP_BY_TILE_ID.has(local_id):
 			_create_field_plot(cell, local_id, sprite, texture, layer_name == "Common Fields")
-		if (layer_name == "Water" or local_id in [5, 6]
-				or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]):
+		if layer_name == "Water":
+			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5, true)
+		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -177,7 +188,10 @@ func _create_object_layer(layer: Dictionary) -> void:
 		if name == "rabbit":
 			actor_spawn_requested.emit("rabbit", feet, texture_path, "rabbit_%d" % int(object.get("id", 0)))
 			continue
-		if name in ["wolf", "zombie", "zombie_bear", "bandit", "hacker", "finling", "lake_maw", "river_serpent"]:
+		if name in ["station_recruit", "station_instructor", "station_cook", "station_soldier"]:
+			actor_spawn_requested.emit(name, feet, texture_path, "%s_%d" % [name, int(object.get("id", 0))])
+			continue
+		if name in ["wolf", "zombie", "armed_zombie", "armored_zombie", "zombie_bear", "bandit", "bandit_spear", "bandit_bow", "bandit_sword", "hacker", "finling", "lake_maw", "river_serpent"]:
 			actor_spawn_requested.emit("enemy", feet, texture_path, "%s_%d" % [name, int(object.get("id", 0))])
 			continue
 		var service := _service_for_object(name)
@@ -187,8 +201,17 @@ func _create_object_layer(layer: Dictionary) -> void:
 			service_node.position = top_left
 			service_node.z_index = 10 + int(object.get("y", 0))
 			_object_root.add_child(service_node)
-			service_node.configure(texture, size, String(service["id"]), String(service["name"]))
-			_record_service_collisions(service_node)
+			service_node.configure(texture, size, String(service["id"]), String(service["name"]), float(service.get("door_ratio", 0.5)))
+			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit"]:
+				for child in service_node.get_children():
+					if child is CollisionShape2D:
+						child.free()
+				if name == "station_ship":
+					_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
+				else:
+					service_node.collision_layer = 0
+			else:
+				_record_service_collisions(service_node)
 			service_node.service_requested.connect(_on_service_requested)
 		else:
 			_create_static_object(name, texture, top_left, size, int(object.get("y", 0)))
@@ -203,8 +226,9 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	sprite.texture = texture
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.scale = size / Vector2(texture.get_width(), texture.get_height())
 	holder.add_child(sprite)
-	if name in ["stone_bridge", "arrow_target"]:
+	if name in ["stone_bridge", "arrow_target", "training_ground"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
@@ -221,7 +245,9 @@ func _record_service_collisions(service_node: WorldService) -> void:
 			var collision := child as CollisionShape2D
 			if collision.shape is RectangleShape2D:
 				var size := (collision.shape as RectangleShape2D).size
-				_collision_footprints.append(Rect2(service_node.position + collision.position - size * 0.5, size))
+				var footprint := Rect2(service_node.position + collision.position - size * 0.5, size)
+				_collision_footprints.append(footprint)
+				_solid_footprints.append(footprint)
 
 func _service_for_object(name: String) -> Dictionary:
 	match name:
@@ -230,6 +256,8 @@ func _service_for_object(name: String) -> Dictionary:
 		"forge": return {"id": "forge", "name": "Forge & Armor"}
 		"north_forge": return {"id": "north_forge", "name": "Northern Forge"}
 		"mercenary": return {"id": "mercenary", "name": "Mercenary Center"}
+		"north_mercenary": return {"id": "north_mercenary", "name": "Northern Mercenary Center"}
+		"river_forge": return {"id": "river_forge", "name": "Brudet Forge"}
 		"work_office": return {"id": "work_office", "name": "Village Work Office"}
 		"clothing_shop": return {"id": "clothing", "name": "Clothing & Armor"}
 		"north_clothing_shop": return {"id": "north_clothing", "name": "Northern Clothier"}
@@ -239,6 +267,23 @@ func _service_for_object(name: String) -> Dictionary:
 		"military_hq": return {"id": "military_hq", "name": "Military Headquarters"}
 		"river_town_hall": return {"id": "river_town_hall", "name": "Brudet Town Hall"}
 		"fishing_pond": return {"id": "fishing_pond", "name": "Fishing Pond"}
+		"station_ship": return {"id": "station_ship", "name": "Military Transport"}
+		"station_depot": return {"id": "station_depot", "name": "Military Depot"}
+		"station_barracks": return {"id": "station_barracks", "name": "Military Barracks", "door_ratio": 0.27}
+		"station_canteen": return {"id": "station_canteen", "name": "Station Canteen", "door_ratio": 0.32}
+		"station_track": return {"id": "station_track", "name": "Running Field"}
+		"station_spar": return {"id": "station_spar", "name": "Sparring Ring"}
+		"station_squad_spar": return {"id": "station_squad_spar", "name": "Squad Sparring Ring"}
+		"station_range": return {"id": "station_range", "name": "Moving-Target Range"}
+		"station_cannon_start": return {"id": "station_cannon_start", "name": "Cannon Range Flag"}
+		"station_tnt_pile": return {"id": "station_tnt_pile", "name": "Practice TNT Pile"}
+		"station_cannon": return {"id": "station_cannon", "name": "Training Cannon"}
+		"station_trap_pad": return {"id": "station_trap_pad", "name": "Trap Practice Pad"}
+		"player_bed": return {"id": "player_bed", "name": "Your Bunk"}
+		"player_chest": return {"id": "player_chest", "name": "Your Footlocker"}
+		"recruit_bed": return {"id": "recruit_bed", "name": "Occupied Bunk"}
+		"recruit_chest": return {"id": "recruit_chest", "name": "Occupied Footlocker"}
+		"barracks_exit": return {"id": "barracks_exit", "name": "Barracks Exit"}
 		_: return {}
 
 func _add_outer_boundaries() -> void:
@@ -248,62 +293,86 @@ func _add_outer_boundaries() -> void:
 	_add_collision_rect(Vector2(thickness, map_size.y), Vector2(-thickness * 0.5, map_size.y * 0.5))
 	_add_collision_rect(Vector2(thickness, map_size.y), Vector2(map_size.x + thickness * 0.5, map_size.y * 0.5))
 
-func _add_collision_rect(size: Vector2, center: Vector2) -> void:
+func _add_collision_rect(size: Vector2, center: Vector2, water: bool = false) -> void:
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	shape.size = size
 	collision.shape = shape
 	collision.position = center
-	_collision_body.add_child(collision)
-	_collision_footprints.append(Rect2(center - size * 0.5, size))
+	(_water_body if water else _collision_body).add_child(collision)
+	var footprint := Rect2(center - size * 0.5, size)
+	_collision_footprints.append(footprint)
+	if not water:
+		_solid_footprints.append(footprint)
 
 func _build_navigation() -> void:
-	_navigation = AStarGrid2D.new()
-	_navigation.region = Rect2i(0, 0, int(map_size.x / tile_size.x), int(map_size.y / tile_size.y))
-	_navigation.cell_size = Vector2(tile_size)
-	_navigation.offset = Vector2(tile_size) * 0.5
-	_navigation.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	_navigation.update()
-	for footprint in _collision_footprints:
+	_navigation = _new_navigation_grid()
+	_amphibious_navigation = _new_navigation_grid()
+	_mark_solid_cells(_navigation, _collision_footprints)
+	_mark_solid_cells(_amphibious_navigation, _solid_footprints)
+
+func _new_navigation_grid() -> AStarGrid2D:
+	var grid := AStarGrid2D.new()
+	grid.region = Rect2i(0, 0, int(map_size.x / tile_size.x), int(map_size.y / tile_size.y))
+	grid.cell_size = Vector2(tile_size)
+	grid.offset = Vector2(tile_size) * 0.5
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.update()
+	return grid
+
+func _mark_solid_cells(grid: AStarGrid2D, footprints: Array[Rect2]) -> void:
+	for footprint in footprints:
 		if footprint.end.x <= 0.0 or footprint.end.y <= 0.0 or footprint.position.x >= map_size.x or footprint.position.y >= map_size.y:
 			continue
-		var first_x := clampi(floori(footprint.position.x / tile_size.x), 0, _navigation.region.size.x - 1)
-		var first_y := clampi(floori(footprint.position.y / tile_size.y), 0, _navigation.region.size.y - 1)
-		var last_x := clampi(ceili(footprint.end.x / tile_size.x) - 1, 0, _navigation.region.size.x - 1)
-		var last_y := clampi(ceili(footprint.end.y / tile_size.y) - 1, 0, _navigation.region.size.y - 1)
+		var first_x := clampi(floori(footprint.position.x / tile_size.x), 0, grid.region.size.x - 1)
+		var first_y := clampi(floori(footprint.position.y / tile_size.y), 0, grid.region.size.y - 1)
+		var last_x := clampi(ceili(footprint.end.x / tile_size.x) - 1, 0, grid.region.size.x - 1)
+		var last_y := clampi(ceili(footprint.end.y / tile_size.y) - 1, 0, grid.region.size.y - 1)
 		for y in range(first_y, last_y + 1):
 			for x in range(first_x, last_x + 1):
-				_navigation.set_point_solid(Vector2i(x, y))
+				grid.set_point_solid(Vector2i(x, y))
 
 func is_walkable_position(world_position: Vector2) -> bool:
-	if _navigation == null:
+	return _walkable_on_grid(_navigation, world_position)
+
+func is_amphibious_walkable_position(world_position: Vector2) -> bool:
+	return _walkable_on_grid(_amphibious_navigation, world_position)
+
+func _walkable_on_grid(grid: AStarGrid2D, world_position: Vector2) -> bool:
+	if grid == null:
 		return false
 	var local := to_local(world_position)
 	var cell := Vector2i(floori(local.x / tile_size.x), floori(local.y / tile_size.y))
-	return _navigation.is_in_boundsv(cell) and not _navigation.is_point_solid(cell)
+	return grid.is_in_boundsv(cell) and not grid.is_point_solid(cell)
 
 func get_walk_path(start: Vector2, destination: Vector2) -> PackedVector2Array:
+	return _path_on_grid(_navigation, start, destination)
+
+func get_amphibious_path(start: Vector2, destination: Vector2) -> PackedVector2Array:
+	return _path_on_grid(_amphibious_navigation, start, destination)
+
+func _path_on_grid(grid: AStarGrid2D, start: Vector2, destination: Vector2) -> PackedVector2Array:
 	var path := PackedVector2Array()
-	if _navigation == null:
+	if grid == null:
 		return path
 	var local_start := to_local(start)
 	var local_destination := to_local(destination)
 	var from_cell := Vector2i(floori(local_start.x / tile_size.x), floori(local_start.y / tile_size.y))
 	var destination_cell := Vector2i(floori(local_destination.x / tile_size.x), floori(local_destination.y / tile_size.y))
-	if not _navigation.is_in_boundsv(from_cell) or not _navigation.is_in_boundsv(destination_cell):
+	if not grid.is_in_boundsv(from_cell) or not grid.is_in_boundsv(destination_cell):
 		return path
-	var from_open := _nearest_open_cell(from_cell)
-	var destination_open := _nearest_open_cell(destination_cell)
+	var from_open := _nearest_open_cell(grid, from_cell)
+	var destination_open := _nearest_open_cell(grid, destination_cell)
 	if from_open.x < 0 or destination_open.x < 0:
 		return path
-	var cells := _navigation.get_id_path(from_open, destination_open)
+	var cells := grid.get_id_path(from_open, destination_open)
 	if cells.is_empty():
 		return path
 	if from_open == destination_open and from_cell == destination_cell:
 		path.append(destination)
 		return path
 	for cell in cells:
-		path.append(to_global(_navigation.get_point_position(cell)))
+		path.append(to_global(grid.get_point_position(cell)))
 	if destination_open == destination_cell:
 		path.append(destination)
 	return path
@@ -317,8 +386,8 @@ func get_common_field_positions() -> Array[Vector2]:
 			positions.append(child.global_position)
 	return positions
 
-func _nearest_open_cell(cell: Vector2i) -> Vector2i:
-	if not _navigation.is_point_solid(cell):
+func _nearest_open_cell(grid: AStarGrid2D, cell: Vector2i) -> Vector2i:
+	if not grid.is_point_solid(cell):
 		return cell
 	for radius in range(1, 7):
 		var closest := Vector2i(-1, -1)
@@ -328,7 +397,7 @@ func _nearest_open_cell(cell: Vector2i) -> Vector2i:
 				if maxi(absi(x - cell.x), absi(y - cell.y)) != radius:
 					continue
 				var candidate := Vector2i(x, y)
-				if _navigation.is_in_boundsv(candidate) and not _navigation.is_point_solid(candidate):
+				if grid.is_in_boundsv(candidate) and not grid.is_point_solid(candidate):
 					var distance := (candidate - cell).length_squared()
 					if distance < closest_distance:
 						closest = candidate

@@ -1,0 +1,13 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "station_terrain",
+  "tilewidth": 16,
+  "tileheight": 16,
+  "tilecount": 48,
+  "columns": 8,
+  "image": "../assets/art/space_military_base/station_terrain.png",
+  "imagewidth": 128,
+  "imageheight": 96
+}
