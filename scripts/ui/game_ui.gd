@@ -17,6 +17,11 @@ const CYAN := Color("5fd6d3")
 const RED := Color("d94b4b")
 const RECRUIT_PAGE_SIZE := 10
 const NORTH_REGION_Y := 352.0
+## The game draws at 640x360 and stretches to the window. The HUD keeps the size it
+## has in a 1280x720 window (2x) when the window is larger, so fullscreen shows more
+## map around the same boxes instead of bigger boxes.
+const BASE_SIZE := Vector2(640, 360)
+const UI_PIXEL_SCALE := 2.0
 
 var health_bar: ProgressBar
 var status_label: Label
@@ -34,6 +39,14 @@ var modal_content: VBoxContainer
 ## Text box for typed squad orders; Enter opens it when the world accepts them.
 var order_bar: PanelContainer
 var order_input: LineEdit
+## Orders sent this session, oldest first; Up and Down step through them.
+var order_history: Array[String] = []
+var _history_index := 0
+## Tab completion: the text before the word being completed, the matches and
+## which one is shown. Any other key starts a new completion.
+var _completion_base := ""
+var _completions: PackedStringArray = []
+var _completion_index := -1
 var _notification_timer: Timer
 var _active_service_id := ""
 var _active_service_name := ""
@@ -56,12 +69,26 @@ func _ready() -> void:
 	_build_modal()
 	_connect_state()
 	_refresh_all()
+	get_viewport().size_changed.connect(_fit_to_window)
+	_fit_to_window()
 
 func _input(event: InputEvent) -> void:
 	if order_bar.visible:
-		# Keys go to the text box; only Escape is handled here, to close it.
-		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
-			close_order_bar()
+		# Keys go to the text box; Escape closes it, Tab completes a word, Up and
+		# Down step through earlier orders.
+		if event is InputEventKey and event.pressed:
+			match event.physical_keycode:
+				KEY_ESCAPE:
+					close_order_bar()
+				KEY_TAB:
+					complete_order_word()
+				KEY_UP:
+					step_order_history(-1)
+				KEY_DOWN:
+					step_order_history(1)
+				_:
+					_completion_index = -1
+					return
 			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("order_type") and not modal_overlay.visible and not get_tree().paused:
@@ -281,7 +308,7 @@ func _build_hud() -> void:
 	order_input = LineEdit.new()
 	order_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	order_input.max_length = 300
-	order_input.placeholder_text = "bowmen to the west ramp · spearmen follow me · Esc closes"
+	order_input.placeholder_text = "bowmen to the west ramp · Tab completes · ↑ last order · Esc closes"
 	order_input.add_theme_font_size_override("font_size", 10)
 	order_input.text_submitted.connect(_on_order_text_submitted)
 	order_row.add_child(order_input)
@@ -569,7 +596,7 @@ func _build_artichoke_officer() -> void:
 			world.promote_to_captain()
 			_add_body("\"Every warship on that airfield is burning. Captain Vela ran when it got hard; you held the trenches, took their guns and now you have finished their fleet. That is bravery, and the Confederation does not forget it.\"")
 			_add_body("\"From today you are Captain. You earned the rank on this front, not in an office.\"")
-			_add_body("\"With no guns and no ships left here, the Republic will keep quiet for a while. Go to Pomidor, our capital, and tell the Council what was done on Artichoke. They should hear it from the one who did it.\"")
+			_add_body("\"With no guns and no ships left here, the Republic will keep quiet for a while. Go to Pomidor, where the Council of all our planets meets, and tell them what was done on Artichoke. They should hear it from the one who did it.\"")
 		"done":
 			_add_body("\"Still here, Captain? The front is quiet. The Council on Pomidor is waiting for your report.\"")
 
@@ -617,13 +644,14 @@ func _build_artichoke_defense(world: Node) -> void:
 func _build_artichoke_ships(world: Node) -> void:
 	_add_body("\"I am General Hickey. Captain Vela deserted during the trench attacks, which leaves you the highest-ranked soldier here, Officer.\"")
 	_add_body("\"Until now the Republic has been repairing their broken warships at the airfield so they can bombard this base. The only way to stop them is to destroy the warships first.\"")
-	_add_body("\"Take six soldiers to the airfield. One field mine finishes an escort; the flagship needs three. Plant them with E beside a hull and get clear before it blows. Draw six mines at the Arms building.\"")
-	_add_body("Q follow, R hold, T attack. The strike fails if you fall or all six are down; mines on a hull still standing are lost.")
+	_add_body("\"Take eight soldiers and Sapper Vuk to the airfield. Vuk plants the mines, fifteen seconds each: one finishes an escort, the flagship needs three. He carries no weapon, so keep him alive. Draw six mines at the Arms building.\"")
+	_add_body("\"Once the first ship burns, or if you dawdle, the airfield will call for help: armored guardsmen and more soldiers from their base. Be quick.\"")
+	_add_body("Q follow, R hold, T attack. The strike fails if you fall, Vuk falls or all eight soldiers are down, and the Republic repairs every ship it lost.")
 	if world.ships_active:
 		_add_body("Strike under way: %d of %d warships standing, %d soldiers standing." % [world.intact_ship_count(), world.warships().size(), world.standing_raid_soldiers()])
 		_add_action_button("Call off the strike", func() -> void: world_action_requested.emit("ships_cancel"))
 	else:
-		_add_action_button("Lead the strike on the warships", func() -> void: world_action_requested.emit("ships_start"))
+		_add_action_button("Lead the strike with eight soldiers and Vuk", func() -> void: world_action_requested.emit("ships_start"))
 
 func _build_artichoke_arms() -> void:
 	var world := get_tree().get_first_node_in_group("game_world")
@@ -641,6 +669,10 @@ func _build_artichoke_arms() -> void:
 	_add_body("\"Lost something? I keep count, so do not make a habit of it.\"")
 	var weapons := _add_action_button("Replace a lost bow, spear or armor", func() -> void: world_action_requested.emit("arms_weapons"))
 	weapons.disabled = world.KIT_GEAR.all(func(item_id: String) -> bool: return GameState.inventory.has(item_id))
+	if stage in ["ships", "done"]:
+		_add_body("\"Going after the fleet? Their guardsmen hit hard. Take bronze.\"")
+		var bronze := _add_action_button("Draw bronze armor for the strike", func() -> void: world_action_requested.emit("arms_bronze"))
+		bronze.disabled = GameState.equipment.get("armor", "") == world.STRIKE_ARMOR or int(GameData.item(String(GameState.equipment.get("armor", ""))).get("protection", 0)) >= 2
 	var allowance: int = world.mine_allowance()
 	if stage in ["assault", "raid"]:
 		_add_body("\"No mines for the assault teams. You get six when the Republic comes for our trenches.\"")
@@ -663,6 +695,8 @@ func _build_artichoke_mess() -> void:
 
 func open_order_bar() -> void:
 	order_input.clear()
+	_history_index = order_history.size()
+	_completion_index = -1
 	order_bar.visible = true
 	order_input.grab_focus()
 	Engine.time_scale = TYPING_TIME_SCALE
@@ -678,9 +712,51 @@ func _exit_tree() -> void:
 
 func _on_order_text_submitted(text: String) -> void:
 	close_order_bar()
+	var entry := text.strip_edges()
+	if not entry.is_empty() and (order_history.is_empty() or order_history[-1] != entry):
+		order_history.append(entry)
 	var world := get_tree().get_first_node_in_group("game_world")
 	if not text.strip_edges().is_empty() and world != null and world.has_method("submit_squad_text"):
 		world.submit_squad_text(text)
+
+## Replaces the order text with an earlier (-1) or later (+1) order; stepping
+## past the newest one leaves the bar empty.
+func step_order_history(step: int) -> void:
+	if order_history.is_empty():
+		return
+	_history_index = clampi(_history_index + step, 0, order_history.size())
+	order_input.text = order_history[_history_index] if _history_index < order_history.size() else ""
+	order_input.caret_column = order_input.text.length()
+	_completion_index = -1
+
+## Completes the last word of the order. A match may cover the last two or three
+## words, so "west r" completes to "west ramp". Pressing Tab again shows the next match.
+func complete_order_word() -> void:
+	if _completion_index >= 0 and _completions.size() > 1:
+		_completion_index = (_completion_index + 1) % _completions.size()
+	else:
+		var world := get_tree().get_first_node_in_group("game_world")
+		if world == null or not world.has_method("order_completions"):
+			return
+		var words: PackedStringArray = world.order_completions()
+		var text := order_input.text
+		var tokens := text.split(" ")
+		_completions = []
+		for count in range(mini(3, tokens.size()), 0, -1):
+			var tail := " ".join(tokens.slice(tokens.size() - count)).to_lower()
+			if tail.is_empty():
+				continue
+			for word in words:
+				if word.begins_with(tail) and word != tail and not _completions.has(word):
+					_completions.append(word)
+			if not _completions.is_empty():
+				_completion_base = text.substr(0, text.length() - tail.length())
+				break
+		if _completions.is_empty():
+			return
+		_completion_index = 0
+	order_input.text = _completion_base + _completions[_completion_index] + " "
+	order_input.caret_column = order_input.text.length()
 
 ## Redraws the Artichoke front panel after the raid or battery changes.
 func refresh_front_status() -> void:
@@ -986,6 +1062,51 @@ func _label(text_value: String, font_size: int, color: Color) -> Label:
 	label.add_theme_constant_override("shadow_offset_x", 1)
 	label.add_theme_constant_override("shadow_offset_y", 1)
 	return label
+
+func _fit_to_window() -> void:
+	var window := Vector2(get_window().size)
+	var stretch := minf(window.x / BASE_SIZE.x, window.y / BASE_SIZE.y)
+	apply_ui_scale(minf(1.0, UI_PIXEL_SCALE / stretch) if stretch > 0.0 else 1.0)
+	# A wrapping label briefly asks for a tall box while the window resizes, and a
+	# box never shrinks back by itself, so the boxes are placed again a frame later.
+	_settle_layout.call_deferred()
+
+func _settle_layout() -> void:
+	await get_tree().process_frame
+	apply_ui_scale(scale.x)
+
+## Shrinks the UI layer by `ui_scale` and places each box again in the larger
+## logical screen: a box keeps its distance to the nearest edge, a centered box
+## stays centered, and a box as wide as the screen keeps spanning it.
+func apply_ui_scale(ui_scale: float) -> void:
+	scale = Vector2.ONE * ui_scale
+	var screen := BASE_SIZE / ui_scale
+	for holder in get_children():
+		if not holder is Control:
+			continue
+		holder.position = Vector2.ZERO
+		holder.size = screen
+		for box in holder.get_children():
+			if box is Control and not box.top_level:
+				_place_box(box, screen)
+
+func _place_box(box: Control, screen: Vector2) -> void:
+	if not box.has_meta("base_rect"):
+		box.set_meta("base_rect", Rect2(box.position, box.size))
+	var base: Rect2 = box.get_meta("base_rect")
+	var extra := screen - BASE_SIZE
+	var position := base.position
+	var size := base.size
+	for axis in 2:
+		var center := base.position[axis] + base.size[axis] * 0.5
+		if base.size[axis] >= BASE_SIZE[axis] * 0.9:
+			size[axis] += extra[axis]
+		elif absf(center - BASE_SIZE[axis] * 0.5) < BASE_SIZE[axis] * 0.08:
+			position[axis] += extra[axis] * 0.5
+		elif center > BASE_SIZE[axis] * 0.5:
+			position[axis] += extra[axis]
+	box.position = position
+	box.size = size
 
 func _panel_at(panel_position: Vector2, panel_size: Vector2, border: Color = Color("57506d")) -> PanelContainer:
 	var panel := PanelContainer.new()

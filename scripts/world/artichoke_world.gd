@@ -19,7 +19,7 @@ extends GameWorld
 ##    with six soldiers to mine the Republic warships at the airfield: one field
 ##    mine destroys an escort, the flagship needs three.
 ## 7. Back at the base General Hickey praises the player, promotes them to Captain
-##    and sends them to the Council on Pomidor, the Confederation capital.
+##    and sends them to the Council on Pomidor.
 ## The Mess beside the Arms building heals the player fully between missions.
 ## Saves from before the chain existed count a destroyed cannon as steps 1 to 3 done.
 ##
@@ -41,7 +41,7 @@ extends GameWorld
 ## the attackers. Three Republic soldiers reaching the ramp tops, the player's
 ## defeat or all six defenders down lose the defense; beating every wave is saved.
 ##
-## During the defense the player can also type orders (Enter). The squad starts in
+## During the defense and the fleet strike the player can also type orders (Enter). The squad starts in
 ## three groups, bowmen, spearmen and swordsmen, and the orders name groups,
 ## soldiers and three places: the west ramp, the east stairs and the centre
 ## trench. "mark here as NAME" adds a place where the player stands, up to five,
@@ -84,12 +84,16 @@ const ASSAULT_POSTS := [Vector2(1000, 618), Vector2(1048, 618), Vector2(1080, 61
 const ASSAULT_KINDS := ["republic_archer", "republic_spearman", "republic_archer", "republic_swordsman", "republic_archer", "republic_spearman"]
 const ASSAULT_REWARD := 100
 ## Guards around the warships during the fleet strike.
-const FLEET_GUARD_POSTS := [Vector2(480, 1016), Vector2(576, 1008), Vector2(704, 1016), Vector2(800, 1032), Vector2(672, 1072), Vector2(752, 1152)]
-const FLEET_GUARD_KINDS := ["republic_archer", "republic_spearman", "republic_swordsman", "republic_archer", "republic_swordsman", "republic_archer"]
+## The Republic airfield where the warships stand.
+const AIRFIELD_AREA := Rect2(400, 940, 520, 240)
+const FLEET_GUARD_POSTS := [Vector2(480, 1016), Vector2(576, 1008), Vector2(704, 1016), Vector2(800, 1032), Vector2(672, 1072), Vector2(752, 1152), Vector2(528, 1088), Vector2(624, 1120), Vector2(848, 1096), Vector2(560, 960)]
+const FLEET_GUARD_KINDS := ["republic_archer", "republic_spearman", "republic_swordsman", "republic_archer", "republic_swordsman", "republic_archer", "republic_spearman", "republic_swordsman", "republic_spearman", "republic_archer"]
 const FLEET_REWARD := 300
 const RAID_SIZE := 6
+## The fleet strike takes eight soldiers.
+const FLEET_SQUAD_SIZE := 8
 const RAID_REWARD := 150
-const RAID_NAMES := ["Brannock", "Ilse", "Corwin", "Petra", "Dusan", "Maren"]
+const RAID_NAMES := ["Brannock", "Ilse", "Corwin", "Petra", "Dusan", "Maren", "Tomas", "Vesna"]
 const RAID_TEXTURES := [
 	"res://assets/art/artichoke/objects/front_soldier.png",
 	"res://assets/art/artichoke/objects/front_soldier_2.png",
@@ -99,7 +103,8 @@ const RAID_TEXTURES := [
 	"res://assets/art/artichoke/objects/front_soldier_6.png",
 ]
 ## The raid squad's weapons by slot: three archers, two spearmen and a swordsman.
-const RAID_WEAPONS := ["bow", "bow", "spear", "bow", "sword", "spear"]
+## Slots 7 and 8 (a swordsman and a spearman) only go on the fleet strike.
+const RAID_WEAPONS := ["bow", "bow", "spear", "bow", "sword", "spear", "sword", "spear"]
 const CANNON_FLAG := "artichoke_cannon_%d_destroyed"
 const BATTERY_CENTER := Vector2(250, 875)
 const AIRFIELD := Vector2(648, 1030)
@@ -115,6 +120,33 @@ const SHELL_RADIUS := 30.0
 const SHELL_DAMAGE := 12
 const SHELL_WARNING := 2.2
 const CHARGE_FUSE := 4.0
+## The sapper plants a mine when he is this close to the hull.
+const SHIP_PLANT_REACH := 40.0
+## The airfield calls for help when the first warship blows, or after this many
+## seconds of the strike. From then until the strike ends, the Republic base keeps
+## sending soldiers towards the player.
+const FLEET_ALARM_DELAY := 45.0
+const SAPPER_HEALTH := 60
+const SAPPER_ARMOR := 2
+const FLEET_ALARM_ORIGIN := Vector2(1080, 1010)
+## Armored guardsmen in each group: one, then two, two again, then four in every
+## later group. FLEET_GUARDSMAN_GAPS is the wait after each group: 14 s after the
+## first, 12 s after the second, then 8 s.
+const FLEET_GUARDSMAN_WAVES := [1, 2, 2, 4]
+const FLEET_GUARDSMAN_GAPS := [14.0, 12.0, 8.0]
+## Ordinary soldiers leave in pairs every FLEET_ESCORT_INTERVAL seconds, taking
+## their kinds in turn from FLEET_ESCORT_KINDS.
+const FLEET_ESCORT_KINDS := ["republic_archer", "republic_spearman", "republic_swordsman"]
+const FLEET_ESCORT_INTERVAL := 6.0
+const FLEET_ESCORT_SIZE := 2
+## No new soldiers leave while this many sent by the alarm are still standing.
+const FLEET_REINFORCEMENT_CAP := 16
+## The sapper who goes on the fleet strike. Only he plants mines: he walks to the
+## nearest warship that still needs one and plants the player's field mines, which
+## takes SAPPER_PLANT_TIME seconds. He never fights; a hit makes him start that mine
+## again, and the strike fails if he falls.
+const SAPPER_NAME := "Sapper Vuk"
+const SAPPER_PLANT_TIME := 15.0
 const CHARGE_RADIUS := 36.0
 const CHARGE_DAMAGE := 20
 const MINE_RADIUS := 30.0
@@ -183,6 +215,18 @@ var _cannons: Array[BatteryCannon] = []
 var _raid_soldiers: Array[RaidSoldier] = []
 var _republic_units: Array[Enemy] = []
 var _reinforcements_sent := false
+var _fleet_alarm_timer := INF
+var _fleet_alarm_raised := false
+var _guardsman_wave := 0
+var _guardsman_timer := 0.0
+var _escort_timer := 0.0
+var _fleet_sent := 0
+var _escort_sent := 0
+var _fleet_reinforcements: Array[Enemy] = []
+var _sapper: RaidSoldier
+var _sapper_ship: RepublicWarship
+var _sapper_left := 0.0
+var _sapper_health := 0
 var _raid_order := "follow"
 var _shell_timer := 0.0
 var _counter_timer := 0.0
@@ -259,6 +303,9 @@ func _spawn_front_soldiers() -> void:
 		if data["kind"] == "confederation_officer":
 			_officer_home = Vector2(data["position"])
 			_spawn_officer(String(data["id"]), String(data["texture"]))
+			continue
+		# Only real enemies stand on the airfield, so the strike shows nobody who cannot be fought.
+		if data["kind"] == "republic_soldier" and AIRFIELD_AREA.has_point(Vector2(data["position"])):
 			continue
 		var soldier := FrontSoldier.new()
 		soldier.name = String(data["id"])
@@ -586,6 +633,8 @@ func _physics_process(delta: float) -> void:
 		_step_raid()
 	if defense_active:
 		_step_defense(delta)
+	if ships_active:
+		_step_ships(delta)
 
 ## Each standing Republic gun sends one shell at the Confederation trenches, or
 ## during mine duty at the spots still waiting for a mine.
@@ -725,14 +774,14 @@ func start_raid() -> bool:
 	return true
 
 ## Puts the six soldiers beside the player, following.
-func _deploy_squad() -> void:
+func _deploy_squad(count := RAID_SIZE) -> void:
 	_raid_order = "follow"
-	for index in RAID_SIZE:
+	for index in count:
 		var soldier := RaidSoldier.new()
 		soldier.name = "Squad_%s" % RAID_NAMES[index]
 		var spot := _nearby_open_position(player.global_position + RaidSoldier.FOLLOW_SLOTS[index])
 		actors_root.add_child(soldier)
-		soldier.configure("squad_%d" % index, RAID_NAMES[index], RAID_TEXTURES[index], spot, RAID_WEAPONS[index], index, self)
+		soldier.configure("squad_%d" % index, RAID_NAMES[index], RAID_TEXTURES[index % RAID_TEXTURES.size()], spot, RAID_WEAPONS[index], index, self)
 		soldier.downed.connect(_on_raid_soldier_downed)
 		_raid_soldiers.append(soldier)
 
@@ -811,7 +860,7 @@ func _on_raid_soldier_downed(soldier_id: String) -> void:
 			GameState.notify("All six soldiers are down. The assault has failed; Captain Vela will try again when you are ready.")
 		elif ships_active:
 			_end_ships("failed")
-			GameState.notify("All six soldiers are down. The strike has failed; the Republic will clear the mines off its hulls.")
+			GameState.notify("All %d soldiers are down. The strike has failed; the Republic will repair its fleet." % FLEET_SQUAD_SIZE)
 		else:
 			_end_raid("failed")
 			GameState.notify("All six raiders are down. The raid has failed; the survivors are carried back to Cauliflower Base.")
@@ -1051,7 +1100,7 @@ func _start_typed_orders() -> void:
 	squad_groups.clear()
 	for group_name: String in STARTING_GROUPS:
 		var members: Array[String] = []
-		for index in RAID_SIZE:
+		for index in _raid_soldiers.size():
 			if RAID_WEAPONS[index] == STARTING_GROUPS[group_name]:
 				members.append(squad_order_id(index))
 		squad_groups[group_name] = members
@@ -1071,9 +1120,24 @@ func _stop_typed_orders() -> void:
 		order_client.cancel()
 	_show_place_markers(false)
 
+## Words Tab completes in the order bar: order words, groups, standing
+## soldiers' names and every place name, including the ones the player marked.
+const ORDER_WORDS := ["attack", "follow", "follow me", "hold", "stop", "move", "go to", "form a line between", "patrol between", "and", "facing", "everyone", "mark here as", "forget"]
+
+func order_completions() -> PackedStringArray:
+	var words := PackedStringArray(ORDER_WORDS)
+	for group_name: String in squad_groups:
+		words.append(group_name)
+	for soldier in _raid_soldiers:
+		if is_instance_valid(soldier) and not soldier.down:
+			words.append(soldier.soldier_name.to_lower())
+	for letter: String in order_place_names:
+		words.append(order_place_names[letter])
+	return words
+
 ## Whether Enter opens the order bar.
 func accepts_typed_orders() -> bool:
-	return defense_active
+	return defense_active or ships_active
 
 func squad_order_id(index: int) -> String:
 	return "soldier_%02d" % (index + 1)
@@ -1133,7 +1197,7 @@ func _replace_words(text: String, pattern: String, replacement: String) -> Strin
 
 ## Sends one typed order. "stop" is handled here without the service.
 func submit_squad_text(text: String) -> bool:
-	if not defense_active or standing_raid_soldiers() == 0:
+	if not accepts_typed_orders() or standing_raid_soldiers() == 0:
 		return false
 	text = text.strip_edges()
 	if text.is_empty() or text.length() > 300:
@@ -1232,7 +1296,7 @@ func forget_place(raw_name: String) -> bool:
 	return false
 
 func _on_typed_order_ready(order: Dictionary, source: String) -> void:
-	if defense_active:
+	if accepts_typed_orders():
 		execute_squad_order(order, source)
 
 ## Checks an interpreted order against the current squad and carries it out.
@@ -1278,7 +1342,7 @@ func execute_squad_order(value: Variant, source: String = "order") -> bool:
 			elif not _plan_squad_task(order, ids):
 				return false
 			var where := "attack" if order["end"] == null else "attack at the %s" % order_place_names[order["end"]]
-			var waiting := "" if not wave_units().is_empty() else " No attackers on the field yet; they wait for the next wave."
+			var waiting := "" if not defense_active or not wave_units().is_empty() else " No attackers on the field yet; they wait for the next wave."
 			GameState.notify("%s: %s. (%s)%s" % [_sentence_case(who), where, source, waiting])
 	_raid_order = "typed"
 	_refresh_front_hud()
@@ -1437,6 +1501,8 @@ func handle_world_action(action: String) -> void:
 			draw_kit()
 		"arms_weapons":
 			reissue_weapons()
+		"arms_bronze":
+			issue_strike_armor()
 		"arms_mines":
 			refill_mines()
 		"arms_bandages":
@@ -1450,7 +1516,12 @@ func front_status_text() -> String:
 	if assault_active:
 		return "TRENCH ASSAULT — Q follow · R hold · T attack\nTarget: the Republic soldier marked TARGET   Republic left: %d\nSoldiers standing: %d/%d   Squad order: %s" % [assault_units().size(), standing_raid_soldiers(), RAID_SIZE, _raid_order]
 	if ships_active:
-		return "FLEET STRIKE — E plants a field mine on a hull\nShips left: %d/%d (the flagship needs 3 mines)   Field mines carried: %d\nSoldiers standing: %d/%d   Squad order: %s" % [intact_ship_count(), _warships.size(), int(GameState.inventory.get("field_mine", 0)), standing_raid_soldiers(), RAID_SIZE, _raid_order]
+		var sapper_text := "%s is down" % SAPPER_NAME
+		if sapper() != null and not _sapper.down:
+			sapper_text = "%s: %s" % [SAPPER_NAME, "mining the %s (%.1fs)" % [_sapper_ship.display_name, maxf(0.0, _sapper_left)] if _sapper_ship != null else "with you"]
+		var strike := "FLEET STRIKE — protect %s · Q follow · R hold · T attack\nShips left: %d/%d (the flagship needs 3 mines)   Field mines carried: %d\n%s   %s\nSoldiers standing: %d/%d   Squad order: %s" % [SAPPER_NAME, intact_ship_count(), _warships.size(), int(GameState.inventory.get("field_mine", 0)), sapper_text, "ALARM: reinforcements coming" if _fleet_alarm_raised else "Alarm in %ds" % ceili(_fleet_alarm_timer), standing_raid_soldiers(), _raid_soldiers.size(), _raid_order]
+		var tasks := group_task_text()
+		return strike + ("\n" + tasks if tasks != "" else "") + "\nEnter: typed order   %s" % (order_client.status if order_client != null else "")
 	match story_stage():
 		"report":
 			return "ARTICHOKE FRONT\nReport to %s by the transport" % OFFICER_NAME
@@ -1465,7 +1536,7 @@ func front_status_text() -> String:
 		"debrief":
 			return "ARTICHOKE FRONT\nThe Republic fleet is wrecked\nReport to %s at Cauliflower Base" % GENERAL_NAME
 		"done":
-			return "ARTICHOKE FRONT — Captain\nThe front is quiet for now\nReport to the Council on Pomidor, the Confederation capital"
+			return "ARTICHOKE FRONT — Captain\nThe front is quiet for now\nReport to the Council on Pomidor"
 	if raid_active:
 		return "TRENCH RAID — Q follow · R hold · T attack\nRepublic cannons left: %d   Raiders standing: %d/%d\nSquad order: %s" % [intact_cannon_count(), standing_raid_soldiers(), RAID_SIZE, _raid_order]
 	if defense_active:
@@ -1540,7 +1611,7 @@ func report_to_officer() -> void:
 func promote_to_captain() -> void:
 	if story_stage() == "debrief":
 		_set_flag(CAPTAIN_FLAG)
-		GameState.notify("Promoted to Captain. Next: report to the Council on Pomidor, the Confederation capital.")
+		GameState.notify("Promoted to Captain. Next: report to the Council on Pomidor.")
 		_refresh_front_hud()
 
 ## True while any mission runs; the Mess serves no meals then.
@@ -1603,6 +1674,23 @@ func draw_kit() -> bool:
 	_set_flag(KIT_FLAG)
 	GameState.notify("The quartermaster issues a service bow, an iron spear, wooden armor, %d field mines and %d bandages. You wear the armor and hold the bow; switch to the spear in your inventory (I). H uses a bandage when you have no food." % [KIT_MINES, KIT_BANDAGES])
 	_refresh_front_hud()
+	return true
+
+## Arms hands out bronze armor once General Hickey orders the fleet strike, so
+## the player can take a few hits from the armored guardsmen.
+const STRIKE_ARMOR := "bronze_armor"
+
+func issue_strike_armor() -> bool:
+	if story_stage() not in ["ships", "done"]:
+		GameState.notify("Bronze armor is for the strike on the warships.")
+		return false
+	if not GameState.inventory.has(STRIKE_ARMOR):
+		GameState.add_item(STRIKE_ARMOR)
+	# Better armor the player already wears stays on.
+	var worn := String(GameState.equipment.get("armor", ""))
+	if worn.is_empty() or int(GameData.item(worn).get("protection", 0)) < int(GameData.item(STRIKE_ARMOR).get("protection", 0)):
+		GameState.equip_item(STRIKE_ARMOR)
+	GameState.notify("The quartermaster straps you into bronze armor for the strike.")
 	return true
 
 func reissue_weapons() -> bool:
@@ -1876,52 +1964,188 @@ func start_ships() -> bool:
 		GameState.notify("You need %d field mines for the ships. The Arms building east of the barracks issues them." % needed)
 		return false
 	ships_active = true
-	for ship in _warships:
-		ship.set_open_for_mines(true)
 	for index in FLEET_GUARD_POSTS.size():
 		var kind: String = FLEET_GUARD_KINDS[index]
 		var texture := "res://assets/art/artichoke/objects/republic_soldier%s.png" % ("" if index % 3 == 0 else "_%d" % (index % 3 + 1))
 		var unit := _spawn_republic_unit(kind, _nearby_open_position(FLEET_GUARD_POSTS[index]), texture, "artichoke_guard_%d" % index)
 		unit.hold_ground = kind == "republic_archer"
 		_fleet_guards.append(unit)
-	_deploy_squad()
-	GameState.notify("Fleet strike: six soldiers go with you to the Republic airfield. Plant a field mine on each escort and three on the flagship (E beside a hull). Q follow, R hold, T attack.")
+	_deploy_squad(FLEET_SQUAD_SIZE)
+	_start_typed_orders()
+	_deploy_sapper()
+	_fleet_alarm_raised = false
+	_fleet_alarm_timer = FLEET_ALARM_DELAY
+	_guardsman_wave = 0
+	_fleet_sent = 0
+	_escort_sent = 0
+	_fleet_reinforcements.clear()
+	GameState.notify("Fleet strike: eight soldiers and %s go with you to the Republic airfield. He plants your mines, one on each escort and three on the flagship, %d seconds each; keep him alive. When the airfield raises the alarm, armored guardsmen come. Q follow, R hold, T attack." % [SAPPER_NAME, int(SAPPER_PLANT_TIME)])
 	_refresh_front_hud()
 	return true
 
 func cancel_ships() -> void:
 	if ships_active:
 		_end_ships("cancelled")
-		GameState.notify("The strike is called off. The Republic will clear the mines off its hulls.")
+		GameState.notify("The strike is called off. The Republic will repair its fleet and clear the mines off its hulls.")
 
-## Plants one field mine on a hull. The last mine a ship needs lights the fuse.
-func plant_ship_mine(ship: RepublicWarship) -> bool:
-	if ship == null or not ship.intact or ship.fully_mined():
-		return false
+## Only the sapper plants mines on the hulls.
+func plant_ship_mine(_ship: RepublicWarship) -> bool:
+	GameState.notify("%s plants the mines. Keep him alive." % SAPPER_NAME)
+	return false
+
+func _step_ships(delta: float) -> void:
+	if not _fleet_alarm_raised:
+		_fleet_alarm_timer -= delta
+		if _fleet_alarm_timer <= 0.0:
+			raise_fleet_alarm()
+	else:
+		_step_fleet_reinforcements(delta)
 	if not ships_active:
-		GameState.notify("%s has not ordered the strike yet." % GENERAL_NAME)
-		return false
+		return
+	_step_sapper(delta)
+	_refresh_front_hud()
+
+func sapper() -> RaidSoldier:
+	return _sapper if is_instance_valid(_sapper) else null
+
+func sapper_ship() -> RepublicWarship:
+	return _sapper_ship
+
+func _deploy_sapper() -> void:
+	_sapper = RaidSoldier.new()
+	_sapper.name = "Sapper"
+	actors_root.add_child(_sapper)
+	_sapper.configure("sapper", SAPPER_NAME, RAID_TEXTURES[3], _nearby_open_position(player.global_position + Vector2(0, 24)), "sword", 0, self)
+	_sapper.fights = false
+	# He wears a sapper's padded armor and can take a few hits while he works.
+	_sapper.max_health = SAPPER_HEALTH
+	_sapper.health = SAPPER_HEALTH
+	_sapper.armor = SAPPER_ARMOR
+	_sapper._refresh_health_bar()
+	_sapper.downed.connect(func(_id: String) -> void:
+		if ships_active:
+			_end_ships("failed")
+			GameState.notify("%s is down and nobody else can plant the mines. The strike has failed; the Republic will repair its fleet." % SAPPER_NAME))
+	_sapper_ship = null
+
+## The intact warship nearest to `from` that still needs a mine, or null.
+func _nearest_open_ship(from: Vector2) -> RepublicWarship:
+	var best: RepublicWarship = null
+	for ship in _warships:
+		if not ship.intact or ship.fully_mined():
+			continue
+		if best == null or from.distance_to(ship.get_interaction_position()) < from.distance_to(best.get_interaction_position()):
+			best = ship
+	return best
+
+func _step_sapper(delta: float) -> void:
+	var sapper := sapper()
+	if sapper == null or sapper.down:
+		return
+	if _sapper_ship != null and (not _sapper_ship.intact or _sapper_ship.fully_mined()):
+		_sapper_ship = null
+	if int(GameState.inventory.get("field_mine", 0)) <= 0:
+		_sapper_ship = null
+		if sapper.order != "follow":
+			sapper.set_order("follow")
+		return
+	if _sapper_ship == null:
+		_sapper_ship = _nearest_open_ship(sapper.global_position)
+		if _sapper_ship == null:
+			if sapper.order != "follow":
+				sapper.set_order("follow")
+			return
+		_sapper_left = SAPPER_PLANT_TIME
+		_sapper_health = sapper.health
+		sapper.hold_at(_nearby_open_position(_sapper_ship.get_interaction_position()), "mine the %s" % _sapper_ship.display_name)
+		_refresh_front_hud()
+	if sapper.global_position.distance_to(_sapper_ship.get_interaction_position()) > SHIP_PLANT_REACH:
+		_sapper_left = SAPPER_PLANT_TIME
+		_sapper_health = sapper.health
+		return
+	if sapper.health < _sapper_health:
+		# A hit stops him; he starts this mine again.
+		_sapper_left = SAPPER_PLANT_TIME
+		_sapper_health = sapper.health
+		return
+	_sapper_left -= delta
+	if _sapper_left <= 0.0:
+		var ship := _sapper_ship
+		_sapper_ship = null
+		_finish_ship_mine(ship)
+
+## The airfield calls for help: the first guardsman leaves the Republic base at
+## once, and _step_fleet_reinforcements keeps sending more until the strike ends.
+func raise_fleet_alarm() -> void:
+	if _fleet_alarm_raised or not ships_active:
+		return
+	_fleet_alarm_raised = true
+	_guardsman_wave = 0
+	_guardsman_timer = 0.0
+	_escort_timer = FLEET_ESCORT_INTERVAL
+	GameState.notify("The airfield sounds the alarm! The Republic base is sending armored guardsmen and soldiers until the fleet burns.")
+	_step_fleet_reinforcements(0.0)
+
+func _step_fleet_reinforcements(delta: float) -> void:
+	_guardsman_timer -= delta
+	_escort_timer -= delta
+	var standing := _fleet_reinforcements.filter(func(unit: Enemy) -> bool: return is_instance_valid(unit) and unit.health > 0).size()
+	if _guardsman_timer <= 0.0:
+		_guardsman_timer = FLEET_GUARDSMAN_GAPS[mini(_guardsman_wave, FLEET_GUARDSMAN_GAPS.size() - 1)]
+		var count: int = FLEET_GUARDSMAN_WAVES[mini(_guardsman_wave, FLEET_GUARDSMAN_WAVES.size() - 1)]
+		_guardsman_wave += 1
+		for index in mini(count, FLEET_REINFORCEMENT_CAP - standing):
+			_send_reinforcement("republic_guardsman", index, count)
+		standing += count
+	if _escort_timer <= 0.0:
+		_escort_timer = FLEET_ESCORT_INTERVAL
+		for index in mini(FLEET_ESCORT_SIZE, FLEET_REINFORCEMENT_CAP - standing):
+			_send_reinforcement(FLEET_ESCORT_KINDS[_escort_sent % FLEET_ESCORT_KINDS.size()], index, FLEET_ESCORT_SIZE)
+			_escort_sent += 1
+
+## Sends one soldier from the Republic base towards Sapper Vuk, who is what the
+## Republic is after, or towards the player if Vuk is gone; `index` of `count`
+## spreads a group side by side. The route is fixed when the soldier sets out.
+func _send_reinforcement(kind: String, index: int, count: int) -> void:
+	var spread := Vector2(index * 18 - (count - 1) * 9, 0)
+	var origin := _nearby_open_position(FLEET_ALARM_ORIGIN + spread)
+	var texture := "res://assets/art/artichoke/objects/republic_guardsman.png" if kind == "republic_guardsman" else "res://assets/art/artichoke/objects/republic_soldier_%d.png" % (_fleet_sent % 3 + 5)
+	var unit := _spawn_republic_unit(kind, origin, texture, "artichoke_fleet_alarm_%d" % _fleet_sent)
+	_fleet_sent += 1
+	var goal := sapper().global_position if sapper() != null else player.global_position
+	unit.march_along(tiled_loader.get_walk_path(origin, _nearby_open_position(goal + spread)))
+	_fleet_guards.append(unit)
+	_fleet_reinforcements.append(unit)
+
+func fleet_alarm_raised() -> bool:
+	return _fleet_alarm_raised
+
+func _finish_ship_mine(ship: RepublicWarship) -> bool:
 	if not GameState.remove_item("field_mine"):
 		GameState.notify("You have no field mines left. The Arms building issues more.")
 		return false
 	if not ship.add_mine():
-		GameState.notify("Mine planted on the %s: %d of %d." % [ship.display_name, ship.mines_planted, ship.mines_needed])
+		GameState.notify("%s planted a mine on the %s: %d of %d." % [SAPPER_NAME, ship.display_name, ship.mines_planted, ship.mines_needed])
 		_refresh_front_hud()
 		return true
 	var charge := ArtilleryShell.new()
 	charge.name = "ShipCharge_%s" % ship.ship_id
 	_battlefield.add_child(charge)
 	var detonate := func(at: Vector2) -> void:
+		# A failed strike puts out every burning fuse; this is a second check.
+		if not ships_active:
+			return
 		if is_instance_valid(ship):
 			ship.destroy()
 		_blast(at, CHARGE_RADIUS, CHARGE_DAMAGE, true, true)
 	charge.launch(ship.global_position, CHARGE_RADIUS, CHARGE_FUSE, detonate, false)
-	GameState.notify("The %s is mined. Get clear: %d seconds!" % [ship.display_name, int(CHARGE_FUSE)])
+	GameState.notify("%s mined the %s. Get clear: %d seconds!" % [SAPPER_NAME, ship.display_name, int(CHARGE_FUSE)])
 	_refresh_front_hud()
 	return true
 
 func _on_ship_destroyed(_ship_id: String, index: int) -> void:
 	_set_flag(SHIP_FLAG % index)
+	raise_fleet_alarm()
 	if index < _warships.size():
 		var ship := _warships[index]
 		_explosion(ship.global_position + Vector2(0, -16), 56.0, Color(1.0, 0.55, 0.2))
@@ -1943,9 +2167,28 @@ func _win_ships() -> void:
 ## mines come off the hulls still standing; destroyed ships stay destroyed.
 func _end_ships(result: String) -> void:
 	ships_active = false
+	_sapper_ship = null
+	if is_instance_valid(_sapper):
+		if result == "success" and not _sapper.down:
+			_sapper.return_to(_nearby_open_position(_officer.global_position + Vector2(0, 30) if _officer != null else GameState.ARTICHOKE_ARRIVAL))
+		else:
+			_sapper.queue_free()
+	_sapper = null
+	_fleet_alarm_timer = INF
+	_stop_typed_orders()
 	_withdraw_squad(result == "success")
-	for ship in _warships:
-		if ship.intact:
+	# After a failed strike the Republic repairs every ship, so the next strike
+	# has to destroy all four again. Mines whose fuse is still burning are pulled
+	# off; otherwise one would destroy its repaired ship a few seconds later.
+	if result != "success":
+		for charge in _battlefield.get_children():
+			if charge.name.begins_with("ShipCharge_"):
+				charge.queue_free()
+	for index in _warships.size():
+		var ship := _warships[index]
+		if result != "success" and not ship.intact:
+			GameState.defeated_persistent_enemies.erase(SHIP_FLAG % index)
+		if ship.intact or result != "success":
 			ship.restore()
 		ship.set_open_for_mines(false)
 	for unit in _fleet_guards:

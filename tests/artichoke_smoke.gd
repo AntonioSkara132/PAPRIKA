@@ -44,6 +44,14 @@ func _run() -> void:
 		_check(false, "main scene starts with UI and a world")
 		_finish(game)
 		return
+	# Fullscreen at 1920x1080 stretches the game 3x; the HUD stays at the 2x size.
+	ui.apply_ui_scale(2.0 / 3.0)
+	var job_box := ui.job_label.get_parent() as Control
+	var squad_box := ui.squad_panel
+	var modal_box := ui.modal_overlay.get_child(0) as Control
+	_check(is_equal_approx(ui.scale.x, 2.0 / 3.0) and job_box.position.is_equal_approx(Vector2(724, 7)) and squad_box.position.is_equal_approx(Vector2(8, 470)) and is_equal_approx(squad_box.size.x, 944.0) and modal_box.position.is_equal_approx(Vector2(265, 125)) and ui.modal_overlay.size.is_equal_approx(Vector2(960, 540)), "in fullscreen the HUD keeps its windowed size and its boxes stay at the same edges")
+	ui.apply_ui_scale(1.0)
+	_check(job_box.position.is_equal_approx(Vector2(404, 7)) and is_equal_approx(squad_box.size.x, 624.0), "back in a 1280x720 window the HUD is laid out as before")
 	var state := GameState
 	state.notification_requested.connect(func(message: String) -> void: _messages.append(message))
 	_check(state.travel_fare("artichoke") < 0 and not state.can_travel("artichoke"), "Artichoke cannot be reached from Paprika")
@@ -84,7 +92,7 @@ func _run() -> void:
 	_check(ui.location_label.text == "ARTICHOKE FRONT" and ui.job_label.text.contains("ARTICHOKE"), "the HUD names the Artichoke front")
 	_check(loader.map_size == Vector2(96 * 16, 84 * 16), "the Artichoke map is 96 by 84 tiles")
 
-	_check(front.soldiers("confederation").size() == 25 and front.soldiers("republic").size() == 18, "23 Confederation soldiers, their officer, the cook and 18 New Republic soldiers hold their positions")
+	_check(front.soldiers("confederation").size() == 25 and front.soldiers("republic").size() == 15 and front.soldiers("republic").all(func(soldier: Node2D) -> bool: return not front.AIRFIELD_AREA.has_point(soldier.global_position)), "23 Confederation soldiers, their officer, the cook and 15 New Republic soldiers hold their positions, none on the airfield")
 	var all_soldiers_placed := true
 	for soldier in front.soldiers("confederation") + front.soldiers("republic"):
 		if soldier.get_texture() == null:
@@ -603,6 +611,50 @@ func _check_typed_orders(front: ArtichokeWorld, ui: GameUI, squad: Array[RaidSol
 	escape.pressed = true
 	ui._input(escape)
 	_check(not ui.order_bar.visible and not front.player.ui_is_open() and Engine.time_scale == 1.0, "Escape closes the order bar and the game runs at full speed again")
+	# Tab completes order words, groups, names and places; Tab again shows the next match.
+	var tab := InputEventKey.new()
+	tab.physical_keycode = KEY_TAB
+	tab.pressed = true
+	ui._input(open)
+	ui.order_input.text = "bow"
+	ui._input(tab)
+	var first_tab := ui.order_input.text
+	ui.order_input.text = "spearmen go to west r"
+	ui._completion_index = -1
+	ui._input(tab)
+	var place_tab := ui.order_input.text
+	ui.order_input.text = "f"
+	ui._completion_index = -1
+	ui._input(tab)
+	var cycle_one := ui.order_input.text
+	ui._input(tab)
+	var cycle_two := ui.order_input.text
+	_check(first_tab == "bowmen " and place_tab == "spearmen go to west ramp " and cycle_one == "follow " and cycle_two == "follow me ", "Tab completes order words and places, and Tab again shows the next match")
+	_check(ui.order_bar.visible, "Tab keeps the order bar open")
+	ui._input(escape)
+	# Up and Down step through the orders sent this session.
+	ui._on_order_text_submitted("hold")
+	ui._on_order_text_submitted("hold")
+	ui._on_order_text_submitted("stop")
+	var up := InputEventKey.new()
+	up.physical_keycode = KEY_UP
+	up.pressed = true
+	var down := InputEventKey.new()
+	down.physical_keycode = KEY_DOWN
+	down.pressed = true
+	ui._input(open)
+	ui._input(up)
+	var last := ui.order_input.text
+	ui._input(up)
+	var before_last := ui.order_input.text
+	ui._input(up)
+	var oldest := ui.order_input.text
+	ui._input(down)
+	ui._input(down)
+	var past_newest := ui.order_input.text
+	_check(last == "stop" and before_last == "hold" and oldest == "hold" and past_newest == "" and ui.order_history.size() == 2, "Up shows earlier orders, repeats are kept once, and Down past the newest clears the bar")
+	ui._input(escape)
+	front.issue_order("follow")
 	front.order_client.cancel()
 	front.order_client.compatible = false
 	_messages.clear()
@@ -853,38 +905,103 @@ func _check_ships(game: Node, front: ArtichokeWorld, ui: GameUI) -> void:
 	_check(not flagship.is_in_group("interactable") and not front.plant_ship_mine(flagship), "the hulls cannot be mined before the strike")
 	state.inventory["field_mine"] = 1
 	_check(not front.start_ships(), "the strike needs six field mines")
+	state.equip_item("wood_armor")
+	_check(front.issue_strike_armor() and state.equipment.get("armor", "") == "bronze_armor", "Arms issues bronze armor for the strike and the player wears it")
 	_check(front.mine_allowance() == 6 and front.refill_mines() and int(state.inventory.get("field_mine", 0)) == 6, "the Arms building issues six field mines for the strike")
-	_check(front.start_ships() and front.ships_active and front.raid_soldiers().size() == 6 and front.fleet_guards().size() == 6 and flagship.is_in_group("interactable"), "the strike deploys six soldiers, Republic guards stand at the airfield and the hulls can be mined")
+	_check(front.start_ships() and front.ships_active and front.fleet_guards().size() == 10, "the strike starts and ten Republic guards stand at the airfield")
 	_check(ui.job_label.text.contains("FLEET STRIKE") and ui.job_label.text.contains("4/4"), "the HUD shows the strike and the ships left")
 	for guard in front.fleet_guards():
 		guard.set_physics_process(false)
+	var sapper := front.sapper()
+	_check(front.raid_soldiers().size() == 8 and sapper != null and sapper.soldier_name == front.SAPPER_NAME and not sapper.fights and not front.raid_soldiers().has(sapper), "eight soldiers and a sapper who does not fight go on the strike")
+	_check(ui.job_label.text.contains("protect " + front.SAPPER_NAME) and ui.job_label.text.contains("Alarm in") and ui.job_label.text.contains("8/8"), "the HUD shows the sapper, the alarm countdown and eight soldiers")
+	_check(not flagship.is_in_group("interactable") and not front.plant_ship_mine(flagship), "only the sapper plants mines")
+	var strike_context := front.squad_order_context()
+	_check(front.accepts_typed_orders() and strike_context["soldiers"].size() == 8 and strike_context["groups"]["all"].size() == 8 and ui.job_label.text.contains("Enter: typed order"), "typed orders work on the strike for all eight soldiers")
+	_check(front.submit_squad_text("mark here as gate") and front.order_place_names.values().has("gate") and front.submit_squad_text("forget gate") and not front.order_place_names.values().has("gate"), "the player can mark and forget a place on the strike")
+	front._on_typed_order_ready({"action": "attack", "soldier_ids": ["soldier_01", "soldier_02", "soldier_04"], "start": null, "end": "A", "facing": null, "group_name": null, "message": "3 soldiers attack at A."}, "test")
+	_check(front.group_task_text().contains("Bowmen: attack west ramp"), "an interpreted order is carried out on the strike")
+	front.issue_order("follow")
+	# A following bowman stops shooting and comes back once the player is too far away.
+	var bowman: RaidSoldier = front.raid_soldiers()[0]
+	var leash_guard: Enemy = front.fleet_guards()[0]
+	leash_guard.set_physics_process(false)
+	var leash_home := front.player.global_position
+	bowman.global_position = front._nearby_open_position(leash_home + Vector2(0, 30))
+	leash_guard.global_position = front._nearby_open_position(bowman.global_position + Vector2(60, 0))
+	await _physics_frames(2)
+	var shooting := not bowman.rejoining and bowman.velocity == Vector2.ZERO
+	front.player.global_position = front._nearby_open_position(leash_home + Vector2(0, -140))
+	await _physics_frames(2)
+	var called_back := bowman.rejoining and bowman.velocity.length() > 0.0
+	front.player.global_position = leash_home
+	bowman.global_position = front._nearby_open_position(leash_home + bowman.FOLLOW_SLOTS[bowman.slot])
+	await _physics_frames(2)
+	_check(shooting and called_back and not bowman.rejoining, "a following soldier fights nearby enemies, walks back when the player is too far, and fights again once back")
+	leash_guard.take_damage(999)
+	await _physics_frames(2)
 
-	# One mine destroys an escort after its fuse.
-	player.global_position = escorts[0].get_interaction_position() + Vector2(0, 12)
-	player._update_nearest_interactable()
-	_check(player._current_interactable == escorts[0] and escorts[0].get_interaction_text().contains("(0/1)"), "E beside an escort offers to plant a field mine")
-	_interact(player)
-	_check(escorts[0].fully_mined() and escorts[0].intact, "one mine lights the escort's fuse")
-	player.global_position = state.ARTICHOKE_ARRIVAL
+	# The sapper walks to the nearest ship that still needs a mine and plants it.
+	sapper.global_position = front._nearby_open_position(escorts[0].get_interaction_position() + Vector2(0, 14))
+	front._sapper_ship = null
+	await _physics_frames(3)
+	_check(front.sapper_ship() == escorts[0] and ui.job_label.text.contains("mining the"), "the sapper goes to the nearest ship that still needs a mine")
+	await _seconds(2.0)
+	_check(escorts[0].mines_planted == 0 and int(state.inventory.get("field_mine", 0)) == 6, "a mine takes the sapper several seconds")
+	_check(sapper.health == front.SAPPER_HEALTH and sapper.armor == front.SAPPER_ARMOR, "Vuk has 60 health and armor 2")
+	var sapper_health := sapper.health
+	sapper.take_damage(1)
+	await _physics_frames(2)
+	_check(front._sapper_left > front.SAPPER_PLANT_TIME - 0.2 and sapper.health == sapper_health - 1, "a hit makes the sapper start the mine again")
+	await _seconds(front.SAPPER_PLANT_TIME + 0.4)
+	_check(escorts[0].fully_mined() and int(state.inventory.get("field_mine", 0)) == 5, "the sapper plants one of the player's mines and lights the escort's fuse")
+	sapper.set_physics_process(false)
+	sapper.global_position = state.ARTICHOKE_ARRIVAL
 	await _seconds(front.CHARGE_FUSE + 0.3)
 	_check(not escorts[0].intact and state.defeated_persistent_enemies.has(front.SHIP_FLAG % ships.find(escorts[0])) and front.intact_ship_count() == 3, "the escort is destroyed and the loss is recorded")
+	var guardsmen := front.fleet_guards().filter(func(unit: Enemy) -> bool: return unit.enemy_id == "republic_guardsman")
+	_check(front.fleet_alarm_raised() and guardsmen.size() == 1 and ui.job_label.text.contains("ALARM"), "the first burning ship raises the alarm and one armored guardsman marches out first")
+	front._step_fleet_reinforcements(front.FLEET_GUARDSMAN_GAPS[0])
+	front._step_fleet_reinforcements(front.FLEET_GUARDSMAN_GAPS[0])
+	front._step_fleet_reinforcements(front.FLEET_GUARDSMAN_GAPS[0])
+	var sent := front._fleet_reinforcements.map(func(unit: Enemy) -> String: return unit.enemy_id)
+	_check(sent.count("republic_guardsman") == 1 + 2 + 2 + 4 and sent.size() > 11 and sent.has("republic_archer") and sent.has("republic_spearman") and sent.has("republic_swordsman"), "guardsmen follow in groups of two, two and four, with archers, spearmen and swordsmen between them")
+	guardsmen = front.fleet_guards().filter(func(unit: Enemy) -> bool: return unit.enemy_id == "republic_guardsman")
+	_check(guardsmen.all(func(unit: Enemy) -> bool: return unit.max_health == 60 and int(unit.definition.get("damage", 0)) == 8 and int(unit.definition.get("armor", 0)) == 4), "guardsmen have more health and heavier armor than other Republic soldiers")
+	var player_spot := front.player.global_position
+	front.player.global_position = front._nearby_open_position(escorts[2].get_interaction_position() + Vector2(0, 20))
+	front._send_reinforcement("republic_guardsman", 0, 1)
+	var runner: Enemy = front._fleet_reinforcements.back()
+	var route_end: Vector2 = runner._march[runner._march.size() - 1]
+	_check(route_end.distance_to(sapper.global_position) < 40.0 and route_end.distance_to(front.player.global_position) > 100.0, "reinforcements march to Vuk, not to the player")
+	front.player.global_position = player_spot
+	for guard in front.fleet_guards():
+		guard.set_physics_process(false)
 
-	# The flagship takes three; a failed strike takes the mines off it again.
-	_check(front.plant_ship_mine(flagship) and front.plant_ship_mine(flagship) and flagship.mines_planted == 2 and flagship.intact and not flagship.fully_mined(), "two mines on the flagship are not enough")
-	state.health = 1
-	player.take_damage(50)
+	# The flagship takes three; the strike fails when the sapper falls.
+	await _sapper_plant(front, flagship)
+	await _sapper_plant(front, flagship)
+	_check(flagship.mines_planted == 2 and flagship.intact and not flagship.fully_mined(), "two mines on the flagship are not enough")
+	state.add_item("field_mine")
+	_check(front._finish_ship_mine(escorts[1]) and escorts[1].fully_mined(), "a mine on an escort lights its fuse")
+	_messages.clear()
+	sapper.take_damage(999)
 	await _physics_frames(2)
-	_check(not front.ships_active and flagship.mines_planted == 0 and flagship.intact and not escorts[0].intact and front.fleet_guards().is_empty() and front.raid_soldiers().is_empty(), "a failed strike clears the flagship's mines; the destroyed escort stays destroyed")
-	state.restore_health()
+	_check(not front.ships_active and flagship.mines_planted == 0 and flagship.intact and escorts[0].intact and front.intact_ship_count() == 4 and not state.defeated_persistent_enemies.has(front.SHIP_FLAG % ships.find(escorts[0])) and front.fleet_guards().is_empty() and front.raid_soldiers().is_empty() and front.sapper() == null and _messages.any(func(message: String) -> bool: return message.contains("nobody else can plant")), "the strike fails when the sapper falls; the Republic repairs the destroyed escort and clears the flagship's mines")
+	await _seconds(front.CHARGE_FUSE + 0.3)
+	_check(escorts[1].intact and front.intact_ship_count() == 4 and not state.defeated_persistent_enemies.has(front.SHIP_FLAG % ships.find(escorts[1])), "a fuse still burning when the strike fails does not destroy the repaired ship")
 	front.refill_mines()
-	_check(front.start_ships(), "the strike can be started again")
+	_check(front.start_ships() and not front.fleet_alarm_raised(), "the strike can be started again, with the alarm reset")
 	for guard in front.fleet_guards():
 		guard.set_physics_process(false)
 	for count in 3:
-		front.plant_ship_mine(flagship)
+		await _sapper_plant(front, flagship)
 	_check(flagship.fully_mined() and flagship.intact, "the third mine lights the flagship's fuse")
-	front.plant_ship_mine(escorts[1])
-	front.plant_ship_mine(escorts[2])
+	await _sapper_plant(front, escorts[0])
+	await _sapper_plant(front, escorts[1])
+	await _sapper_plant(front, escorts[2])
+	front.sapper().set_physics_process(false)
+	front.sapper().global_position = state.ARTICHOKE_ARRIVAL
 	var gold := state.gold
 	_messages.clear()
 	await _seconds(front.CHARGE_FUSE + 0.3)
@@ -921,6 +1038,16 @@ func _check_ships(game: Node, front: ArtichokeWorld, ui: GameUI) -> void:
 	state.defeated_persistent_enemies.assign(flags)
 	front.apply_loaded_state()
 	player.global_position = state.ARTICHOKE_ARRIVAL
+
+## Puts the sapper beside `ship` and lets him plant one mine without the wait.
+func _sapper_plant(front: ArtichokeWorld, ship: RepublicWarship) -> void:
+	var sapper := front.sapper()
+	sapper.set_physics_process(false)
+	sapper.global_position = ship.get_interaction_position() + Vector2(0, 14)
+	front._sapper_ship = ship
+	front._sapper_health = sapper.health
+	front._sapper_left = 0.01
+	await _physics_frames(2)
 
 func _modal_text(ui: GameUI) -> String:
 	var parts: Array[String] = []

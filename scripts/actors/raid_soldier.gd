@@ -19,13 +19,24 @@ const REPATH_SECONDS := 0.5
 ## A hunt at a point takes on attackers within this distance of the point.
 const HUNT_AREA := 150.0
 ## Formation places behind the player for follow, one per squad slot.
-const FOLLOW_SLOTS := [Vector2(-18, 16), Vector2(18, 16), Vector2(-34, 30), Vector2(34, 30), Vector2(-12, 40), Vector2(12, 40)]
+## A following soldier stops fighting when the player is farther away than this
+## and walks back to its place; it fights again once it is within FOLLOW_REJOINED
+## of that place.
+const FOLLOW_LEASH := 80.0
+const FOLLOW_REJOINED := 16.0
+const FOLLOW_SLOTS := [Vector2(-18, 16), Vector2(18, 16), Vector2(-34, 30), Vector2(34, 30), Vector2(-12, 40), Vector2(12, 40), Vector2(-30, 54), Vector2(30, 54)]
 
 var soldier_id := ""
 var soldier_name := "Soldier"
 ## "bow", "spear" or "sword".
 var weapon := "bow"
+## False for a soldier who never attacks, such as the sapper on the fleet strike.
+var fights := true
+var max_health := MAX_HEALTH
 var health := MAX_HEALTH
+## Taken off every hit, but a hit always does at least 1 damage. Soldiers wear
+## wooden armor (1); Sapper Vuk wears padded armor (2).
+var armor := 1
 ## "follow", "hold", "attack", "patrol" or "hunt".
 var order := "follow"
 var hold_point := Vector2.ZERO
@@ -40,6 +51,8 @@ var down := false
 var returning := false
 var slot := 0
 var _cooldown := 0.0
+## True while a following soldier is walking back to the player and not fighting.
+var rejoining := false
 var _path := PackedVector2Array()
 var _path_index := 0
 var _path_goal := Vector2.INF
@@ -143,7 +156,7 @@ func return_to(point: Vector2) -> void:
 func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 	if down or returning or amount <= 0:
 		return
-	health = maxi(0, health - amount)
+	health = maxi(0, health - maxi(1, amount - armor))
 	_refresh_health_bar()
 	if health == 0:
 		down = true
@@ -172,7 +185,8 @@ func _physics_process(delta: float) -> void:
 			_walk_to(hold_point, SPEED)
 		return
 	var reach := _reach()
-	var target := _choose_target(reach)
+	_check_leash()
+	var target: Node2D = null if rejoining else _choose_target(reach)
 	if target != null:
 		if order == "hunt" and not hunt_point.is_finite():
 			hold_point = global_position
@@ -210,7 +224,19 @@ func _physics_process(delta: float) -> void:
 			else:
 				velocity = Vector2.ZERO
 
+func _check_leash() -> void:
+	if order != "follow":
+		rejoining = false
+		return
+	var leader := _world.player.global_position
+	if global_position.distance_to(leader) > FOLLOW_LEASH:
+		rejoining = true
+	elif rejoining and global_position.distance_to(leader + FOLLOW_SLOTS[slot % FOLLOW_SLOTS.size()]) <= FOLLOW_REJOINED:
+		rejoining = false
+
 func _choose_target(reach: float) -> Node2D:
+	if not fights:
+		return null
 	if order == "hunt":
 		var close: Node2D = _world.nearest_hostile(global_position, reach)
 		if close != null:
@@ -280,7 +306,7 @@ func _walk_to(goal: Vector2, speed: float) -> void:
 
 func _refresh_health_bar() -> void:
 	if _health_bar != null:
-		var fraction := float(health) / MAX_HEALTH
+		var fraction := float(health) / max_health
 		_health_bar.points = PackedVector2Array([Vector2(-8, -30), Vector2(-8 + 16.0 * fraction, -30)])
 		_health_bar.default_color = Color("7fd36b") if fraction > 0.5 else Color("e8b04a") if fraction > 0.25 else Color("e0524a")
 		_health_bar.get_parent().get_child(_health_bar.get_index() - 1).visible = health > 0

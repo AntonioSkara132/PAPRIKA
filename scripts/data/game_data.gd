@@ -205,6 +205,7 @@ const ENEMIES := {
 	"republic_archer": {"name": "Republic Archer", "level": 4, "max_health": 30, "damage": 5, "speed": 40.0, "reach": 140.0, "ranged": true, "armor": 1, "attack_cooldown": 1.7, "event": "republic_soldier_defeated", "reward": 8},
 	"republic_spearman": {"name": "Republic Spearman", "level": 4, "max_health": 36, "damage": 7, "speed": 44.0, "reach": 40.0, "armor": 1, "attack_cooldown": 1.2, "event": "republic_soldier_defeated", "reward": 8},
 	"republic_swordsman": {"name": "Republic Swordsman", "level": 4, "max_health": 38, "damage": 8, "speed": 48.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "republic_soldier_defeated", "reward": 8},
+	"republic_guardsman": {"name": "Republic Guardsman", "level": 6, "max_health": 60, "damage": 8, "speed": 42.0, "reach": 28.0, "armor": 4, "attack_cooldown": 1.1, "event": "republic_soldier_defeated", "reward": 15},
 }
 
 const CROP_BY_TILE_ID := {

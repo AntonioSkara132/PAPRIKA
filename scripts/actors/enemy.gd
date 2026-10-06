@@ -114,7 +114,7 @@ func _build(texture_path: String) -> void:
 	_build_gear()
 
 func _build_gear() -> void:
-	if enemy_id not in ["bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman"]:
+	if enemy_id not in ["bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman", "republic_guardsman"]:
 		return
 	_weapon_visual = Line2D.new()
 	_weapon_visual.width = 2.0
@@ -126,12 +126,13 @@ func _build_gear() -> void:
 		"bandit_bow", "republic_archer":
 			_weapon_visual.points = PackedVector2Array([Vector2(9, -19), Vector2(13, -16), Vector2(15, -12), Vector2(13, -8), Vector2(9, -6), Vector2(9, -19)])
 			_weapon_visual.default_color = Color("ba8953")
-		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman":
+		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman", "republic_guardsman":
 			_weapon_visual.points = PackedVector2Array([Vector2(7, -5), Vector2(11, -12), Vector2(13, -20)])
 			_weapon_visual.default_color = Color("d7e3e4")
 		_:
 			return
 	add_child(_weapon_visual)
+	# Guardsmen have their plate drawn in their own sprite; the armored zombie wears leather.
 	if enemy_id == "armored_zombie":
 		var armor := Polygon2D.new()
 		armor.polygon = PackedVector2Array([Vector2(-7, -18), Vector2(6, -18), Vector2(8, -9), Vector2(-8, -9)])
