@@ -1,0 +1,30 @@
+{
+  "actions": [
+    "form_line",
+    "move_to",
+    "follow_player",
+    "patrol",
+    "create_group",
+    "stop",
+    "clarify",
+    "attack"
+  ],
+  "tags": [
+    "O",
+    "B-SEL",
+    "I-SEL",
+    "B-GROUP",
+    "I-GROUP",
+    "B-NEWGROUP",
+    "I-NEWGROUP",
+    "B-DEST",
+    "I-DEST",
+    "B-START",
+    "I-START",
+    "B-END",
+    "I-END",
+    "B-FACE",
+    "I-FACE"
+  ],
+  "encoder": "google/bert_uncased_L-4_H-256_A-4"
+}

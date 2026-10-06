@@ -23,6 +23,7 @@ var _prompt_scan_timer := 0.0
 var _current_interactable: Node2D
 var _last_prompt := ""
 var _built := false
+var _holding_field_mine := false
 
 func configure(texture_path: String, spawn_position: Vector2, bounds: Rect2) -> void:
 	global_position = spawn_position
@@ -103,6 +104,8 @@ func _physics_process(delta: float) -> void:
 		var training_run := GameState.current_planet == "station" and String(GameState.military_stage) == "run"
 		var sprinting := training_run and Input.is_action_pressed("station_sprint")
 		velocity = input_direction * (SPEED * 1.55 if sprinting else SPEED)
+		if world != null:
+			velocity *= world.movement_factor(global_position)
 		if input_direction.length_squared() > 0.01:
 			facing = _cardinal(input_direction)
 		move_and_slide()
@@ -128,7 +131,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.notify("There is nothing nearby to interact with.")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("attack"):
-		if active == self and GameState.military_trap_equipped:
+		if active == self and _holding_field_mine and world != null and world.has_method("place_field_mine"):
+			world.call("place_field_mine")
+		elif active == self and GameState.military_trap_equipped:
 			if world != null and world.has_method("place_practice_mine"):
 				world.call("place_practice_mine")
 			else:
@@ -139,7 +144,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			world.attack_as(active)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
-		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus"]:
+		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "bandage"]:
 			if active == self and GameState.use_food(food_id):
 				break
 			if active is Villager and GameState.heal_recruit(active.villager_id, food_id):
@@ -259,7 +264,7 @@ func _refresh_appearance() -> void:
 	else:
 		_sprite.texture = load("res://art/concepts/source/player.png") as Texture2D
 	if _held_mine_icon != null:
-		_held_mine_icon.visible = GameState.military_trap_equipped
+		_held_mine_icon.visible = GameState.military_trap_equipped or _holding_field_mine
 	var armor_id := String(GameState.equipment.get("armor", ""))
 	_armor_overlay.visible = not armor_id.is_empty()
 	if _armor_overlay.visible:
@@ -269,6 +274,14 @@ func _refresh_appearance() -> void:
 			"bronze_armor": _armor_overlay.modulate = Color("e5b578")
 			"iron_armor": _armor_overlay.modulate = Color("d7e6ea")
 			_: _armor_overlay.modulate = Color.WHITE
+
+## On Artichoke the player can carry a field mine in hand; Space then plants it.
+func hold_field_mine(holding: bool) -> void:
+	_holding_field_mine = holding
+	_refresh_appearance()
+
+func is_holding_field_mine() -> bool:
+	return _holding_field_mine
 
 func ui_is_open() -> bool:
 	return _ui_is_open()

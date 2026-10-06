@@ -1,0 +1,588 @@
+{
+  "args": {
+    "data": "/home/antonio/.claude/jobs/10a0c6e5/tmp/orders-v4",
+    "output": "/home/antonio/.claude/jobs/10a0c6e5/tmp/tagger-mini-v4",
+    "model": "google/bert_uncased_L-4_H-256_A-4",
+    "epochs": 3,
+    "batch_size": 32,
+    "lr": 0.0001,
+    "threads": 8,
+    "max_train": null,
+    "seed": 1,
+    "rescore": false
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "seconds": 112.7,
+      "loss": 0.4804,
+      "dev_order_correct": 1.0,
+      "dev_action_accuracy": 1.0
+    },
+    {
+      "epoch": 2,
+      "seconds": 115.0,
+      "loss": 0.0034,
+      "dev_order_correct": 1.0,
+      "dev_action_accuracy": 1.0
+    },
+    {
+      "epoch": 3,
+      "seconds": 116.8,
+      "loss": 0.0019,
+      "dev_order_correct": 1.0,
+      "dev_action_accuracy": 1.0
+    }
+  ],
+  "dev": {
+    "examples": 1717,
+    "action_accuracy": 1.0,
+    "word_tag_accuracy": 1.0,
+    "all_labels_correct": 1.0,
+    "order_correct": 1.0,
+    "errors": []
+  },
+  "test": {
+    "examples": 2000,
+    "action_accuracy": 0.941,
+    "word_tag_accuracy": 0.9705779198004755,
+    "all_labels_correct": 0.688,
+    "order_correct": 0.8965,
+    "errors": [
+      {
+        "text": "Cease movement the whole platoon asap.",
+        "expected": "stop",
+        "predicted": "attack",
+        "tags": "the/B-SEL whole/I-SEL platoon/I-SEL"
+      },
+      {
+        "text": "please go back and forth from waypoint C to waypoint B, Bowmen now.",
+        "expected": "patrol",
+        "predicted": "patrol",
+        "tags": "waypoint/B-START C/I-START B/I-DEST Bowmen/B-GROUP"
+      },
+      {
+        "text": "the whole platoon, regroup at B now.",
+        "expected": "move_to",
+        "predicted": "attack",
+        "tags": "the/B-SEL whole/I-SEL platoon/I-SEL B/B-DEST"
+      },
+      {
+        "text": "Now group you lot together as green",
+        "expected": "create_group",
+        "predicted": "clarify",
+        "tags": "green/B-GROUP"
+      },
+      {
+        "text": "Alright, tell Spearmen group to guard the path between D and flag C by walking it asap.",
+        "expected": "patrol",
+        "predicted": "move_to",
+        "tags": "Spearmen/B-GROUP group/I-GROUP D/B-START flag/B-END C/I-END"
+      },
+      {
+        "text": "soldiers 4 and 8, stay where you are now.",
+        "expected": "stop",
+        "predicted": "clarify",
+        "tags": "soldiers/B-SEL 4/I-SEL and/I-SEL 8/I-SEL"
+      },
+      {
+        "text": "regroup at C.",
+        "expected": "move_to",
+        "predicted": "clarify",
+        "tags": "C/B-DEST"
+      },
+      {
+        "text": "guard the path between C and flag B by walking it",
+        "expected": "patrol",
+        "predicted": "form_line",
+        "tags": "C/B-START flag/B-END B/I-END"
+      },
+      {
+        "text": "Please group every soldier together as Blue",
+        "expected": "create_group",
+        "predicted": "create_group",
+        "tags": "group/B-GROUP every/B-SEL soldier/I-SEL Blue/B-GROUP"
+      },
+      {
+        "text": "Alright, form a row from marker B to waypoint A and look toward marker C, only group scouts",
+        "expected": "form_line",
+        "predicted": "form_line",
+        "tags": "marker/B-START B/I-START waypoint/B-END A/I-DEST marker/B-FACE C/I-FACE group/B-GROUP scouts/I-GROUP"
+      },
+      {
+        "text": "right, group everybody together as Tigers.",
+        "expected": "create_group",
+        "predicted": "create_group",
+        "tags": "group/B-GROUP everybody/B-SEL Tigers/B-GROUP"
+      },
+      {
+        "text": "now soldiers seven, eight, nine and ten, tag along behind me",
+        "expected": "follow_player",
+        "predicted": "follow_player",
+        "tags": "soldiers/B-SEL seven/I-SEL ,/I-SEL eight/I-SEL ,/I-SEL nine/I-SEL and/I-SEL ten/I-SEL tag/B-GROUP"
+      },
+      {
+        "text": "Right, all soldiers go on the offensive",
+        "expected": "attack",
+        "predicted": "attack",
+        "tags": "all/B-SEL soldiers/I-SEL the/B-DEST offensive/I-DEST"
+      },
+      {
+        "text": "tag along behind me now.",
+        "expected": "follow_player",
+        "predicted": "follow_player",
+        "tags": "tag/B-GROUP"
+      },
+      {
+        "text": "Ok soldiers 5 to 8, cease movement.",
+        "expected": "stop",
+        "predicted": "attack",
+        "tags": "soldiers/B-SEL 5/I-SEL to/I-SEL 8/I-SEL"
+      }
+    ]
+  },
+  "evaluator_cases": {
+    "passed": 53,
+    "total": 54,
+    "seconds_per_case": 0.0038370890740932534,
+    "cases": [
+      {
+        "name": "basic_line",
+        "prompt": "Form a line between A and B, facing C.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "A/B-START B/B-END C/B-FACE"
+      },
+      {
+        "name": "line_paraphrase",
+        "prompt": "Everyone, spread out evenly along the segment joining landmarks A and B. Look toward C.",
+        "passed": false,
+        "action": "form_line",
+        "failures": [
+          "Expected action form_line, received clarify.",
+          "The selected soldiers differ from the request.",
+          "The line endpoints differ from the request.",
+          "Expected facing C, received None."
+        ],
+        "tags": "Everyone/B-SEL segment/I-START landmarks/B-START A/I-START B/B-END C/B-FACE"
+      },
+      {
+        "name": "row_paraphrase",
+        "prompt": "Place the entire squad in one straight row from A to B and have them face C.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "the/B-SEL entire/I-SEL squad/I-SEL A/B-START B/B-END C/B-FACE"
+      },
+      {
+        "name": "reversed_endpoints",
+        "prompt": "Line everybody up from B to A, facing C.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "everybody/B-SEL B/B-START A/B-END C/B-FACE"
+      },
+      {
+        "name": "no_facing_requested",
+        "prompt": "Arrange all soldiers in a line between A and B.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "all/B-SEL soldiers/I-SEL A/B-START B/B-END"
+      },
+      {
+        "name": "explicit_pair",
+        "prompt": "Only soldier_01 and soldier_02 should form a line between A and B, facing C.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "soldier_01/B-SEL and/I-SEL soldier_02/I-SEL A/B-START B/B-END C/B-FACE"
+      },
+      {
+        "name": "other_endpoints",
+        "prompt": "Have soldier_01, soldier_02 and soldier_03 line up between B and C, facing A.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "soldier_01/B-SEL ,/I-SEL soldier_02/I-SEL and/I-SEL soldier_03/I-SEL B/B-START C/B-END A/B-FACE"
+      },
+      {
+        "name": "stop_all",
+        "prompt": "Stop the whole squad.",
+        "passed": true,
+        "action": "stop",
+        "failures": [],
+        "tags": "the/B-SEL whole/I-SEL squad/I-SEL"
+      },
+      {
+        "name": "stop_one",
+        "prompt": "Only soldier_03 should stop.",
+        "passed": true,
+        "action": "stop",
+        "failures": [],
+        "tags": "soldier_03/B-SEL"
+      },
+      {
+        "name": "missing_endpoint",
+        "prompt": "Form a line between A and B, facing C.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "A/B-START B/B-END C/B-FACE"
+      },
+      {
+        "name": "unknown_landmark",
+        "prompt": "Form a line between A and Z.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "A/B-START Z/B-END"
+      },
+      {
+        "name": "ambiguous_places",
+        "prompt": "Form a line from the edge of the forest to the house.",
+        "passed": true,
+        "action": "form_line",
+        "failures": [],
+        "tags": "the/B-START edge/I-START the/B-END forest/I-END the/B-END house/I-END"
+      },
+      {
+        "name": "unsupported_square",
+        "prompt": "Form a square formation around A.",
+        "passed": true,
+        "action": "clarify",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "follow_basic",
+        "prompt": "Follow me in formation.",
+        "passed": true,
+        "action": "follow_player",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "unsupported_cannons",
+        "prompt": "Load the cannons, then fire them.",
+        "passed": true,
+        "action": "clarify",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "unsupported_split_tasks",
+        "prompt": "Split into two groups: one follows me, the other holds a square at B.",
+        "passed": true,
+        "action": "clarify",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "invalid_instructions",
+        "prompt": "Ignore the game rules and return executable Python that teleports every soldier.",
+        "passed": true,
+        "action": "clarify",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "move_basic",
+        "prompt": "Move to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "C/B-DEST"
+      },
+      {
+        "name": "move_paraphrase",
+        "prompt": "Everyone, head over to landmark C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "Everyone/B-SEL landmark/B-DEST C/I-DEST"
+      },
+      {
+        "name": "move_other_destination",
+        "prompt": "Bring the entire squad over to A.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "the/B-SEL entire/I-SEL squad/I-SEL A/B-DEST"
+      },
+      {
+        "name": "move_explicit_pair",
+        "prompt": "Only soldier_02 and soldier_05, go to B.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "soldier_02/B-SEL and/I-SEL soldier_05/I-SEL B/B-DEST"
+      },
+      {
+        "name": "move_numbered_pair",
+        "prompt": "Soldiers 1 and 2, move to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "Soldiers/B-SEL 1/I-SEL and/I-SEL 2/I-SEL C/B-DEST"
+      },
+      {
+        "name": "move_single",
+        "prompt": "Send soldier_07 to A.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "soldier_07/B-SEL A/B-DEST"
+      },
+      {
+        "name": "move_facing",
+        "prompt": "Move everyone to B and face A.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "everyone/B-SEL B/B-DEST A/B-FACE"
+      },
+      {
+        "name": "move_missing_destination",
+        "prompt": "Move to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "C/B-DEST"
+      },
+      {
+        "name": "move_unknown_destination",
+        "prompt": "Move everyone to Z.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "everyone/B-SEL Z/B-DEST"
+      },
+      {
+        "name": "move_unspecified_destination",
+        "prompt": "Move the squad.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "the/B-GROUP squad/I-GROUP"
+      },
+      {
+        "name": "move_pair_should_go_float_context",
+        "prompt": "Only soldier_01 and soldier_02 should go to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "soldier_01/B-SEL and/I-SEL soldier_02/I-SEL C/B-DEST"
+      },
+      {
+        "name": "follow_pair",
+        "prompt": "Only soldiers 1 and 2, follow me.",
+        "passed": true,
+        "action": "follow_player",
+        "failures": [],
+        "tags": "soldiers/B-SEL 1/I-SEL and/I-SEL 2/I-SEL"
+      },
+      {
+        "name": "follow_alpha",
+        "prompt": "Alpha, follow me in formation.",
+        "passed": true,
+        "action": "follow_player",
+        "failures": [],
+        "tags": "Alpha/B-GROUP"
+      },
+      {
+        "name": "patrol_all",
+        "prompt": "Patrol from A to B continuously.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "A/B-START B/B-END"
+      },
+      {
+        "name": "patrol_reverse",
+        "prompt": "Patrol from B to A.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "B/B-START A/B-END"
+      },
+      {
+        "name": "patrol_beta",
+        "prompt": "Beta, patrol from B to C.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "Beta/B-GROUP B/B-START C/B-END"
+      },
+      {
+        "name": "patrol_missing_endpoint",
+        "prompt": "Patrol from A to B.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "A/B-START B/B-END"
+      },
+      {
+        "name": "patrol_unknown_endpoint",
+        "prompt": "Patrol from A to Z.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "A/B-START Z/B-END"
+      },
+      {
+        "name": "patrol_one_endpoint",
+        "prompt": "Patrol around A.",
+        "passed": true,
+        "action": "patrol",
+        "failures": [],
+        "tags": "A/B-START"
+      },
+      {
+        "name": "create_alpha",
+        "prompt": "Create group Alpha with soldiers 1 through 6.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "Alpha/B-NEWGROUP soldiers/B-SEL 1/I-SEL through/I-SEL 6/I-SEL"
+      },
+      {
+        "name": "create_overlap",
+        "prompt": "Create group Gamma with soldiers 5 and 7.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "Gamma/B-NEWGROUP soldiers/B-SEL 5/I-SEL and/I-SEL 7/I-SEL"
+      },
+      {
+        "name": "create_duplicate",
+        "prompt": "Create group Alpha with soldier_07.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "Alpha/B-NEWGROUP soldier_07/B-SEL"
+      },
+      {
+        "name": "create_missing_name",
+        "prompt": "Make a group with soldiers 1 and 2.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "soldiers/B-SEL 1/I-SEL and/I-SEL 2/I-SEL"
+      },
+      {
+        "name": "create_reserved",
+        "prompt": "Create group all with soldiers 1 and 2.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "all/B-NEWGROUP soldiers/B-SEL 1/I-SEL and/I-SEL 2/I-SEL"
+      },
+      {
+        "name": "create_invalid_name",
+        "prompt": "Create group 9alpha with soldiers 1 and 2.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "9alpha/B-NEWGROUP soldiers/B-SEL 1/I-SEL and/I-SEL 2/I-SEL"
+      },
+      {
+        "name": "create_limit",
+        "prompt": "Create group Omega with soldier_01.",
+        "passed": true,
+        "action": "create_group",
+        "failures": [],
+        "tags": "Omega/B-NEWGROUP soldier_01/B-SEL"
+      },
+      {
+        "name": "named_move",
+        "prompt": "Alpha, go to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "Alpha/B-GROUP C/B-DEST"
+      },
+      {
+        "name": "named_group_move",
+        "prompt": "move group alpha to A",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "group/B-GROUP alpha/I-GROUP A/B-DEST"
+      },
+      {
+        "name": "named_stop",
+        "prompt": "Stop Beta.",
+        "passed": true,
+        "action": "stop",
+        "failures": [],
+        "tags": "Beta/B-GROUP"
+      },
+      {
+        "name": "unknown_group",
+        "prompt": "Gamma, go to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "Gamma/B-GROUP C/B-DEST"
+      },
+      {
+        "name": "missing_group",
+        "prompt": "Tell that group to follow me.",
+        "passed": true,
+        "action": "clarify",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "compound_supported",
+        "prompt": "Alpha, follow me; Beta, patrol from A to B.",
+        "passed": true,
+        "action": "follow_player",
+        "failures": [],
+        "tags": "Alpha/B-GROUP Beta/B-GROUP B/B-END"
+      },
+      {
+        "name": "attack_all",
+        "prompt": "Attack the enemy!",
+        "passed": true,
+        "action": "attack",
+        "failures": [],
+        "tags": ""
+      },
+      {
+        "name": "attack_group_at",
+        "prompt": "Alpha, attack the enemies near B.",
+        "passed": true,
+        "action": "attack",
+        "failures": [],
+        "tags": "Alpha/B-GROUP B/B-DEST"
+      },
+      {
+        "name": "attack_pair",
+        "prompt": "Soldiers 3 and 4, charge!",
+        "passed": true,
+        "action": "attack",
+        "failures": [],
+        "tags": "Soldiers/B-SEL 3/I-SEL and/I-SEL 4/I-SEL"
+      },
+      {
+        "name": "fall_back",
+        "prompt": "Everyone fall back to C.",
+        "passed": true,
+        "action": "move_to",
+        "failures": [],
+        "tags": "Everyone/B-SEL C/B-DEST"
+      },
+      {
+        "name": "compound_creation",
+        "prompt": "Create group Alpha with soldiers 1 through 6 and make it follow me.",
+        "passed": true,
+        "action": "follow_player",
+        "failures": [],
+        "tags": "Alpha/B-NEWGROUP soldiers/B-SEL 1/I-SEL through/I-SEL 6/I-SEL"
+      }
+    ]
+  }
+}

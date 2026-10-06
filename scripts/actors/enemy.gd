@@ -1,6 +1,8 @@
 class_name Enemy
 extends CharacterBody2D
 
+signal defeated(persistent_id: String)
+
 enum State { IDLE, PATROL, CHASE, TELEGRAPH, RECOVER, RETURN, PHASE_WARNING }
 
 const RESPAWN_SECONDS := 75.0
@@ -34,6 +36,14 @@ var _phase_destination := Vector2.ZERO
 var _phase_warning: ColorRect
 var _attack_target: Node2D
 var _weapon_visual: Line2D
+## Soldiers that hold a trench fire from where they stand instead of walking up to a target.
+var hold_ground := false
+var _march := PackedVector2Array()
+var _march_index := 0
+## Walking route for Republic soldiers, so a chase goes round cliffs and walls.
+var _ground_path := PackedVector2Array()
+var _ground_path_index := 0
+var _ground_repath_timer := 0.0
 
 func configure(kind: String, texture_path: String, position_in_world: Vector2, stable_id: String) -> void:
 	enemy_id = kind
@@ -104,19 +114,19 @@ func _build(texture_path: String) -> void:
 	_build_gear()
 
 func _build_gear() -> void:
-	if enemy_id not in ["bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie"]:
+	if enemy_id not in ["bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman"]:
 		return
 	_weapon_visual = Line2D.new()
 	_weapon_visual.width = 2.0
 	_weapon_visual.z_index = 2
 	match enemy_id:
-		"bandit_spear":
+		"bandit_spear", "republic_spearman":
 			_weapon_visual.points = PackedVector2Array([Vector2(7, -5), Vector2(10, -23), Vector2(10, -26)])
 			_weapon_visual.default_color = Color("dfd9b8")
-		"bandit_bow":
+		"bandit_bow", "republic_archer":
 			_weapon_visual.points = PackedVector2Array([Vector2(9, -19), Vector2(13, -16), Vector2(15, -12), Vector2(13, -8), Vector2(9, -6), Vector2(9, -19)])
 			_weapon_visual.default_color = Color("ba8953")
-		"bandit_sword", "armed_zombie", "armored_zombie":
+		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman":
 			_weapon_visual.points = PackedVector2Array([Vector2(7, -5), Vector2(11, -12), Vector2(13, -20)])
 			_weapon_visual.default_color = Color("d7e3e4")
 		_:
@@ -139,7 +149,12 @@ func _physics_process(delta: float) -> void:
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
 	_river_repath_timer = maxf(0.0, _river_repath_timer - delta)
+	_ground_repath_timer = maxf(0.0, _ground_repath_timer - delta)
 	var target := _nearest_target()
+	if _marching() and state not in [State.TELEGRAPH, State.RECOVER] and (target == null or global_position.distance_to(target.global_position) >= _sight()):
+		_step_march()
+		z_index = 100 + int(global_position.y)
+		return
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -149,7 +164,7 @@ func _physics_process(delta: float) -> void:
 		_fire_hostile_projectile(target, 130.0, 190.0)
 		_attack_cooldown = 1.25
 	if state not in [State.TELEGRAPH, State.RECOVER, State.PHASE_WARNING]:
-		var sight := 150.0 if _is_ranged() else 112.0
+		var sight := _sight()
 		if global_position.distance_to(spawn_position) > 190.0:
 			state = State.RETURN
 		elif distance < sight:
@@ -170,8 +185,9 @@ func _physics_process(delta: float) -> void:
 			if _state_time <= 0.0:
 				_choose_patrol()
 		State.PATROL:
-			_move_toward(_patrol_target, float(definition.get("speed", 35.0)) * 0.45)
-			if global_position.distance_to(_patrol_target) < 5.0:
+			if not hold_ground:
+				_move_toward(_patrol_target, float(definition.get("speed", 35.0)) * 0.45)
+			if hold_ground or global_position.distance_to(_patrol_target) < 5.0:
 				state = State.IDLE
 				_state_time = _rng.randf_range(1.0, 2.8)
 		State.CHASE:
@@ -181,6 +197,8 @@ func _physics_process(delta: float) -> void:
 				_state_time = 0.52 if enemy_id == "river_serpent" else (0.42 if enemy_id == "bandit_bow" else (0.18 if enemy_id == "hacker" else 0.28))
 				velocity = Vector2.ZERO
 				_sprite.modulate = Color(1.0, 0.35, 0.35)
+			elif hold_ground:
+				velocity = Vector2.ZERO
 			else:
 				_move_toward(target.global_position, float(definition.get("speed", 35.0)))
 		State.TELEGRAPH:
@@ -269,6 +287,35 @@ func _clear_phase_warning() -> void:
 func _is_ranged() -> bool:
 	return bool(definition.get("ranged", false))
 
+func _sight() -> float:
+	return 150.0 if _is_ranged() else 112.0
+
+## Walks the given route, fighting anyone met on the way, and then guards its end.
+func march_along(route: PackedVector2Array) -> void:
+	_march = route
+	_march_index = 0
+	hold_ground = false
+
+func _marching() -> bool:
+	return _march_index < _march.size()
+
+## True once a soldier sent with `march_along` has walked its whole route.
+func march_finished() -> bool:
+	return not _march.is_empty() and not _marching()
+
+func _step_march() -> void:
+	while _march_index < _march.size() and global_position.distance_to(_march[_march_index]) < 5.0:
+		_march_index += 1
+	if not _marching():
+		velocity = Vector2.ZERO
+		spawn_position = global_position
+		_choose_patrol()
+		return
+	state = State.PATROL
+	_move_toward(_march[_march_index], float(definition.get("speed", 35.0)) * 0.8)
+	# The leash follows the column, so soldiers met on the road are chased from here.
+	spawn_position = global_position
+
 func _attack_reach() -> float:
 	return float(definition.get("reach", 18.0))
 
@@ -316,6 +363,20 @@ func _move_toward(target: Vector2, movement_speed: float) -> void:
 			else:
 				velocity = Vector2.ZERO
 				return
+	var world := get_parent().get_parent() as GameWorld
+	if world != null and enemy_id.begins_with("republic_") and world.tiled_loader != null and global_position.distance_to(target) > 20.0:
+		if _ground_repath_timer <= 0.0 or _ground_path.is_empty() or _ground_path[_ground_path.size() - 1].distance_to(target) > 16.0:
+			_ground_path = world.tiled_loader.get_walk_path(global_position, target)
+			# The first point is the centre of the current cell; walking back to it
+			# on every repath makes the soldier swing in place.
+			_ground_path_index = 1 if _ground_path.size() > 1 else 0
+			_ground_repath_timer = 0.5
+		while _ground_path_index < _ground_path.size() and global_position.distance_to(_ground_path[_ground_path_index]) < 4.0:
+			_ground_path_index += 1
+		if _ground_path_index < _ground_path.size():
+			target = _ground_path[_ground_path_index]
+	if world != null:
+		movement_speed *= world.movement_factor(global_position)
 	velocity = (target - global_position).normalized() * movement_speed
 	move_and_slide()
 
@@ -371,10 +432,11 @@ func _die() -> void:
 	if GameState.ROAD_IDS.has(persistent_id):
 		GameState.record_road_defeat(persistent_id)
 	GameState.notify("Defeated %s. Found %d gold." % [definition.get("name", enemy_id), reward])
+	defeated.emit(persistent_id)
 	var hacker_bounty_ready := enemy_id == "hacker" and GameState.active_job_ready("hacker_bounty")
 	if hacker_bounty_ready and not GameState.defeated_persistent_enemies.has(persistent_id):
 		GameState.defeated_persistent_enemies.append(persistent_id)
-	if hacker_bounty_ready or (enemy_id == "hacker" and GameState.completed_unique_jobs.has("hacker_bounty")) or enemy_id == "camp_bandit" or persistent_id.begins_with("camp_bandit_") or persistent_id.begins_with("brudet_team_") or persistent_id == GameState.BRUDET_SOLO_HACKER_ID:
+	if hacker_bounty_ready or (enemy_id == "hacker" and GameState.completed_unique_jobs.has("hacker_bounty")) or enemy_id == "camp_bandit" or persistent_id.begins_with("camp_bandit_") or persistent_id.begins_with("brudet_team_") or persistent_id == GameState.BRUDET_SOLO_HACKER_ID or persistent_id.begins_with("artichoke_"):
 		queue_free()
 	else:
 		_defeated = true

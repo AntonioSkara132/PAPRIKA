@@ -14,6 +14,7 @@ var _solid_footprints: Array[Rect2] = []
 var tile_size := Vector2i(16, 16)
 var _map_field_prefix := "paprika"
 var map_loaded := false
+var scenery_only := false
 var _missing_texture := false
 var _tilesets: Array[Dictionary] = []
 var _texture_cache: Dictionary = {}
@@ -148,11 +149,11 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		layer_node.add_child(sprite)
 		var local_id := _local_tile_id(gid)
-		if layer_name in ["Common Fields", "Private Fields"] and GameData.CROP_BY_TILE_ID.has(local_id):
+		if not scenery_only and layer_name in ["Common Fields", "Private Fields"] and GameData.CROP_BY_TILE_ID.has(local_id):
 			_create_field_plot(cell, local_id, sprite, texture, layer_name == "Common Fields")
 		if layer_name == "Water":
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5, true)
-		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
+		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -188,7 +189,7 @@ func _create_object_layer(layer: Dictionary) -> void:
 		if name == "rabbit":
 			actor_spawn_requested.emit("rabbit", feet, texture_path, "rabbit_%d" % int(object.get("id", 0)))
 			continue
-		if name in ["station_recruit", "station_instructor", "station_cook", "station_soldier"]:
+		if name in ["station_recruit", "station_instructor", "station_cook", "station_soldier", "front_soldier", "republic_soldier", "republic_battery_soldier", "confederation_officer", "confederation_cook"]:
 			actor_spawn_requested.emit(name, feet, texture_path, "%s_%d" % [name, int(object.get("id", 0))])
 			continue
 		if name in ["wolf", "zombie", "armed_zombie", "armored_zombie", "zombie_bear", "bandit", "bandit_spear", "bandit_bow", "bandit_sword", "hacker", "finling", "lake_maw", "river_serpent"]:
@@ -198,27 +199,32 @@ func _create_object_layer(layer: Dictionary) -> void:
 		if not service.is_empty():
 			var service_node := WorldService.new()
 			service_node.name = name
+			service_node.set_meta("object_name", name)
 			service_node.position = top_left
 			service_node.z_index = 10 + int(object.get("y", 0))
 			_object_root.add_child(service_node)
 			service_node.configure(texture, size, String(service["id"]), String(service["name"]), float(service.get("door_ratio", 0.5)))
-			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit"]:
+			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship"]:
 				for child in service_node.get_children():
 					if child is CollisionShape2D:
 						child.free()
-				if name == "station_ship":
+				if name in ["station_ship", "artichoke_ship"]:
 					_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
 				else:
 					service_node.collision_layer = 0
 			else:
 				_record_service_collisions(service_node)
-			service_node.service_requested.connect(_on_service_requested)
+			if scenery_only:
+				service_node.remove_from_group("interactable")
+			else:
+				service_node.service_requested.connect(_on_service_requested)
 		else:
 			_create_static_object(name, texture, top_left, size, int(object.get("y", 0)))
 
 func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, size: Vector2, bottom_y: int) -> void:
 	var holder := Node2D.new()
 	holder.name = name
+	holder.set_meta("object_name", name)
 	holder.position = top_left
 	holder.z_index = 10 + bottom_y
 	_object_root.add_child(holder)
@@ -228,10 +234,14 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.scale = size / Vector2(texture.get_width(), texture.get_height())
 	holder.add_child(sprite)
-	if name in ["stone_bridge", "arrow_target", "training_ground"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
+	# Barbed wire slows walkers and minefield marks are stepped on, so neither blocks movement.
+	if name in ["stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
+	elif name == "republic_wall":
+		# Wall pieces sit one per tile; full-width footprints leave no gaps between them.
+		_add_collision_rect(Vector2(tile_size.x, 12), top_left + Vector2(size.x * 0.5, size.y - 6))
 	elif name.begins_with("tree"):
 		_add_collision_rect(Vector2(9, 7), top_left + Vector2(size.x * 0.52, size.y - 5))
 	elif name == "fountain":
@@ -268,6 +278,9 @@ func _service_for_object(name: String) -> Dictionary:
 		"river_town_hall": return {"id": "river_town_hall", "name": "Brudet Town Hall"}
 		"fishing_pond": return {"id": "fishing_pond", "name": "Fishing Pond"}
 		"station_ship": return {"id": "station_ship", "name": "Military Transport"}
+		"artichoke_ship": return {"id": "artichoke_ship", "name": "Military Transport"}
+		"confederation_arms": return {"id": "artichoke_arms", "name": "Arms"}
+		"confederation_mess": return {"id": "artichoke_mess", "name": "Mess", "door_ratio": 0.32}
 		"station_depot": return {"id": "station_depot", "name": "Military Depot"}
 		"station_barracks": return {"id": "station_barracks", "name": "Military Barracks", "door_ratio": 0.27}
 		"station_canteen": return {"id": "station_canteen", "name": "Station Canteen", "door_ratio": 0.32}
@@ -332,6 +345,35 @@ func _mark_solid_cells(grid: AStarGrid2D, footprints: Array[Rect2]) -> void:
 			for x in range(first_x, last_x + 1):
 				grid.set_point_solid(Vector2i(x, y))
 
+## Static map objects named `object_name`, as their sprite holders, in map order.
+## A holder's position is the object's top-left corner.
+func map_objects(object_name: String) -> Array[Node2D]:
+	var found: Array[Node2D] = []
+	if not is_instance_valid(_object_root):
+		return found
+	for child in _object_root.get_children():
+		if child is Node2D and String(child.get_meta("object_name", "")) == object_name:
+			found.append(child)
+	return found
+
+## Size in pixels of a static object holder created by this loader.
+static func map_object_size(holder: Node2D) -> Vector2:
+	for child in holder.get_children():
+		if child is Sprite2D and (child as Sprite2D).texture != null:
+			var sprite := child as Sprite2D
+			return Vector2(sprite.texture.get_width(), sprite.texture.get_height()) * sprite.scale
+	return Vector2.ZERO
+
+## Makes routes through the tile at world_position cost `weight` times a normal step,
+## so walkers go around it when a reasonable detour exists. 1.0 restores the tile.
+func set_walk_cost(world_position: Vector2, weight: float) -> void:
+	if _navigation == null:
+		return
+	var local := to_local(world_position)
+	var cell := Vector2i(floori(local.x / tile_size.x), floori(local.y / tile_size.y))
+	if _navigation.is_in_boundsv(cell):
+		_navigation.set_point_weight_scale(cell, maxf(1.0, weight))
+
 func is_walkable_position(world_position: Vector2) -> bool:
 	return _walkable_on_grid(_navigation, world_position)
 
@@ -347,6 +389,48 @@ func _walkable_on_grid(grid: AStarGrid2D, world_position: Vector2) -> bool:
 
 func get_walk_path(start: Vector2, destination: Vector2) -> PackedVector2Array:
 	return _path_on_grid(_navigation, start, destination)
+
+func get_walk_path_avoiding(start: Vector2, destination: Vector2, occupied: PackedVector2Array, clearance: float = 14.0) -> PackedVector2Array:
+	if not start.is_finite() or not destination.is_finite() or not is_finite(clearance) or clearance < 0.0:
+		return PackedVector2Array()
+	for point in occupied:
+		if not point.is_finite() or destination.distance_to(point) < clearance:
+			return PackedVector2Array()
+	if _navigation == null or occupied.is_empty():
+		return get_walk_path(start, destination)
+	var changed: Array[Vector2i] = []
+	for point in occupied:
+		var local := to_local(point)
+		var first_x := maxi(_navigation.region.position.x, floori((local.x - clearance) / tile_size.x))
+		var first_y := maxi(_navigation.region.position.y, floori((local.y - clearance) / tile_size.y))
+		var last_x := mini(_navigation.region.end.x - 1, floori((local.x + clearance) / tile_size.x))
+		var last_y := mini(_navigation.region.end.y - 1, floori((local.y + clearance) / tile_size.y))
+		# An actor on a cell corner is half a tile diagonal from all four centers, so a
+		# small clearance blocks none of them and a diagonal step would cross the actor.
+		# Blocking the cell that contains it also forbids those diagonal steps.
+		var actor_cell := Vector2i(floori(local.x / tile_size.x), floori(local.y / tile_size.y))
+		for y in range(first_y, last_y + 1):
+			for x in range(first_x, last_x + 1):
+				var cell := Vector2i(x, y)
+				if _navigation.is_point_solid(cell):
+					continue
+				if (clearance > 0.0 and cell == actor_cell) or to_global(_navigation.get_point_position(cell)).distance_to(point) < clearance:
+					_navigation.set_point_solid(cell, true)
+					changed.append(cell)
+	var local_start := to_local(start)
+	var start_cell := Vector2i(floori(local_start.x / tile_size.x), floori(local_start.y / tile_size.y))
+	var actor_blocks_start := changed.has(start_cell)
+	if actor_blocks_start:
+		# The soldier can leave its current cell even when an actor makes its center unsafe.
+		_navigation.set_point_solid(start_cell, false)
+	var path := _path_on_grid(_navigation, start, destination)
+	if actor_blocks_start and path.size() > 1 and path[0].distance_to(to_global(_navigation.get_point_position(start_cell))) < 0.1:
+		# Do not send it back to that unsafe center before following the route out.
+		path.remove_at(0)
+	# Occupied positions apply only to this route; terrain navigation stays unchanged.
+	for cell in changed:
+		_navigation.set_point_solid(cell, false)
+	return path
 
 func get_amphibious_path(start: Vector2, destination: Vector2) -> PackedVector2Array:
 	return _path_on_grid(_amphibious_navigation, start, destination)

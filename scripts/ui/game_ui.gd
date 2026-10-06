@@ -4,11 +4,15 @@ extends CanvasLayer
 signal travel_requested(destination: String)
 signal station_area_requested(area: String)
 signal station_action_requested(action: String)
+## Actions for the current world's own systems, such as the Artichoke trench raid.
+signal world_action_requested(action: String)
 
 const INK := Color("1c1730")
 const PANEL := Color(0.07, 0.065, 0.12, 0.94)
 const CREAM := Color("f7f1dd")
 const GOLD := Color("f5c34c")
+## Game speed while the order bar is open, so a battle moves slowly while the player types.
+const TYPING_TIME_SCALE := 0.25
 const CYAN := Color("5fd6d3")
 const RED := Color("d94b4b")
 const RECRUIT_PAGE_SIZE := 10
@@ -27,6 +31,9 @@ var prompt_label: Label
 var modal_overlay: ColorRect
 var modal_panel: PanelContainer
 var modal_content: VBoxContainer
+## Text box for typed squad orders; Enter opens it when the world accepts them.
+var order_bar: PanelContainer
+var order_input: LineEdit
 var _notification_timer: Timer
 var _active_service_id := ""
 var _active_service_name := ""
@@ -51,6 +58,18 @@ func _ready() -> void:
 	_refresh_all()
 
 func _input(event: InputEvent) -> void:
+	if order_bar.visible:
+		# Keys go to the text box; only Escape is handled here, to close it.
+		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
+			close_order_bar()
+			get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("order_type") and not modal_overlay.visible and not get_tree().paused:
+		var world := get_tree().get_first_node_in_group("game_world")
+		if world != null and world.has_method("accepts_typed_orders") and world.accepts_typed_orders():
+			open_order_bar()
+			get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed("inventory"):
 		open_inventory()
 		get_viewport().set_input_as_handled()
@@ -81,6 +100,10 @@ func open_service(service_id: String, display_name: String) -> void:
 		"river_town_hall": _build_river_town_hall()
 		"military_hq": _build_military_hq()
 		"station_ship": _build_station_ship()
+		"artichoke_ship": _build_artichoke_ship()
+		"artichoke_officer": _build_artichoke_officer()
+		"artichoke_arms": _build_artichoke_arms()
+		"artichoke_mess": _build_artichoke_mess()
 		"station_depot": _build_station_depot()
 		"station_barracks": _build_station_barracks()
 		"station_canteen": _build_station_canteen()
@@ -121,6 +144,15 @@ func open_inventory() -> void:
 				_refresh_inventory_panel()
 			)
 			mine_button.disabled = GameState.current_planet != "station" or GameState.military_stage != "trap" or not GameState.military_trap_round_active
+		elif item_id == "field_mine":
+			var world := get_tree().get_first_node_in_group("game_world")
+			var holding: bool = world != null and world.get("player") != null and world.player.has_method("is_holding_field_mine") and world.player.is_holding_field_mine()
+			var field_button := _add_action_button("%s — %s" % [button_text, "Put away" if holding else "Ready"], func() -> void:
+				if world != null and world.has_method("set_field_mine_ready"):
+					world.set_field_mine_ready(not holding)
+				_refresh_inventory_panel()
+			)
+			field_button.disabled = world == null or not world.has_method("set_field_mine_ready")
 		elif kind in ["weapon", "armor", "clothing"]:
 			_add_action_button(button_text, func() -> void: GameState.equip_item(item_id); _refresh_inventory_panel())
 		elif kind == "food":
@@ -142,7 +174,9 @@ func open_jobs() -> void:
 		_add_body("Where: %s" % _station_stage_hint())
 		_add_body("Civilian jobs remain saved and can be continued after returning to Brudet.")
 	if GameState.active_jobs.is_empty():
-		if GameState.current_planet != "station":
+		if GameState.current_planet == "artichoke":
+			_add_body("No front orders yet. Civilian jobs remain saved for your return to Brudet.")
+		elif GameState.current_planet != "station":
 			_add_body("You have no active jobs. Visit the market or Town Hall." if GameState.current_planet == "brudet" else "You have no active jobs. Visit the WORK office or mercenary center.")
 	else:
 		var job_ids := GameState.active_jobs.keys()
@@ -237,6 +271,22 @@ func _build_hud() -> void:
 	squad_panel.add_child(squad_label)
 	squad_panel.visible = false
 
+	order_bar = _panel_at(Vector2(100, 296), Vector2(440, 26), GOLD)
+	order_bar.name = "OrderBar"
+	order_bar.add_to_group("ui_modal")
+	root.add_child(order_bar)
+	var order_row := HBoxContainer.new()
+	order_bar.add_child(order_row)
+	order_row.add_child(_label("Order:", 10, GOLD))
+	order_input = LineEdit.new()
+	order_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	order_input.max_length = 300
+	order_input.placeholder_text = "bowmen to the west ramp · spearmen follow me · Esc closes"
+	order_input.add_theme_font_size_override("font_size", 10)
+	order_input.text_submitted.connect(_on_order_text_submitted)
+	order_row.add_child(order_input)
+	order_bar.visible = false
+
 	var controls := _label("WASD move   E interact   SPACE attack / place mine   I pack   J jobs   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
 	controls.position = Vector2(8, 349)
 	controls.size = Vector2(624, 10)
@@ -290,6 +340,7 @@ func refresh_location() -> void:
 	match GameState.current_planet:
 		"brudet": location_label.text = "BRUDET RIVER CITY"
 		"station": location_label.text = "MILITARY BARRACKS" if GameState.current_area == "barracks" else "TRAINING STATION"
+		"artichoke": location_label.text = "ARTICHOKE FRONT"
 		_: location_label.text = "PAPRIKA VILLAGE"
 	_refresh_job()
 
@@ -307,6 +358,10 @@ func _refresh_job() -> void:
 	_refresh_squad()
 	if GameState.current_planet == "station":
 		job_label.text = "TRAINING — J TO VIEW\n%s\n%s" % [_station_stage_title(), _station_stage_hint()]
+		return
+	if GameState.current_planet == "artichoke":
+		var world := get_tree().get_first_node_in_group("game_world")
+		job_label.text = world.front_status_text() if world != null and world.has_method("front_status_text") else "ARTICHOKE FRONT\nCauliflower Base holds the high ground\nThe flagship returns to the station"
 		return
 	if GameState.active_jobs.is_empty():
 		job_label.text = "JOBS\nNo active jobs — visit Town Hall or market" if GameState.current_planet == "brudet" else "JOBS\nNo active jobs — visit WORK"
@@ -477,6 +532,159 @@ func _build_station_ship() -> void:
 	_add_body("Complete the station drills and sleep in your bunk before taking the return trip." if not graduated else "Basic training is complete. Your return to Brudet is free; belongings left in your footlocker remain there until you collect them.")
 	var button := _add_action_button("Return to Brudet — free", func() -> void: travel_requested.emit("brudet"))
 	button.disabled = not graduated
+	_add_body("Graduates are also posted to Cauliflower Base on Artichoke, a frozen planet where the Confederation holds the high ground against the New Republic.")
+	var front_button := _add_action_button("Deploy to Artichoke — free", func() -> void: travel_requested.emit("artichoke"))
+	front_button.disabled = not graduated
+
+func _build_artichoke_ship() -> void:
+	_add_body("The Confederation flagship stands on cleared ground beside Cauliflower Base. It carries soldiers back to the training station.")
+	_add_body("Your position on Artichoke is saved for your next deployment.")
+	_add_action_button("Return to the training station — free", func() -> void: travel_requested.emit("station"))
+
+func _build_artichoke_officer() -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	if world == null or not world.has_method("story_stage"):
+		_add_body("The officer has no orders for you here.")
+		return
+	var stage: String = world.story_stage()
+	match stage:
+		"report":
+			world.report_to_officer()
+			_add_body("\"Where have you been soldier, taking a piss huh? Go take your bow and spear at the Arms building right now, you are on mine placing duty.\"")
+			_add_body("The Arms building stands east of the barracks, past the east stairs. The Mess beside it serves a hot meal between missions.")
+		"kit":
+			_add_body("\"Still here? Arms building, east of the barracks. Bow, spear, mines. Move, soldier.\"")
+		"mines":
+			_build_artichoke_mine_duty(world)
+		"assault":
+			_build_artichoke_assault(world)
+		"raid":
+			_add_body("\"I am starting to think you are one of the best soldiers. I am promoting you to Officer.\"")
+			_build_artichoke_raid(world)
+		"defense":
+			_build_artichoke_defense(world)
+		"ships":
+			_build_artichoke_ships(world)
+		"debrief":
+			world.promote_to_captain()
+			_add_body("\"Every warship on that airfield is burning. Captain Vela ran when it got hard; you held the trenches, took their guns and now you have finished their fleet. That is bravery, and the Confederation does not forget it.\"")
+			_add_body("\"From today you are Captain. You earned the rank on this front, not in an office.\"")
+			_add_body("\"With no guns and no ships left here, the Republic will keep quiet for a while. Go to Pomidor, our capital, and tell the Council what was done on Artichoke. They should hear it from the one who did it.\"")
+		"done":
+			_add_body("\"Still here, Captain? The front is quiet. The Council on Pomidor is waiting for your report.\"")
+
+func _build_artichoke_mine_duty(world: Node) -> void:
+	_add_body("\"No man's land below the cliffs needs mines before their infantry tries it again. Three spots are marked with yellow rings. Ready a mine from your pack (I) and plant it on each ring with Space.\"")
+	_add_body("\"Their battery has the range. When you hear the guns, keep moving. The last soldier on this duty stood still.\"")
+	if world.mine_duty_active:
+		_add_body("Mine duty under way: %d of %d spots laid." % [world.mine_spots.size() - world.open_mine_spots().size(), world.mine_spots.size()])
+		_add_action_button("Come back in", func() -> void: world_action_requested.emit("mines_cancel"))
+	else:
+		_add_action_button("Go out on mine duty", func() -> void: world_action_requested.emit("mines_start"))
+
+func _build_artichoke_assault(world: Node) -> void:
+	_add_body("\"Huh, you survived. You are tougher than the last one. Prepare for the assault, we are storming the trenches now.\"")
+	_add_body("\"The Republic dug a forward trench west of the occupied village. Six of ours go with you. One of their soldiers there is marked; bring him down and the rest will run.\"")
+	_add_body("Orders in the field: Q follow, R hold position, T attack. The assault fails if you fall or all six are down.")
+	if world.assault_active:
+		_add_body("Assault under way: %d Republic soldiers in the trench, %d of ours standing." % [world.assault_units().size(), world.standing_raid_soldiers()])
+		_add_action_button("Call off the assault", func() -> void: world_action_requested.emit("assault_cancel"))
+	else:
+		_add_action_button("Join the assault", func() -> void: world_action_requested.emit("assault_start"))
+
+func _build_artichoke_raid(world: Node) -> void:
+	_add_body("\"The Republic battery in the southwest shells our trenches day and night. Two cannons, dug in behind a trench line held by archers, spearmen and swordsmen, about eight in all.\"")
+	_add_body("\"Take six of ours across no man's land. Keep clear of the red marks, they are minefields, and the wire will slow you. Plant a charge on each cannon (E) and get clear before it blows.\"")
+	_add_body("Orders in the field: Q follow, R hold position, T attack. Soldiers in trenches are hard to hit with arrows; close in with spear and sword. The raid fails if you fall or all six are down.")
+	if world.raid_active:
+		_add_body("Raid under way: %d of 2 cannons standing, %d raiders standing." % [world.intact_cannon_count(), world.standing_raid_soldiers()])
+		_add_action_button("Call off the raid", func() -> void: world_action_requested.emit("raid_cancel"))
+	else:
+		_add_action_button("Lead the trench raid with six soldiers", func() -> void: world_action_requested.emit("raid_start"))
+
+func _build_artichoke_defense(world: Node) -> void:
+	_add_body("\"With their cannons gone, the Republic sends its infantry: four waves of swordsmen, spearmen and archers from the airfield. The first takes one ramp; the others split between the west ramp and the east stairs, and the lookouts will call where. After the third wave I send fresh soldiers for anyone who falls.\"")
+	_add_body("\"Take the same six, meet each wave in the trenches and bury your mines on its path. Our cannons will shell them on the way. If three reach the top of the ramps, the line is lost.\"")
+	_add_body("Q follow, R hold, T attack. The trench parapet stops Republic arrows too. The defense fails if you fall, all six are down, or three attackers break through.")
+	_add_body("Or press Enter and type an order for the bowmen, spearmen or swordsmen: \"bowmen to the centre trench\", \"spearmen patrol the west ramp and the east stairs\", \"swordsmen follow me\", \"bowmen attack\", \"spearmen attack at the east stairs\". Type \"mark here as tower\" to name the spot where you stand, then send soldiers to the tower; \"forget tower\" removes it. Typed orders need the order service (tools/sandbox_order_service.py); marking places works without it.")
+	if world.defense_active:
+		_add_body("Defense under way: wave %d of %d, %d breaches, %d defenders standing." % [maxi(1, world.current_wave()), world.DEFENSE_WAVES.size(), world.breaches(), world.standing_raid_soldiers()])
+		_add_action_button("Pull the defenders back", func() -> void: world_action_requested.emit("defense_cancel"))
+	else:
+		_add_action_button("Hold the trenches with six soldiers", func() -> void: world_action_requested.emit("defense_start"))
+	_add_body("Draw six field mines at the Arms building and bury them on the ramps before the first wave. If the line falls, the quartermaster replaces only the mines that went off; the rest stay in the ground.")
+
+func _build_artichoke_ships(world: Node) -> void:
+	_add_body("\"I am General Hickey. Captain Vela deserted during the trench attacks, which leaves you the highest-ranked soldier here, Officer.\"")
+	_add_body("\"Until now the Republic has been repairing their broken warships at the airfield so they can bombard this base. The only way to stop them is to destroy the warships first.\"")
+	_add_body("\"Take six soldiers to the airfield. One field mine finishes an escort; the flagship needs three. Plant them with E beside a hull and get clear before it blows. Draw six mines at the Arms building.\"")
+	_add_body("Q follow, R hold, T attack. The strike fails if you fall or all six are down; mines on a hull still standing are lost.")
+	if world.ships_active:
+		_add_body("Strike under way: %d of %d warships standing, %d soldiers standing." % [world.intact_ship_count(), world.warships().size(), world.standing_raid_soldiers()])
+		_add_action_button("Call off the strike", func() -> void: world_action_requested.emit("ships_cancel"))
+	else:
+		_add_action_button("Lead the strike on the warships", func() -> void: world_action_requested.emit("ships_start"))
+
+func _build_artichoke_arms() -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	if world == null or not world.has_method("story_stage"):
+		_add_body("The quartermaster has nothing for you here.")
+		return
+	var stage: String = world.story_stage()
+	if stage == "report":
+		_add_body("\"Report to Captain Vela first, soldier. Nobody gets kit without orders.\"")
+		return
+	if stage == "kit":
+		_add_body("\"New one, huh? Here: a service bow, an iron spear, wooden armor, %d field mines and %d bandages. Sign here.\"" % [world.KIT_MINES, world.KIT_BANDAGES])
+		_add_action_button("Draw your kit", func() -> void: world_action_requested.emit("arms_kit"))
+		return
+	_add_body("\"Lost something? I keep count, so do not make a habit of it.\"")
+	var weapons := _add_action_button("Replace a lost bow, spear or armor", func() -> void: world_action_requested.emit("arms_weapons"))
+	weapons.disabled = world.KIT_GEAR.all(func(item_id: String) -> bool: return GameState.inventory.has(item_id))
+	var allowance: int = world.mine_allowance()
+	if stage in ["assault", "raid"]:
+		_add_body("\"No mines for the assault teams. You get six when the Republic comes for our trenches.\"")
+	elif stage == "defense" and world.buried_defense_mines() > 0:
+		_add_body("\"%d of your six mines are still in the ground. I only replace the ones that went off.\"" % world.buried_defense_mines())
+	if allowance > 0:
+		var mines := _add_action_button("Field mines (carry up to %d)" % allowance, func() -> void: world_action_requested.emit("arms_mines"))
+		mines.disabled = int(GameState.inventory.get("field_mine", 0)) >= allowance or world.mission_active()
+	var bandages := _add_action_button("Bandages (up to %d)" % world.KIT_BANDAGES, func() -> void: world_action_requested.emit("arms_bandages"))
+	bandages.disabled = int(GameState.inventory.get("bandage", 0)) >= world.KIT_BANDAGES
+
+func _build_artichoke_mess() -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	_add_body("Hot stew, black bread and tea that has been on the stove since the war started. A meal heals every wound.")
+	if world != null and world.has_method("mission_active") and world.mission_active():
+		_add_body("\"Not now, the squad is out. Finish the job first.\"")
+		return
+	var meal := _add_action_button("Eat a hot meal — free", func() -> void: world_action_requested.emit("mess_meal"))
+	meal.disabled = GameState.health >= GameState.max_health
+
+func open_order_bar() -> void:
+	order_input.clear()
+	order_bar.visible = true
+	order_input.grab_focus()
+	Engine.time_scale = TYPING_TIME_SCALE
+
+func close_order_bar() -> void:
+	order_input.release_focus()
+	order_bar.visible = false
+	Engine.time_scale = 1.0
+
+func _exit_tree() -> void:
+	if order_bar != null and order_bar.visible:
+		Engine.time_scale = 1.0
+
+func _on_order_text_submitted(text: String) -> void:
+	close_order_bar()
+	var world := get_tree().get_first_node_in_group("game_world")
+	if not text.strip_edges().is_empty() and world != null and world.has_method("submit_squad_text"):
+		world.submit_squad_text(text)
+
+## Redraws the Artichoke front panel after the raid or battery changes.
+func refresh_front_status() -> void:
+	_refresh_job()
 
 func _build_station_depot() -> void:
 	_add_body("Report here for your military-green uniform. Put your civilian belongings in your assigned barracks footlocker before training.")

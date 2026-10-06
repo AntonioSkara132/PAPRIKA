@@ -7,10 +7,12 @@ var damage := 4
 var max_distance := 160.0
 var from_player := true
 var _travelled := 0.0
+var _origin := Vector2.ZERO
 var _hit_ids: Dictionary = {}
 
 func configure(origin: Vector2, travel_direction: Vector2, attack_damage: int, travel_speed: float, attack_range: float, player_owned: bool) -> void:
 	global_position = origin
+	_origin = origin
 	direction = travel_direction.normalized()
 	damage = attack_damage
 	speed = travel_speed
@@ -47,5 +49,9 @@ func _on_body_entered(body: Node) -> void:
 		return
 	_hit_ids[body.get_instance_id()] = true
 	if body.has_method("take_damage"):
-		body.take_damage(damage, global_position)
+		var world := get_tree().get_first_node_in_group("game_world")
+		if body is Node2D and world != null and world.has_method("shot_blocked") and world.shot_blocked(_origin, (body as Node2D).global_position):
+			world.show_cover_hit(global_position)
+		else:
+			body.take_damage(damage, global_position)
 	queue_free()

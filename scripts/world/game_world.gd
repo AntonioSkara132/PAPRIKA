@@ -535,6 +535,10 @@ func _service_routine_stop(services: Dictionary, service_id: String, offset: Vec
 		return {}
 	return {"kind": kind, "position": Vector2(services[service_id]) + offset, "wait": wait}
 
+## Multiplies walking speed at a position; worlds with slowing ground override it.
+func movement_factor(_at: Vector2) -> float:
+	return 1.0
+
 func _on_player_respawned() -> void:
 	for actor in actors_root.get_children():
 		if actor is Enemy:

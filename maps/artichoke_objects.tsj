@@ -1,0 +1,511 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "artichoke_objects",
+  "tilewidth": 192,
+  "tileheight": 112,
+  "tilecount": 83,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/artichoke/objects/boulder.png",
+      "imagewidth": 20,
+      "imageheight": 16
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/artichoke/objects/tree_conifer.png",
+      "imagewidth": 22,
+      "imageheight": 33
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/artichoke/objects/boulder_2.png",
+      "imagewidth": 24,
+      "imageheight": 15
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/artichoke/objects/boulder_3.png",
+      "imagewidth": 21,
+      "imageheight": 16
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/artichoke/objects/warship_escort.png",
+      "imagewidth": 96,
+      "imageheight": 56
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/artichoke/objects/warship_scout.png",
+      "imagewidth": 96,
+      "imageheight": 56
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/artichoke/objects/plateau_house.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/artichoke/objects/confederation_flag.png",
+      "imagewidth": 16,
+      "imageheight": 30
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/artichoke/objects/plateau_house_2.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/artichoke/objects/plateau_house_3.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/artichoke/objects/artichoke_ship.png",
+      "imagewidth": 192,
+      "imageheight": 112
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/artichoke/objects/front_soldier.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/artichoke/objects/front_soldier_2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/artichoke/objects/front_soldier_3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/artichoke/objects/confederation_barracks.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/artichoke/objects/confederation_barracks_2.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/artichoke/objects/confederation_headquarters.png",
+      "imagewidth": 112,
+      "imageheight": 96
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/artichoke/objects/munitions_crate.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/artichoke/objects/boulder_4.png",
+      "imagewidth": 22,
+      "imageheight": 15
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/artichoke/objects/boulder_5.png",
+      "imagewidth": 23,
+      "imageheight": 16
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/artichoke/objects/player.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/artichoke/objects/confederation_officer.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/artichoke/objects/watchtower.png",
+      "imagewidth": 48,
+      "imageheight": 80
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/artichoke/objects/front_soldier_4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/artichoke/objects/boulder_6.png",
+      "imagewidth": 23,
+      "imageheight": 15
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/artichoke/objects/front_tnt_pile.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/artichoke/objects/boulder_7.png",
+      "imagewidth": 25,
+      "imageheight": 17
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/artichoke/objects/front_soldier_5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/artichoke/objects/front_cannon.png",
+      "imagewidth": 80,
+      "imageheight": 40
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/artichoke/objects/plateau_house_4.png",
+      "imagewidth": 64,
+      "imageheight": 56
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/artichoke/objects/front_soldier_6.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/artichoke/objects/confederation_arms.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/artichoke/objects/confederation_mess.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/artichoke/objects/confederation_cook.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/artichoke/objects/bunker.png",
+      "imagewidth": 34,
+      "imageheight": 28
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/artichoke/objects/barbed_wire.png",
+      "imagewidth": 40,
+      "imageheight": 18
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/artichoke/objects/hedgehog.png",
+      "imagewidth": 18,
+      "imageheight": 18
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/artichoke/objects/destroyed_house.png",
+      "imagewidth": 66,
+      "imageheight": 60
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/artichoke/objects/burnt_stump.png",
+      "imagewidth": 12,
+      "imageheight": 14
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/artichoke/objects/trap_marker.png",
+      "imagewidth": 18,
+      "imageheight": 18
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/artichoke/objects/village_house.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/artichoke/objects/republic_banner.png",
+      "imagewidth": 14,
+      "imageheight": 30
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/artichoke/objects/republic_soldier.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/artichoke/objects/tree_conifer_2.png",
+      "imagewidth": 22,
+      "imageheight": 33
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/artichoke/objects/republic_soldier_2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/artichoke/objects/boulder_8.png",
+      "imagewidth": 18,
+      "imageheight": 18
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/artichoke/objects/destroyed_house_2.png",
+      "imagewidth": 66,
+      "imageheight": 60
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/artichoke/objects/village_house_2.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/artichoke/objects/village_house_3.png",
+      "imagewidth": 64,
+      "imageheight": 80
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/artichoke/objects/destroyed_house_3.png",
+      "imagewidth": 66,
+      "imageheight": 60
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/artichoke/objects/republic_soldier_3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/artichoke/objects/tree_conifer_3.png",
+      "imagewidth": 22,
+      "imageheight": 33
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/artichoke/objects/republic_soldier_4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/artichoke/objects/village_house_4.png",
+      "imagewidth": 64,
+      "imageheight": 56
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/artichoke/objects/village_house_5.png",
+      "imagewidth": 64,
+      "imageheight": 56
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/artichoke/objects/republic_soldier_5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/artichoke/objects/destroyed_house_4.png",
+      "imagewidth": 66,
+      "imageheight": 60
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/artichoke/objects/republic_wall.png",
+      "imagewidth": 16,
+      "imageheight": 30
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/artichoke/objects/republic_wall_2.png",
+      "imagewidth": 16,
+      "imageheight": 30
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/artichoke/objects/destroyed_house_5.png",
+      "imagewidth": 66,
+      "imageheight": 60
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/artichoke/objects/republic_tower.png",
+      "imagewidth": 36,
+      "imageheight": 64
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/artichoke/objects/republic_gate.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/artichoke/objects/republic_soldier_6.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/artichoke/objects/republic_tnt_pile.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/artichoke/objects/republic_cannon.png",
+      "imagewidth": 80,
+      "imageheight": 40
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/artichoke/objects/republic_munitions_crate.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_6.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/artichoke/objects/republic_battery_soldier_7.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/artichoke/objects/republic_bunker.png",
+      "imagewidth": 34,
+      "imageheight": 28
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/artichoke/objects/republic_barracks_a.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/artichoke/objects/republic_headquarters.png",
+      "imagewidth": 112,
+      "imageheight": 96
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/artichoke/objects/republic_warship_flagship.png",
+      "imagewidth": 144,
+      "imageheight": 72
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/artichoke/objects/republic_warship_escort.png",
+      "imagewidth": 96,
+      "imageheight": 56
+    },
+    {
+      "id": 78,
+      "image": "../assets/art/artichoke/objects/republic_soldier_7.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 79,
+      "image": "../assets/art/artichoke/objects/republic_barracks_b.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 80,
+      "image": "../assets/art/artichoke/objects/boulder_9.png",
+      "imagewidth": 24,
+      "imageheight": 18
+    },
+    {
+      "id": 81,
+      "image": "../assets/art/artichoke/objects/republic_weapons_storage.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 82,
+      "image": "../assets/art/artichoke/objects/republic_cafeteria.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    }
+  ]
+}

@@ -44,6 +44,10 @@ const ITEMS := {
 	"purple_tunic": {"name": "Purple Villager Tunic", "kind": "clothing", "buy": 24, "color": "purple"},
 	"military_uniform": {"name": "Military Training Uniform", "kind": "clothing", "buy": 0, "sell": 0, "color": "green"},
 	"practice_mine": {"name": "Practice Mine", "kind": "training", "buy": 0, "sell": 0, "station_only": true},
+	"service_bow": {"name": "Service Bow", "kind": "weapon", "buy": 0, "sell": 0, "power": 2, "reach": 170.0, "cooldown": 0.66, "ranged": true},
+	"field_mine": {"name": "Field Mine", "kind": "front", "buy": 0, "sell": 0},
+	# Issued at the Artichoke Arms building; H uses it like food once the food is gone.
+	"bandage": {"name": "Bandage", "kind": "food", "buy": 0, "sell": 0, "heal": 20},
 }
 
 const JOBS := {
@@ -198,6 +202,9 @@ const ENEMIES := {
 	"finling": {"name": "Finling", "level": 2, "max_health": 14, "damage": 4, "speed": 50.0, "event": "river_monster_defeated", "reward": 6},
 	"lake_maw": {"name": "Lake Maw", "level": 3, "max_health": 42, "damage": 8, "speed": 36.0, "event": "river_monster_defeated", "reward": 16},
 	"river_serpent": {"name": "River Serpent", "level": 3, "max_health": 30, "damage": 7, "speed": 60.0, "reach": 135.0, "ranged": true, "attack_cooldown": 1.8, "event": "river_monster_defeated", "reward": 12},
+	"republic_archer": {"name": "Republic Archer", "level": 4, "max_health": 30, "damage": 5, "speed": 40.0, "reach": 140.0, "ranged": true, "armor": 1, "attack_cooldown": 1.7, "event": "republic_soldier_defeated", "reward": 8},
+	"republic_spearman": {"name": "Republic Spearman", "level": 4, "max_health": 36, "damage": 7, "speed": 44.0, "reach": 40.0, "armor": 1, "attack_cooldown": 1.2, "event": "republic_soldier_defeated", "reward": 8},
+	"republic_swordsman": {"name": "Republic Swordsman", "level": 4, "max_health": 38, "damage": 8, "speed": 48.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "republic_soldier_defeated", "reward": 8},
 }
 
 const CROP_BY_TILE_ID := {

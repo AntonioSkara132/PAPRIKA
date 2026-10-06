@@ -12,7 +12,9 @@ signal military_changed
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 10
+const SAVE_SCHEMA := 11
+const ARTICHOKE_SAVE_SCHEMA := 11
+const MILITARY_ROUND_SAVE_SCHEMA := 10
 const STATION_SAVE_SCHEMA := 9
 const CAMP_UNLOCK_SAVE_SCHEMA := 8
 const PAPRIKA_LOCAL_RECRUIT_SCHEMA := 7
@@ -24,11 +26,13 @@ const PAPRIKA_OLD_SOUTH_Y := 352.0
 const PAPRIKA_OLD_SOUTH_ROW := 22
 const PAPRIKA_LAYOUT_SHIFT := 768.0
 const PAPRIKA_FIELD_ROW_SHIFT := 48
-const PLANETS := ["paprika", "brudet", "station"]
+const PLANETS := ["paprika", "brudet", "station", "artichoke"]
+const STATION_PLANETS := ["paprika", "brudet", "station"]
 const LEGACY_PLANETS := ["paprika", "brudet"]
 const BRUDET_ARRIVAL := Vector2(1450, 706)
 const MILITARY_ARRIVAL := Vector2(224, 384)
 const MILITARY_BARRACKS_ARRIVAL := Vector2(256, 340)
+const ARTICHOKE_ARRIVAL := Vector2(304, 134)
 const MILITARY_STAGES := ["none", "depot", "barracks", "run", "spar", "squad", "range", "cannon", "trap", "sleep", "graduated"]
 const MILITARY_DRILLS := ["run", "spar", "squad", "range", "cannon", "trap"]
 const MILITARY_TRAINING_WEAPONS := ["training_club", "training_bow"]
@@ -62,7 +66,7 @@ var completed_unique_jobs: Array[String] = []
 var camp_unlocked: bool = false
 var player_position := Vector2(320, 220)
 var current_planet := "paprika"
-var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y]}
+var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y]}
 var current_area := "exterior"
 var military_barracks_position := [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 var military_stage := "none"
@@ -141,7 +145,7 @@ func start_new_game() -> void:
 	camp_unlocked = false
 	player_position = Vector2(320, 220)
 	current_planet = "paprika"
-	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y]}
+	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y]}
 	current_area = "exterior"
 	military_barracks_position = [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 	military_stage = "none"
@@ -176,6 +180,8 @@ func travel_fare(destination: String) -> int:
 		return 0
 	if current_planet == "station" and destination == "brudet":
 		return 0
+	if current_planet == "station" and destination == "artichoke" or current_planet == "artichoke" and destination == "station":
+		return 0
 	if current_planet == "paprika" and destination == "brudet":
 		return GameData.TRAVEL_FARE
 	if current_planet == "brudet" and destination == "paprika":
@@ -194,7 +200,10 @@ func can_travel(destination: String) -> bool:
 		notify("Dismiss your recruits before traveling.")
 		return false
 	if current_planet == "station" and (current_area != "exterior" or military_stage != "graduated"):
-		notify("Finish training and sleep in the barracks before returning to Brudet.")
+		notify("Finish training and sleep in the barracks before leaving the station.")
+		return false
+	if destination == "artichoke" and military_stage != "graduated":
+		notify("Only graduated soldiers are sent to the Artichoke front.")
 		return false
 	if gold < fare:
 		notify("You need %d gold to travel to %s." % [fare, destination.capitalize()])
@@ -343,7 +352,7 @@ func use_food(item_id: String) -> bool:
 		return false
 	health = mini(max_health, health + int(definition.get("heal", 0)))
 	health_changed.emit(health, max_health)
-	notify("Ate %s." % definition["name"])
+	notify("Bandaged your wounds." if item_id == "bandage" else "Ate %s." % definition["name"])
 	return true
 
 func military_claim_uniform() -> bool:
@@ -1126,6 +1135,8 @@ func load_game() -> bool:
 	planet_positions = data.get("planet_positions", {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y]}).duplicate(true)
 	if int(data["schema"]) < STATION_SAVE_SCHEMA:
 		planet_positions["station"] = [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y]
+	if int(data["schema"]) < ARTICHOKE_SAVE_SCHEMA:
+		planet_positions["artichoke"] = [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y]
 	current_area = String(data.get("current_area", "exterior"))
 	military_barracks_position = data.get("military_barracks_position", [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]).duplicate()
 	military_stage = String(data.get("military_stage", "none"))
@@ -1138,7 +1149,7 @@ func load_game() -> bool:
 	for target_id in data.get("military_cannon_hits", []):
 		military_cannon_hits.append(String(target_id))
 	military_trap_progress = int(data.get("military_trap_progress", 0))
-	if int(data["schema"]) >= SAVE_SCHEMA:
+	if int(data["schema"]) >= MILITARY_ROUND_SAVE_SCHEMA:
 		military_cannon_round_active = bool(data["military_cannon_round_active"])
 		military_cannon_phase = String(data["military_cannon_phase"])
 		military_trap_round_active = bool(data["military_trap_round_active"])
@@ -1195,7 +1206,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -1209,7 +1220,7 @@ func _valid_save(data: Variant) -> bool:
 	if schema >= PLANET_SAVE_SCHEMA:
 		var planet = data.get("current_planet", null)
 		var positions = data.get("planet_positions", null)
-		var allowed_planets: Array = PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
+		var allowed_planets: Array = PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
 		if not planet is String or not allowed_planets.has(planet) or not positions is Dictionary or positions.size() != allowed_planets.size():
 			return false
 		for planet_id in allowed_planets:
@@ -1297,7 +1308,7 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 	var trap_round_active := false
 	var trap_equipped := false
 	var trap_position: Array = []
-	if schema >= SAVE_SCHEMA:
+	if schema >= MILITARY_ROUND_SAVE_SCHEMA:
 		var saved_cannon_active = data.get("military_cannon_round_active", null)
 		var saved_cannon_phase = data.get("military_cannon_phase", null)
 		var saved_trap_active = data.get("military_trap_round_active", null)
@@ -1339,7 +1350,9 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 		return false
 	if area == "barracks" and data["current_planet"] != "station":
 		return false
-	if schema >= SAVE_SCHEMA:
+	if data["current_planet"] == "artichoke" and stage != "graduated":
+		return false
+	if schema >= MILITARY_ROUND_SAVE_SCHEMA:
 		if (not cannon_round_active and cannon_phase != "empty") or (cannon_round_active and stage != "cannon") or (stage != "cannon" and cannon_phase != "empty"):
 			return false
 		if (stage != "cannon" and cannon_round_active) or (trap_round_active and stage != "trap") or (stage != "trap" and (trap_round_active or trap_equipped or trap_mine_placed)):
@@ -1388,7 +1401,7 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 		return false
 	if stage_index >= MILITARY_STAGES.find("run") and stage != "graduated":
 		var expected_inventory_size := 1 if expected_training_weapon.is_empty() else 2
-		if schema >= SAVE_SCHEMA and stage == "trap" and trap_round_active and has_held_trap_mine:
+		if schema >= MILITARY_ROUND_SAVE_SCHEMA and stage == "trap" and trap_round_active and has_held_trap_mine:
 			expected_inventory_size += 1
 		if item_counts.size() != expected_inventory_size or gear.get("weapon", "") != expected_training_weapon or gear.get("armor", "") != "":
 			return false

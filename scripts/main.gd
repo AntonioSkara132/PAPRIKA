@@ -5,6 +5,7 @@ const WORLD_SCRIPTS := {
 	"brudet": "res://scripts/world/brudet_world.gd",
 	"station": "res://scripts/world/station_world.gd",
 	"station_barracks": "res://scripts/world/station_barracks_world.gd",
+	"artichoke": "res://scripts/world/artichoke_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
@@ -30,6 +31,8 @@ func _ready() -> void:
 			game_ui.connect("station_area_requested", _on_station_area_requested)
 		if game_ui.has_signal("station_action_requested"):
 			game_ui.connect("station_action_requested", _on_station_action_requested)
+		if game_ui.has_signal("world_action_requested"):
+			game_ui.connect("world_action_requested", _on_world_action_requested)
 	GameState.notify("Welcome to Paprika. Visit the JOBS center to find work.")
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -85,6 +88,11 @@ func _on_station_action_requested(action: String) -> void:
 	if GameState.current_planet == "station" and world != null and world.has_method("handle_station_action"):
 		world.handle_station_action(action)
 
+func _on_world_action_requested(action: String) -> void:
+	_close_ui()
+	if world != null and world.has_method("handle_world_action"):
+		world.handle_world_action(action)
+
 func _close_ui() -> void:
 	if game_ui != null and game_ui.has_method("close_modal"):
 		game_ui.call("close_modal")
@@ -105,6 +113,7 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		"brudet": "BrudetWorld",
 		"station": "StationWorld",
 		"station_barracks": "StationBarracksWorld",
+		"artichoke": "ArtichokeWorld",
 	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader
@@ -130,6 +139,9 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		remove_child(world)
 		world.queue_free()
 	world = next_world
+	# The new player reports its own prompt on its first update; drop the old world's.
+	if game_ui != null and game_ui.has_method("set_interaction_prompt"):
+		game_ui.set_interaction_prompt("")
 	_world_planet = planet
 	_world_area = area
 	return true
@@ -152,6 +164,7 @@ func _ensure_input_actions() -> void:
 		"order_follow": [KEY_Q],
 		"order_hold": [KEY_R],
 		"order_attack": [KEY_T],
+		"order_type": [KEY_ENTER, KEY_KP_ENTER],
 		"pause": [KEY_ESCAPE],
 		"quick_save": [KEY_F5],
 		"quick_load": [KEY_F9],

@@ -1,0 +1,13 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "artichoke_terrain",
+  "tilewidth": 16,
+  "tileheight": 16,
+  "tilecount": 246,
+  "columns": 16,
+  "image": "../assets/art/artichoke/artichoke_terrain.png",
+  "imagewidth": 256,
+  "imageheight": 256
+}
