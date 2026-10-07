@@ -10,7 +10,9 @@ func _initialize() -> void:
 	_run("new game resets state", _test_new_game)
 	_run("unaffordable purchase is atomic", _test_unaffordable_purchase)
 	_run("buy and equip", _test_buy_and_equip)
+	_run("sell an entire produce stack", _test_bulk_sales)
 	_run("armor reduces damage", _test_armor)
+	_run("armor can be removed without being sold", _test_unequip_armor)
 	_run("field regrowth", _test_field_regrowth)
 	_run("field job pays once", _test_field_job)
 	_run("five rabbits pay reward", _test_rabbit_job)
@@ -29,6 +31,7 @@ func _initialize() -> void:
 	_run("travel fare is not an item purchase", _test_travel_fare)
 	_run("planet travel and fare", _test_planet_travel)
 	_run("deployed squad cannot travel", _test_deployed_travel)
+	_run("embassy travel to Chvarak and Engineeria", _test_embassy_travel)
 	_run("Brudet teams and local recruits", _test_brudet_teams)
 	_run("Brudet solo hacker and team exclusion", _test_brudet_solo_hacker)
 	_run("military enlistment, chest and six drills", _test_military_training)
@@ -117,6 +120,27 @@ func _test_armor() -> void:
 	_check(state.armor_protection() == 1, "wood armor protects against one damage")
 	_check(state.damage_player(4) == 3 and state.health == 17, "four raw damage becomes three health loss")
 	_check(state.damage_player(1) == 0 and state.health == 17, "armor blocks one raw damage completely")
+	state.free()
+
+
+func _test_bulk_sales() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.add_item("potato", 13)
+	var initial_gold := state.gold
+	_check(state.sell_all_items("potato") and int(state.inventory.get("potato", 0)) == 0 and state.gold == initial_gold + 26, "thirteen potatoes sell together for thirteen times the unit price")
+	_check(not state.sell_all_items("potato") and state.gold == initial_gold + 26, "an empty stack cannot be sold again")
+	state.add_item("embassy_letters")
+	_check(not state.sell_all_items("embassy_letters") and int(state.inventory.get("embassy_letters", 0)) == 1, "key items remain unsellable in bulk")
+	state.free()
+
+
+func _test_unequip_armor() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.add_item("wood_armor")
+	_check(state.equip_item("wood_armor") and state.unequip_armor() and String(state.equipment["armor"]).is_empty() and int(state.inventory["wood_armor"]) == 1, "armor stays in the pack after removal")
+	_check(state.equip_item("wood_armor") and state.equipment["armor"] == "wood_armor", "armor can be put back on")
 	state.free()
 
 
@@ -413,7 +437,9 @@ func _test_military_training() -> void:
 	state.remember_player_position(Vector2(268, 355))
 	_check(state.exit_military_barracks(Vector2(268, 355)) and state.player_position == Vector2(245, 395), "leaving the barracks restores the exterior position")
 	_check(not state.military_complete_drill("range") and state.military_complete_drill("run") and not state.military_complete_drill("run") and state.weapon_definition() == GameData.item("training_club") and state.inventory == {"military_uniform": 1, "training_club": 1} and state.equipment["weapon"] == "training_club", "run issues and equips one owned practice club for sparring")
-	_check(state.military_complete_drill("spar") and state.military_complete_drill("squad") and state.weapon_definition() == GameData.item("training_bow") and state.inventory == {"military_uniform": 1, "training_bow": 1} and state.military_complete_drill("range") and state.inventory == {"military_uniform": 1} and state.military_meal_credits == 4, "range swaps club for one bow and returns it after the drill")
+	_check(state.military_complete_drill("spar") and state.military_stage == "squad" and state.max_health == GameData.STARTING_MAX_HEALTH, "sparring does not grant the squad-bout health increase")
+	_check(state.military_complete_drill("squad") and state.military_stage == "range" and state.max_health == 24 and state.health == 24, "the squad bout raises maximum health to 24 and grants four health")
+	_check(state.weapon_definition() == GameData.item("training_bow") and state.inventory == {"military_uniform": 1, "training_bow": 1} and state.military_complete_drill("range") and state.inventory == {"military_uniform": 1} and state.military_meal_credits == 4, "range swaps club for one bow and returns it after the drill")
 	_check(not state.record_event("river_monster_defeated") and not state.record_event("rabbit_caught") and state.active_jobs["river_patrol"] == 0 and state.active_jobs["rabbit_catch"] == 0, "training does not advance civilian jobs from either planet")
 	_check(not state.military_record_cannon_hit("cannon_target_0") and state.military_start_cannon_round() and not state.military_start_cannon_round(), "cannon requires one active round before loading a shot")
 	_check(not state.military_load_cannon() and not state.military_record_cannon_hit("cannon_target_0"), "cannon cannot load or record an empty shot")
@@ -445,7 +471,7 @@ func _test_military_training() -> void:
 	_check(state.military_eat_meal() and state.military_meal_credits == 5 and state.health == state.max_health, "exterior canteen serves one earned meal even at full health")
 	_check(state.enter_military_barracks(Vector2(252, 402)) and state.player_position == Vector2(268, 355) and not state.military_eat_meal() and not state.military_withdraw_gear(), "barracks position persists; meals stay in the canteen and gear stays locked")
 	state.damage_player(9)
-	_check(state.military_sleep() and state.health == state.max_health and state.military_stage == "graduated", "sleep heals and graduates after all six drills")
+	_check(state.military_sleep() and state.health == 28 and state.max_health == 28 and state.military_stage == "graduated", "sleep heals to 28 and graduates after all six drills")
 	state.damage_player(2)
 	_check(state.military_sleep() and state.health == state.max_health and state.military_meal_credits == 5, "later nights restore health without granting more credits")
 	_check(state.exit_military_barracks(Vector2(260, 344)) and state.return_from_military(Vector2(246, 397)) and state.current_planet == "brudet" and state.player_position == Vector2(1510, 740) and state.military_storage == original_items, "graduation permits free return while personal gear remains stored")
@@ -651,6 +677,8 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_eight["planet_positions"].erase("station")
 	schema_eight["planet_positions"].erase("artichoke")
 	schema_eight["planet_positions"].erase("pomidor")
+	schema_eight["planet_positions"].erase("chvarak")
+	schema_eight["planet_positions"].erase("engineeria")
 	for change in ["missing", "false", "wrong_type"]:
 		var invalid: Dictionary = schema_eight.duplicate(true)
 		match change:
@@ -663,6 +691,8 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_seven["planet_positions"].erase("station")
 	schema_seven["planet_positions"].erase("artichoke")
 	schema_seven["planet_positions"].erase("pomidor")
+	schema_seven["planet_positions"].erase("chvarak")
+	schema_seven["planet_positions"].erase("engineeria")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven mixed deployed camp save remains valid without the new unlock field")
 	var invalid_seven: Dictionary = schema_seven.duplicate(true)
@@ -719,6 +749,8 @@ func _test_planet_save(state) -> void:
 	saved["planet_positions"].erase("station")
 	saved["planet_positions"].erase("artichoke")
 	saved["planet_positions"].erase("pomidor")
+	saved["planet_positions"].erase("chvarak")
+	saved["planet_positions"].erase("engineeria")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(legacy_file != null, "schema-four Brudet fixture can be written")
 	if legacy_file == null:
@@ -799,6 +831,39 @@ func _test_planet_travel() -> void:
 	_check(not state.travel_to("paprika", Vector2.ZERO) and state.gold == 0, "same-planet travel is rejected without charging gold")
 	state.add_gold(1000)
 	_check(state.travel_to("brudet", Vector2(1075, 267)) and state.gold == 0 and state.player_position == Vector2(1505, 748) and state.planet_positions["paprika"] == [1075.0, 267.0], "later outbound trip charges again and restores the saved Brudet position")
+	state.free()
+
+
+func _test_embassy_travel() -> void:
+	var state := GameStateScript.new()
+	state.start_new_game()
+	state.current_planet = "pomidor"
+	state.defeated_persistent_enemies.append(state.POMIDOR_UNLOCK_FLAG)
+	var gold := state.gold
+	_check(state.travel_fare("chvarak") == 0 and not state.can_travel("chvarak"), "the transport flies to Chvarak only once the embassy is accepted")
+	state.defeated_persistent_enemies.append(state.EMBASSY_FLAG)
+	_check(state.travel_to("chvarak", Vector2(900, 500)) and state.current_planet == "chvarak" and state.gold == gold and state.player_position == state.CHVARAK_ARRIVAL, "with the embassy the flight to Chvarak is free and lands by the transport")
+	_check(state.travel_fare("engineeria") == -1 and not state.can_travel("engineeria"), "no transport flies to Engineeria")
+	_check(state.save_game(), "a save on Chvarak with the embassy accepted is written")
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(saved is Dictionary and state._valid_save(saved), "a save on Chvarak with the embassy accepted is valid")
+	if saved is Dictionary:
+		var early: Dictionary = saved.duplicate(true)
+		early["defeated_persistent_enemies"].erase(state.EMBASSY_FLAG)
+		_check(not state._valid_save(early), "a save on Chvarak without the embassy is rejected")
+	state.defeated_persistent_enemies.append(state.CRASH_FLAG)
+	_check(state.story_travel("engineeria", Vector2(700, 300)) and state.current_planet == "engineeria" and state.gold == gold and state.player_position == state.ENGINEERIA_ARRIVAL, "the crash takes the player to Engineeria without a fare")
+	_check(state.planet_positions["chvarak"] == [700.0, 300.0], "the crash remembers where the player left Chvarak")
+	_check(state.travel_fare("chvarak") == -1 and state.travel_fare("pomidor") == -1 and not state.can_travel("pomidor"), "Engineeria has no way off yet")
+	_check(state.save_game(), "a save on Engineeria after the crash is written")
+	saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(saved is Dictionary and state._valid_save(saved), "a save on Engineeria after the crash is valid")
+	if saved is Dictionary:
+		var before_crash: Dictionary = saved.duplicate(true)
+		before_crash["defeated_persistent_enemies"].erase(state.CRASH_FLAG)
+		_check(not state._valid_save(before_crash), "a save on Engineeria without the crash is rejected")
+	state.current_planet = "pomidor"
+	_check(not state.can_travel("chvarak"), "after the crash the transport no longer flies to Chvarak")
 	state.free()
 
 
@@ -908,6 +973,8 @@ func _test_brudet_save(state) -> void:
 	schema_six["planet_positions"].erase("station")
 	schema_six["planet_positions"].erase("artichoke")
 	schema_six["planet_positions"].erase("pomidor")
+	schema_six["planet_positions"].erase("chvarak")
+	schema_six["planet_positions"].erase("engineeria")
 	schema_six.erase("legacy_camp_roster")
 	_check(state._valid_save(schema_six), "schema-six deployed Brudet team remains valid without schema-nine roster field")
 	var schema_six_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -928,6 +995,8 @@ func _test_brudet_save(state) -> void:
 		schema_five["planet_positions"].erase("station")
 		schema_five["planet_positions"].erase("artichoke")
 		schema_five["planet_positions"].erase("pomidor")
+		schema_five["planet_positions"].erase("chvarak")
+		schema_five["planet_positions"].erase("engineeria")
 		schema_five["current_planet"] = "paprika"
 		schema_five["player_position"] = [830.0, 1368.0]
 		schema_five["planet_positions"]["paprika"] = [830.0, 1368.0]
@@ -989,6 +1058,8 @@ func _test_road_save(state) -> void:
 	old_schema["planet_positions"].erase("station")
 	old_schema["planet_positions"].erase("artichoke")
 	old_schema["planet_positions"].erase("pomidor")
+	old_schema["planet_positions"].erase("chvarak")
+	old_schema["planet_positions"].erase("engineeria")
 	old_schema.erase("legacy_camp_roster")
 	_check(not state._valid_save(old_schema), "road cleanup cannot appear in a schema-six save")
 	var schema_seven: Dictionary = saved.duplicate(true)
@@ -996,6 +1067,8 @@ func _test_road_save(state) -> void:
 	schema_seven["planet_positions"].erase("station")
 	schema_seven["planet_positions"].erase("artichoke")
 	schema_seven["planet_positions"].erase("pomidor")
+	schema_seven["planet_positions"].erase("chvarak")
+	schema_seven["planet_positions"].erase("engineeria")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven road save remains valid without the new camp unlock field")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1035,6 +1108,8 @@ func _test_solo_save(state) -> void:
 	old_schema["planet_positions"].erase("station")
 	old_schema["planet_positions"].erase("artichoke")
 	old_schema["planet_positions"].erase("pomidor")
+	old_schema["planet_positions"].erase("chvarak")
+	old_schema["planet_positions"].erase("engineeria")
 	old_schema.erase("camp_unlocked")
 	_check(not state._valid_save(old_schema), "new solo hacker bounty cannot appear in a schema-seven save")
 	state.start_new_game()
@@ -1053,6 +1128,8 @@ func _test_legacy_hacker_save(state) -> void:
 	legacy["planet_positions"].erase("station")
 	legacy["planet_positions"].erase("artichoke")
 	legacy["planet_positions"].erase("pomidor")
+	legacy["planet_positions"].erase("chvarak")
+	legacy["planet_positions"].erase("engineeria")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"hacker_bounty": 0}
 	legacy["tracked_job_id"] = "hacker_bounty"
@@ -1078,6 +1155,8 @@ func _test_legacy_hacker_save(state) -> void:
 	defeated["planet_positions"].erase("station")
 	defeated["planet_positions"].erase("artichoke")
 	defeated["planet_positions"].erase("pomidor")
+	defeated["planet_positions"].erase("chvarak")
+	defeated["planet_positions"].erase("engineeria")
 	defeated.erase("camp_unlocked")
 	defeated["defeated_persistent_enemies"] = ["hacker_forest"]
 	var old_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1121,6 +1200,8 @@ func _test_legacy_brudet_hacker_save(state) -> void:
 	legacy["planet_positions"].erase("station")
 	legacy["planet_positions"].erase("artichoke")
 	legacy["planet_positions"].erase("pomidor")
+	legacy["planet_positions"].erase("chvarak")
+	legacy["planet_positions"].erase("engineeria")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"brudet_hacker_team": 0}
 	legacy["tracked_job_id"] = "brudet_hacker_team"
@@ -1160,6 +1241,8 @@ func _test_military_save(state) -> void:
 	old["planet_positions"].erase("station")
 	old["planet_positions"].erase("artichoke")
 	old["planet_positions"].erase("pomidor")
+	old["planet_positions"].erase("chvarak")
+	old["planet_positions"].erase("engineeria")
 	for key in ["current_area", "military_barracks_position", "military_stage", "military_storage", "military_stored_equipment", "military_meal_credits", "military_cannon_hits", "military_trap_progress"]:
 		old.erase(key)
 	_check(state._valid_save(old), "schema-nine save validates with two planets")
@@ -1196,6 +1279,16 @@ func _test_military_save(state) -> void:
 		var hidden_weapon: Dictionary = range_data.duplicate(true)
 		hidden_weapon["military_storage"]["training_club"] = 1
 		_check(not state._valid_save(hidden_weapon), "station-only training gear cannot be deposited in the chest")
+		var older_range: Dictionary = range_data.duplicate(true)
+		older_range["max_health"] = GameData.STARTING_MAX_HEALTH
+		older_range["health"] = GameData.STARTING_MAX_HEALTH - 2
+		var older_range_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
+		_check(older_range_file != null, "older squad-bout save fixture can be written")
+		if older_range_file != null:
+			older_range_file.store_string(JSON.stringify(older_range))
+			older_range_file.close()
+			state.start_new_game()
+			_check(state.load_game() and state.military_stage == "range" and state.max_health == 24 and state.health == 18, "older post-bout saves gain the 24-health maximum without healing damage")
 	_check(state.military_complete_drill("range") and state.military_start_cannon_round() and state.military_take_cannon_charge() and state.military_load_cannon() and state.save_game(), "loaded cannon round saves before any hit is recorded")
 	var cannon = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	if cannon is Dictionary:
@@ -1225,6 +1318,8 @@ func _test_military_save(state) -> void:
 		old_station_save["schema"] = GameStateScript.STATION_SAVE_SCHEMA
 		old_station_save["planet_positions"].erase("artichoke")
 		old_station_save["planet_positions"].erase("pomidor")
+		old_station_save["planet_positions"].erase("chvarak")
+		old_station_save["planet_positions"].erase("engineeria")
 		old_station_save["military_cannon_hits"] = ["cannon_target_0"]
 		for field in ["military_cannon_round_active", "military_cannon_phase", "military_trap_round_active", "military_trap_equipped", "military_trap_mine_position"]:
 			old_station_save.erase(field)

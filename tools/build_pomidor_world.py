@@ -67,6 +67,11 @@ for office in OFFICES:
     OBJECT_IMAGES[f"secretary_{office}"] = f"{ART}/secretary_{office}.png"
     OBJECT_IMAGES[f"desk_{office}"] = f"{ART}/desk_{office}.png"
 
+# People and things for the scenes with Julius's organisation and the embassy.
+for name in ["collector_0", "collector_1", "mila", "smuggler_0", "smuggler_1", "smuggler_crate_0",
+             "smuggler_crate_1", "ludo", "doorman", "red_lantern", "envoy_0", "envoy_1", "envoy_2"]:
+    OBJECT_IMAGES[name] = f"{ART}/{name}.png"
+
 NAMES = list(OBJECT_IMAGES)
 GID = {name: 100 + i for i, name in enumerate(NAMES)}
 SIZE = {}
@@ -217,6 +222,32 @@ def main() -> None:
             spots.append((cx * CELL + 8, lane * CELL + 20))
     for i, (x, feet) in enumerate(spots, 1):
         add(f"villager_pomidor_{i:02d}", f"townsfolk_{i % 6}", x - 8, feet + 2)
+
+    # ---- Julius's people ----
+    # Placed after the houses so the town around them stays the same. The world
+    # script turns every story_* object into a person you can talk to.
+    # The collectors stop Mila in the lane north of the beer hall.
+    lane = 50 * CELL + 18
+    add("story_mila", "mila", beer_x + 40, lane)
+    add("story_collector_0", "collector_0", beer_x + 18, lane + 2)
+    add("story_collector_1", "collector_1", beer_x + 62, lane + 2)
+    # Smugglers load crates in the landing ground's east corner.
+    add("smuggler_crate", "smuggler_crate_0", lx1 - 52, ly1 - 26)
+    add("smuggler_crate", "smuggler_crate_1", lx1 - 30, ly1 - 26)
+    add("smuggler_crate", "smuggler_crate_0", lx1 - 41, ly1 - 10)
+    add("story_smuggler_0", "smuggler_0", lx1 - 70, ly1 - 16)
+    add("story_smuggler_1", "smuggler_1", lx1 - 22, ly1 - 8)
+    # Ludo waits in the lane west of the square, by the market.
+    add("story_ludo", "ludo", 40 * CELL + 4, sq_y1 - 30)
+    # A house with a red lantern in a back lane; its doorman lets nobody in.
+    back = [o for o in objects if o["name"] == "pomidor_house" and o["y"] == 64 * CELL and 30 * CELL < o["x"] < 40 * CELL]
+    house = back[0]
+    door_x = house["x"] + house["width"] // 2
+    add("red_lantern", "red_lantern", door_x + 10, 64 * CELL + 2)
+    add("story_doorman", "doorman", door_x - 8, 64 * CELL + 14)
+    # The three envoys wait beside the transport once the embassy is agreed.
+    for i in range(3):
+        add(f"story_envoy_{i}", f"envoy_{i}", (lx0 + lx1) // 2 + 24 + i * 18, ly0 + 178)
 
     # ---- the Council chamber ----
     cx0, cy0, cx1, cy1 = CHAMBER

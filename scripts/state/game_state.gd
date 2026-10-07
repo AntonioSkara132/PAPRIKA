@@ -12,7 +12,8 @@ signal military_changed
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 12
+const SAVE_SCHEMA := 13
+const EMBASSY_SAVE_SCHEMA := 13
 const POMIDOR_SAVE_SCHEMA := 12
 const ARTICHOKE_SAVE_SCHEMA := 11
 const MILITARY_ROUND_SAVE_SCHEMA := 10
@@ -27,7 +28,8 @@ const PAPRIKA_OLD_SOUTH_Y := 352.0
 const PAPRIKA_OLD_SOUTH_ROW := 22
 const PAPRIKA_LAYOUT_SHIFT := 768.0
 const PAPRIKA_FIELD_ROW_SHIFT := 48
-const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor"]
+const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria"]
+const POMIDOR_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor"]
 const ARTICHOKE_PLANETS := ["paprika", "brudet", "station", "artichoke"]
 const STATION_PLANETS := ["paprika", "brudet", "station"]
 const LEGACY_PLANETS := ["paprika", "brudet"]
@@ -39,6 +41,18 @@ const POMIDOR_ARRIVAL := Vector2(976, 1102)
 ## Set on Artichoke when General Hickey promotes the player to Captain; it opens
 ## the flight to Pomidor.
 const POMIDOR_UNLOCK_FLAG := "artichoke_captain"
+const CHVARAK_ARRIVAL := Vector2(144, 262)
+## The crash site in the Engineeria forest.
+const ENGINEERIA_ARRIVAL := Vector2(232, 1002)
+## Set on Pomidor when the player agrees to guard Iva Most's diplomats; it opens
+## the flight to Chvarak.
+const EMBASSY_FLAG := "pomidor_embassy_accepted"
+## Set when the diplomatic ship goes down in Engineeria. Chvarak closes behind it,
+## and Engineeria has no flight out yet.
+const CRASH_FLAG := "embassy_crashed"
+const SQUAD_BOUT_MAX_HEALTH := 24
+## Max health after graduating from the training station.
+const GRADUATED_MAX_HEALTH := 28
 const MILITARY_STAGES := ["none", "depot", "barracks", "run", "spar", "squad", "range", "cannon", "trap", "sleep", "graduated"]
 const MILITARY_DRILLS := ["run", "spar", "squad", "range", "cannon", "trap"]
 const MILITARY_TRAINING_WEAPONS := ["training_club", "training_bow"]
@@ -72,7 +86,7 @@ var completed_unique_jobs: Array[String] = []
 var camp_unlocked: bool = false
 var player_position := Vector2(320, 220)
 var current_planet := "paprika"
-var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y]}
+var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]}
 var current_area := "exterior"
 var military_barracks_position := [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 var military_stage := "none"
@@ -151,7 +165,7 @@ func start_new_game() -> void:
 	camp_unlocked = false
 	player_position = Vector2(320, 220)
 	current_planet = "paprika"
-	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y]}
+	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]}
 	current_area = "exterior"
 	military_barracks_position = [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 	military_stage = "none"
@@ -190,6 +204,8 @@ func travel_fare(destination: String) -> int:
 		return 0
 	if current_planet == "artichoke" and destination == "pomidor" or current_planet == "pomidor" and destination in ["artichoke", "brudet"]:
 		return 0
+	if current_planet == "pomidor" and destination == "chvarak" or current_planet == "chvarak" and destination == "pomidor":
+		return 0
 	if current_planet == "paprika" and destination == "brudet":
 		return GameData.TRAVEL_FARE
 	if current_planet == "brudet" and destination == "paprika":
@@ -215,6 +231,9 @@ func can_travel(destination: String) -> bool:
 		return false
 	if destination == "pomidor" and not defeated_persistent_enemies.has(POMIDOR_UNLOCK_FLAG):
 		notify("Only officers sent by General Hickey fly to Pomidor.")
+		return false
+	if destination == "chvarak" and (not defeated_persistent_enemies.has(EMBASSY_FLAG) or defeated_persistent_enemies.has(CRASH_FLAG)):
+		notify("The transport flies to Chvarak only with the Council's embassy.")
 		return false
 	if gold < fare:
 		notify("You need %d gold to travel to %s." % [fare, destination.capitalize()])
@@ -243,6 +262,18 @@ func travel_to(destination: String, departure_position: Vector2) -> bool:
 	if fare > 0:
 		gold -= fare
 		gold_changed.emit(gold)
+	return true
+
+## Moves the player to another planet when the story takes them there, such as
+## the diplomatic ship going down in Engineeria. No fare and no travel rules.
+func story_travel(destination: String, departure_position: Vector2) -> bool:
+	if not planet_positions.has(destination):
+		return false
+	planet_positions[current_planet] = [departure_position.x, departure_position.y]
+	current_planet = destination
+	current_area = "exterior"
+	var arrival: Array = planet_positions[destination]
+	player_position = Vector2(float(arrival[0]), float(arrival[1]))
 	return true
 
 func enlist_military(departure_position: Vector2) -> bool:
@@ -334,6 +365,18 @@ func sell_item(item_id: String) -> bool:
 	notify("Sold %s for %d gold." % [definition["name"], price])
 	return true
 
+## Sells the entire unreserved stack in a single inventory change.
+func sell_all_items(item_id: String) -> bool:
+	var definition := GameData.item(item_id)
+	var price := int(definition.get("sell", 0))
+	var amount := int(inventory.get(item_id, 0)) - reserved_item_count(item_id)
+	if definition.is_empty() or price <= 0 or amount <= 0 or not remove_item(item_id, amount):
+		notify("You cannot sell that item.")
+		return false
+	add_gold(price * amount)
+	notify("Sold %d %s for %d gold." % [amount, definition["name"], price * amount])
+	return true
+
 func equip_item(item_id: String) -> bool:
 	if int(inventory.get(item_id, 0)) <= 0:
 		notify("You do not own that item.")
@@ -353,6 +396,14 @@ func equip_item(item_id: String) -> bool:
 		return false
 	equipment_changed.emit()
 	notify("Equipped %s." % definition["name"])
+	return true
+
+func unequip_armor() -> bool:
+	if String(equipment.get("armor", "")).is_empty():
+		return false
+	equipment["armor"] = ""
+	equipment_changed.emit()
+	notify("Armor removed and kept in your inventory.")
 	return true
 
 func use_food(item_id: String) -> bool:
@@ -473,6 +524,12 @@ func military_complete_drill(drill: String) -> bool:
 		return false
 	var next_stage: String = MILITARY_STAGES[MILITARY_STAGES.find(drill) + 1]
 	_military_finish_drill(next_stage)
+	if drill == "squad" and max_health < SQUAD_BOUT_MAX_HEALTH:
+		var gained := SQUAD_BOUT_MAX_HEALTH - max_health
+		max_health = SQUAD_BOUT_MAX_HEALTH
+		health = mini(health + gained, max_health)
+		health_changed.emit(health, max_health)
+		notify("The squad bout has made you tougher. Max health rises to %d." % max_health)
 	return true
 
 func military_start_cannon_round() -> bool:
@@ -583,8 +640,11 @@ func military_eat_meal() -> bool:
 func military_sleep() -> bool:
 	if current_planet != "station" or current_area != "barracks" or not military_stage in ["sleep", "graduated"]:
 		return false
-	restore_health()
+	if military_stage != "graduated":
+		notify("Training has made you tougher. Max health rises to %d." % GRADUATED_MAX_HEALTH)
 	military_stage = "graduated"
+	max_health = maxi(max_health, GRADUATED_MAX_HEALTH)
+	restore_health()
 	military_changed.emit()
 	return true
 
@@ -1121,6 +1181,11 @@ func load_game() -> bool:
 	if int(data["schema"]) < PAPRIKA_LAYOUT_SCHEMA:
 		data = _migrate_old_paprika_layout(data)
 	max_health = maxi(1, int(data.get("max_health", GameData.STARTING_MAX_HEALTH)))
+	var saved_military_stage := String(data.get("military_stage", "none"))
+	if saved_military_stage == "graduated":
+		max_health = maxi(max_health, GRADUATED_MAX_HEALTH)
+	elif MILITARY_STAGES.find(saved_military_stage) >= MILITARY_STAGES.find("range"):
+		max_health = maxi(max_health, SQUAD_BOUT_MAX_HEALTH)
 	health = clampi(int(data.get("health", max_health)), 0, max_health)
 	gold = maxi(0, int(data.get("gold", 0)))
 	inventory = data.get("inventory", {"stick": 1}).duplicate(true)
@@ -1150,6 +1215,9 @@ func load_game() -> bool:
 		planet_positions["artichoke"] = [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y]
 	if int(data["schema"]) < POMIDOR_SAVE_SCHEMA:
 		planet_positions["pomidor"] = [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y]
+	if int(data["schema"]) < EMBASSY_SAVE_SCHEMA:
+		planet_positions["chvarak"] = [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y]
+		planet_positions["engineeria"] = [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]
 	current_area = String(data.get("current_area", "exterior"))
 	military_barracks_position = data.get("military_barracks_position", [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]).duplicate()
 	military_stage = String(data.get("military_stage", "none"))
@@ -1219,7 +1287,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA, EMBASSY_SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -1233,7 +1301,7 @@ func _valid_save(data: Variant) -> bool:
 	if schema >= PLANET_SAVE_SCHEMA:
 		var planet = data.get("current_planet", null)
 		var positions = data.get("planet_positions", null)
-		var allowed_planets: Array = PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
+		var allowed_planets: Array = PLANETS if schema >= EMBASSY_SAVE_SCHEMA else POMIDOR_PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
 		if not planet is String or not allowed_planets.has(planet) or not positions is Dictionary or positions.size() != allowed_planets.size():
 			return false
 		for planet_id in allowed_planets:
@@ -1366,6 +1434,10 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 	if data["current_planet"] == "artichoke" and stage != "graduated":
 		return false
 	if data["current_planet"] == "pomidor" and not Array(data.get("defeated_persistent_enemies", [])).has(POMIDOR_UNLOCK_FLAG):
+		return false
+	if data["current_planet"] == "chvarak" and not Array(data.get("defeated_persistent_enemies", [])).has(EMBASSY_FLAG):
+		return false
+	if data["current_planet"] == "engineeria" and not Array(data.get("defeated_persistent_enemies", [])).has(CRASH_FLAG):
 		return false
 	if schema >= MILITARY_ROUND_SAVE_SCHEMA:
 		if (not cannon_round_active and cannon_phase != "empty") or (cannon_round_active and stage != "cannon") or (stage != "cannon" and cannon_phase != "empty"):

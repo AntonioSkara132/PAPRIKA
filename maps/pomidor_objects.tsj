@@ -5,7 +5,7 @@
   "name": "pomidor_objects",
   "tilewidth": 208,
   "tileheight": 150,
-  "tilecount": 65,
+  "tilecount": 78,
   "columns": 0,
   "objectalignment": "bottomleft",
   "tiles": [
@@ -397,6 +397,84 @@
       "id": 64,
       "image": "../assets/art/pomidor/desk_navy.png",
       "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/pomidor/collector_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/pomidor/collector_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/pomidor/mila.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/pomidor/smuggler_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/pomidor/smuggler_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/pomidor/smuggler_crate_0.png",
+      "imagewidth": 20,
+      "imageheight": 18
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/pomidor/smuggler_crate_1.png",
+      "imagewidth": 20,
+      "imageheight": 18
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/pomidor/ludo.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/pomidor/doorman.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/pomidor/red_lantern.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/pomidor/envoy_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/pomidor/envoy_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/pomidor/envoy_2.png",
+      "imagewidth": 16,
       "imageheight": 24
     }
   ]

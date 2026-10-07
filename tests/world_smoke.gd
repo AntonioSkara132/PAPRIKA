@@ -106,6 +106,16 @@ func _run() -> void:
 			if route.is_empty() or route[-1].distance_to(door) > Player.INTERACTION_DISTANCE:
 				entrances_reachable = false
 	_check(entrances_reachable, "original service entrances remain reachable from the village")
+	var clerk := world.actors_root.get_node_or_null("WorkClerk") as StationStaff
+	var guide_ui := game.get_node_or_null("GameUI") as GameUI
+	var office := services.get("work_office") as WorldService
+	_check(clerk != null and office != null and clerk.global_position.distance_to(office.get_interaction_position()) < 85.0 and world.tiled_loader.is_walkable_position(clerk.global_position), "the clerk stands outside the first WORK office on walkable ground")
+	if clerk != null and guide_ui != null:
+		var clerk_route := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, clerk.global_position)
+		_check(not clerk_route.is_empty() and clerk_route[-1].distance_to(clerk.global_position) < 16.0, "the player can reach the work clerk from the starting village")
+		clerk.interact(world.player)
+		_check(guide_ui.scene_playing() and guide_ui.scene_speaker_label.text == "Work Clerk" and guide_ui.scene_text_label.text.contains("WORK office"), "the clerk introduces the first job in dialogue")
+		guide_ui.cancel_scene()
 	_check_northern_village(world, services, fields)
 	if not fields.is_empty() and private_field != null:
 		var common_route := world.tiled_loader.get_walk_path(Player.RESPAWN_POSITION, fields[0].global_position)
@@ -139,11 +149,19 @@ func _run() -> void:
 	for plot in south_plots:
 		plot.interact(world.player)
 	_check(int(state.active_jobs["field_work"]) == 5 and state.active_job_ready("field_work"), "harvests in both villages finish the field job")
+	if clerk != null and guide_ui != null:
+		clerk.interact(world.player)
+		_check(guide_ui.scene_playing() and guide_ui.scene_text_label.text.contains("claim your ten gold"), "the clerk points to the office once five crops are ready")
+		guide_ui.cancel_scene()
 	_check(int(state.active_jobs["rabbit_catch"]) == 0 and int(state.active_jobs["forest_patrol"]) == 0, "field work does not advance unrelated missions")
 	if north_field != null:
 		_check(not north_field.get_interaction_text().begins_with("Harvest"), "harvested northern crop shows regrowth")
 	_check(state.claim_job("work_office", "field_work") and state.gold == 10, "work office pays exactly 10 gold")
 	_check(state.active_jobs.has("rabbit_catch") and state.active_jobs.has("forest_patrol"), "field reward does not remove other missions")
+	if clerk != null and guide_ui != null:
+		clerk.interact(world.player)
+		_check(guide_ui.scene_playing() and guide_ui.scene_text_label.text.contains("press E beside a rabbit"), "the clerk explains the rabbit job without recommending combat")
+		guide_ui.cancel_scene()
 	_check(not state.claim_job("work_office", "field_work") and state.gold == 10, "field job cannot pay twice")
 	state._process(120.0)
 	if north_field != null:
@@ -311,6 +329,33 @@ func _run() -> void:
 		_check(int(state.inventory.get("potato", 0)) + int(state.inventory.get("carrot", 0)) + int(state.inventory.get("tomato", 0)) + int(state.inventory.get("grape", 0)) >= 5, "harvested inventory survives reload")
 
 	await _check_squad_mission(world)
+	if ui != null:
+		state.add_item("wood_armor")
+		state.equip_item("wood_armor")
+		ui.open_inventory()
+		var unequip_button := _find_button(ui.modal_content, "Unequip armor")
+		_check(unequip_button != null, "inventory offers a button to remove armor")
+		if unequip_button != null:
+			unequip_button.pressed.emit()
+			_check(String(state.equipment["armor"]).is_empty() and int(state.inventory.get("wood_armor", 0)) >= 1 and not world.player._armor_overlay.visible, "removing armor keeps it and reveals clothing")
+		ui.close_modal()
+		state.equip_item("wood_armor")
+		_check(world.player._armor_overlay.visible, "equipping armor again restores its visual")
+		for market in [{"id": "food", "item": "potato", "amount": 13}, {"id": "river_market", "item": "river_fish", "amount": 3}, {"id": "pomidor_market", "item": "tomato", "amount": 4}]:
+			var item_id := String(market["item"])
+			var amount := int(market["amount"])
+			state.add_item(item_id, amount)
+			var gold_before_sale := state.gold
+			ui.open_service(String(market["id"]), "Market")
+			var single_sale := _find_button(ui.modal_content, "Sell 1 %s" % GameData.item(item_id)["name"])
+			var bulk_sale := _find_button(ui.modal_content, "Sell all %s x%d" % [GameData.item(item_id)["name"], amount])
+			_check(single_sale != null and bulk_sale != null and not bulk_sale.disabled, "%s offers one-item and all-item sales" % market["id"])
+			if bulk_sale != null:
+				bulk_sale.pressed.emit()
+				_check(int(state.inventory.get(item_id, 0)) == 0 and state.gold == gold_before_sale + amount * int(GameData.item(item_id)["sell"]), "%s sells all %d items in one click" % [market["id"], amount])
+				var empty_sale := _find_button(ui.modal_content, "Sell all %s" % GameData.item(item_id)["name"])
+				_check(empty_sale == null, "%s hides bulk sale when the stack is empty" % market["id"])
+			ui.close_modal()
 	var debug_key := InputEventKey.new()
 	debug_key.physical_keycode = KEY_F6
 	debug_key.pressed = true

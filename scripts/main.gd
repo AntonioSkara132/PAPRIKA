@@ -7,6 +7,8 @@ const WORLD_SCRIPTS := {
 	"station_barracks": "res://scripts/world/station_barracks_world.gd",
 	"artichoke": "res://scripts/world/artichoke_world.gd",
 	"pomidor": "res://scripts/world/pomidor_world.gd",
+	"chvarak": "res://scripts/world/chvarak_world.gd",
+	"engineeria": "res://scripts/world/engineeria_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
@@ -50,6 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("quick_load") and not get_tree().paused:
 		if GameState.load_game():
 			_close_ui()
+			_cancel_scene()
 			if _world_planet != GameState.current_planet or _world_area != GameState.current_area:
 				_switch_world(GameState.current_planet, false, Vector2.ZERO, GameState.current_area)
 			elif world != null and world.has_method("apply_loaded_state"):
@@ -74,6 +77,16 @@ func _on_travel_requested(destination: String) -> void:
 			game_ui.refresh_location()
 		GameState.notify("Arrived on %s." % destination.capitalize())
 
+## The story moves the player to another planet, such as the diplomatic ship
+## going down in Engineeria. No fare and no travel rules apply.
+func _on_story_travel_requested(destination: String) -> void:
+	if world != null and world.has_method("capture_player_position"):
+		world.capture_player_position()
+	var departure := GameState.player_position
+	_close_ui()
+	if _switch_world(destination, false, departure, "exterior", false, true) and game_ui != null:
+		game_ui.refresh_location()
+
 func _on_station_area_requested(area: String) -> void:
 	if GameState.current_planet != "station" or area == GameState.current_area or area not in ["exterior", "barracks"]:
 		return
@@ -94,11 +107,16 @@ func _on_world_action_requested(action: String) -> void:
 	if world != null and world.has_method("handle_world_action"):
 		world.handle_world_action(action)
 
+## A scene's actions belong to the world that started it.
+func _cancel_scene() -> void:
+	if game_ui != null and game_ui.has_method("cancel_scene"):
+		game_ui.call("cancel_scene")
+
 func _close_ui() -> void:
 	if game_ui != null and game_ui.has_method("close_modal"):
 		game_ui.call("close_modal")
 
-func _switch_world(planet: String, traveling: bool = false, departure: Vector2 = Vector2.ZERO, area: String = "exterior", changing_area: bool = false) -> bool:
+func _switch_world(planet: String, traveling: bool = false, departure: Vector2 = Vector2.ZERO, area: String = "exterior", changing_area: bool = false, story: bool = false) -> bool:
 	var location := "station_barracks" if planet == "station" and area == "barracks" else planet
 	if not WORLD_SCRIPTS.has(location):
 		GameState.notify("That destination is unavailable.")
@@ -116,6 +134,8 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		"station_barracks": "StationBarracksWorld",
 		"artichoke": "ArtichokeWorld",
 		"pomidor": "PomidorWorld",
+		"chvarak": "ChvarakWorld",
+		"engineeria": "EngineeriaWorld",
 	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader
@@ -129,18 +149,23 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 	var transition_ok := true
 	if traveling:
 		transition_ok = GameState.travel_to(planet, departure)
+	elif story:
+		transition_ok = GameState.story_travel(planet, departure)
 	elif changing_area:
 		transition_ok = GameState.enter_military_barracks(departure) if area == "barracks" else GameState.exit_military_barracks(departure)
 	if not transition_ok:
 		remove_child(next_world)
 		next_world.queue_free()
 		return false
-	if world != null or traveling or changing_area:
+	if world != null or traveling or changing_area or story:
 		next_world.apply_loaded_state()
 	if world != null:
 		remove_child(world)
 		world.queue_free()
+		_cancel_scene()
 	world = next_world
+	if world.has_signal("story_travel_requested"):
+		world.connect("story_travel_requested", _on_story_travel_requested)
 	# The new player reports its own prompt on its first update; drop the old world's.
 	if game_ui != null and game_ui.has_method("set_interaction_prompt"):
 		game_ui.set_interaction_prompt("")

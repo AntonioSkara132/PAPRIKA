@@ -1,0 +1,13 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "chvarak_terrain",
+  "tilewidth": 16,
+  "tileheight": 16,
+  "tilecount": 24,
+  "columns": 8,
+  "image": "../assets/art/chvarak/chvarak_terrain.png",
+  "imagewidth": 128,
+  "imageheight": 48
+}

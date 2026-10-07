@@ -1,0 +1,121 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "engineeria_objects",
+  "tilewidth": 176,
+  "tileheight": 96,
+  "tilecount": 18,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../art/concepts/source/player.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/engineeria/wreck.png",
+      "imagewidth": 176,
+      "imageheight": 96
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/engineeria/davor_house.png",
+      "imagewidth": 84,
+      "imageheight": 92
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/engineeria/woodpile.png",
+      "imagewidth": 30,
+      "imageheight": 18
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/engineeria/chopping_block.png",
+      "imagewidth": 14,
+      "imageheight": 12
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/engineeria/fern.png",
+      "imagewidth": 14,
+      "imageheight": 12
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/engineeria/fallen_log.png",
+      "imagewidth": 40,
+      "imageheight": 14
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/engineeria/flame.png",
+      "imagewidth": 14,
+      "imageheight": 18
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/engineeria/broadleaf_0.png",
+      "imagewidth": 44,
+      "imageheight": 54
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/pomidor/envoy_0_lying.png",
+      "imagewidth": 26,
+      "imageheight": 20
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/engineeria/broadleaf_1.png",
+      "imagewidth": 44,
+      "imageheight": 54
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/pomidor/envoy_1_lying.png",
+      "imagewidth": 26,
+      "imageheight": 20
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/engineeria/broadleaf_2.png",
+      "imagewidth": 52,
+      "imageheight": 62
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/pomidor/envoy_2_lying.png",
+      "imagewidth": 26,
+      "imageheight": 20
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/engineeria/bush_0.png",
+      "imagewidth": 22,
+      "imageheight": 16
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/engineeria/debris_0.png",
+      "imagewidth": 22,
+      "imageheight": 14
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/engineeria/bush_1.png",
+      "imagewidth": 22,
+      "imageheight": 16
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/engineeria/debris_1.png",
+      "imagewidth": 22,
+      "imageheight": 14
+    }
+  ]
+}

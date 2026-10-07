@@ -44,6 +44,13 @@ var _march_index := 0
 var _ground_path := PackedVector2Array()
 var _ground_path_index := 0
 var _ground_repath_timer := 0.0
+## Beasts that hunt the player across a whole map always chase their nearest
+## target and walk round obstacles; their leash moves with them, so distance
+## never sends them home.
+var relentless := false
+## A party member this enemy goes for in place of the nearest one, while that
+## member is standing. Davor sets it on the beasts he fights.
+var focus_target: Node2D
 
 func configure(kind: String, texture_path: String, position_in_world: Vector2, stable_id: String) -> void:
 	enemy_id = kind
@@ -114,7 +121,7 @@ func _build(texture_path: String) -> void:
 	_build_gear()
 
 func _build_gear() -> void:
-	if enemy_id not in ["bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman", "republic_guardsman"]:
+	if enemy_id not in ["collector", "bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman", "republic_guardsman"]:
 		return
 	_weapon_visual = Line2D.new()
 	_weapon_visual.width = 2.0
@@ -126,6 +133,10 @@ func _build_gear() -> void:
 		"bandit_bow", "republic_archer":
 			_weapon_visual.points = PackedVector2Array([Vector2(9, -19), Vector2(13, -16), Vector2(15, -12), Vector2(13, -8), Vector2(9, -6), Vector2(9, -19)])
 			_weapon_visual.default_color = Color("ba8953")
+		"collector":
+			# A cudgel is drawn in the collector's sprite; this is only its swing.
+			_weapon_visual.points = PackedVector2Array([Vector2(8, -6), Vector2(10, -14)])
+			_weapon_visual.default_color = Color("5a3826")
 		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman", "republic_guardsman":
 			_weapon_visual.points = PackedVector2Array([Vector2(7, -5), Vector2(11, -12), Vector2(13, -20)])
 			_weapon_visual.default_color = Color("d7e3e4")
@@ -166,7 +177,10 @@ func _physics_process(delta: float) -> void:
 		_attack_cooldown = 1.25
 	if state not in [State.TELEGRAPH, State.RECOVER, State.PHASE_WARNING]:
 		var sight := _sight()
-		if global_position.distance_to(spawn_position) > 190.0:
+		if relentless:
+			spawn_position = global_position
+			state = State.CHASE
+		elif global_position.distance_to(spawn_position) > 190.0:
 			state = State.RETURN
 		elif distance < sight:
 			state = State.CHASE
@@ -333,9 +347,12 @@ func _nearest_party_target() -> Node2D:
 	return nearest
 
 func _nearest_target() -> Node2D:
+	if is_instance_valid(focus_target) and not focus_target.is_queued_for_deletion() and focus_target.visible and focus_target.is_in_group("party_target"):
+		return focus_target
 	var nearest := _nearest_party_target()
 	var best := global_position.distance_squared_to(nearest.global_position) if nearest != null else INF
-	if global_position.distance_to(spawn_position) < 190.0:
+	# Story fights are with the player alone; the townsfolk around are left be.
+	if global_position.distance_to(spawn_position) < 190.0 and not persistent_id.begins_with("story_"):
 		for candidate in get_tree().get_nodes_in_group("civilian"):
 			if not candidate is Villager or not is_instance_valid(candidate) or candidate.is_queued_for_deletion() or not candidate.is_civilian_target():
 				continue
@@ -365,7 +382,7 @@ func _move_toward(target: Vector2, movement_speed: float) -> void:
 				velocity = Vector2.ZERO
 				return
 	var world := get_parent().get_parent() as GameWorld
-	if world != null and enemy_id.begins_with("republic_") and world.tiled_loader != null and global_position.distance_to(target) > 20.0:
+	if world != null and (enemy_id.begins_with("republic_") or relentless) and world.tiled_loader != null and global_position.distance_to(target) > 20.0:
 		if _ground_repath_timer <= 0.0 or _ground_path.is_empty() or _ground_path[_ground_path.size() - 1].distance_to(target) > 16.0:
 			_ground_path = world.tiled_loader.get_walk_path(global_position, target)
 			# The first point is the centre of the current cell; walking back to it
@@ -437,7 +454,7 @@ func _die() -> void:
 	var hacker_bounty_ready := enemy_id == "hacker" and GameState.active_job_ready("hacker_bounty")
 	if hacker_bounty_ready and not GameState.defeated_persistent_enemies.has(persistent_id):
 		GameState.defeated_persistent_enemies.append(persistent_id)
-	if hacker_bounty_ready or (enemy_id == "hacker" and GameState.completed_unique_jobs.has("hacker_bounty")) or enemy_id == "camp_bandit" or persistent_id.begins_with("camp_bandit_") or persistent_id.begins_with("brudet_team_") or persistent_id == GameState.BRUDET_SOLO_HACKER_ID or persistent_id.begins_with("artichoke_"):
+	if hacker_bounty_ready or (enemy_id == "hacker" and GameState.completed_unique_jobs.has("hacker_bounty")) or enemy_id == "camp_bandit" or persistent_id.begins_with("camp_bandit_") or persistent_id.begins_with("brudet_team_") or persistent_id == GameState.BRUDET_SOLO_HACKER_ID or persistent_id.begins_with("artichoke_") or persistent_id.begins_with("story_"):
 		queue_free()
 	else:
 		_defeated = true

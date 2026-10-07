@@ -24,6 +24,15 @@ const HUNT_AREA := 150.0
 ## of that place.
 const FOLLOW_LEASH := 80.0
 const FOLLOW_REJOINED := 16.0
+## A leap lasts LEAP_SECONDS, crosses at most LEAP_MAX_CELLS tiles that cannot
+## be walked, and is taken only when walking round is at least LEAP_DETOUR times
+## longer than the straight line.
+const LEAP_SECONDS := 0.6
+const LEAP_MAX_CELLS := 5
+const LEAP_DETOUR := 1.8
+const LEAP_HEIGHT := 26.0
+## A soldier that can leap walks straight at an obstacle and jumps once it is this close.
+const LEAP_TAKEOFF := 36.0
 const FOLLOW_SLOTS := [Vector2(-18, 16), Vector2(18, 16), Vector2(-34, 30), Vector2(34, 30), Vector2(-12, 40), Vector2(12, 40), Vector2(-30, 54), Vector2(30, 54)]
 
 var soldier_id := ""
@@ -37,6 +46,27 @@ var health := MAX_HEALTH
 ## Taken off every hit, but a hit always does at least 1 damage. Soldiers wear
 ## wooden armor (1); Sapper Vuk wears padded armor (2).
 var armor := 1
+var speed := SPEED
+## Damage of each sword or spear strike, and seconds between strikes; 0 uses the weapon's own.
+var strike_damage := 0
+var strike_cooldown := 0.0
+## A following soldier attacks enemies within this distance, not only those in
+## its weapon's reach; 0 keeps to the reach.
+var follow_sight := 0.0
+## A swordsman who also carries a bow shoots at enemies within this distance
+## while closing in on them; 0 for no bow.
+var bow_range := 0.0
+var bow_damage := 12
+## Leaps over ledges, fences and streams when walking round is much longer.
+var can_leap := false
+## Seconds after being downed until the soldier gets up with full health; 0 stays down.
+var get_up_seconds := 0.0
+var _get_up_left := 0.0
+var _leap_from := Vector2.ZERO
+var _leap_to := Vector2.INF
+var _leap_time := -1.0
+var _leap_shadow: Polygon2D
+var _collision: CollisionShape2D
 ## "follow", "hold", "attack", "patrol" or "hunt".
 var order := "follow"
 var hold_point := Vector2.ZERO
@@ -60,6 +90,8 @@ var _repath := 0.0
 var _sprite: Sprite2D
 ## A health bar instead of a name label: six name labels in formation overlap.
 var _health_bar: Line2D
+## The weapon drawn in the soldier's hand; it rises with the sprite in a leap.
+var _gear: Line2D
 var _world: GameWorld
 
 func configure(id: String, display_name: String, texture_path: String, position: Vector2, weapon_kind: String, formation_slot: int, world: GameWorld) -> void:
@@ -94,12 +126,13 @@ func configure(id: String, display_name: String, texture_path: String, position:
 			gear.points = PackedVector2Array([Vector2(7, -5), Vector2(11, -12), Vector2(13, -20)])
 			gear.default_color = Color("d7e3e4")
 	add_child(gear)
-	var collision := CollisionShape2D.new()
+	_gear = gear
+	_collision = CollisionShape2D.new()
 	var box := RectangleShape2D.new()
 	box.size = Vector2(8, 6)
-	collision.shape = box
-	collision.position = Vector2(0, -3)
-	add_child(collision)
+	_collision.shape = box
+	_collision.position = Vector2(0, -3)
+	add_child(_collision)
 	var bar_back := Line2D.new()
 	bar_back.width = 3.0
 	bar_back.default_color = Color("1c1730")
@@ -159,7 +192,9 @@ func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 	health = maxi(0, health - maxi(1, amount - armor))
 	_refresh_health_bar()
 	if health == 0:
+		_end_leap(false)
 		down = true
+		_get_up_left = get_up_seconds
 		velocity = Vector2.ZERO
 		collision_layer = 0
 		remove_from_group("party_target")
@@ -173,8 +208,15 @@ func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 
 func _physics_process(delta: float) -> void:
 	z_index = 100 + int(global_position.y)
+	if down and _get_up_left > 0.0:
+		_get_up_left -= delta
+		if _get_up_left <= 0.0:
+			get_up()
 	if down or _world == null or _world.player == null:
 		velocity = Vector2.ZERO
+		return
+	if leaping():
+		_step_leap(delta)
 		return
 	_cooldown = maxf(0.0, _cooldown - delta)
 	_repath -= delta
@@ -182,7 +224,7 @@ func _physics_process(delta: float) -> void:
 		if global_position.distance_to(hold_point) < 10.0:
 			queue_free()
 		else:
-			_walk_to(hold_point, SPEED)
+			_walk_to(hold_point, speed)
 		return
 	var reach := _reach()
 	_check_leash()
@@ -197,30 +239,32 @@ func _physics_process(delta: float) -> void:
 			velocity = Vector2.ZERO
 			_strike(target)
 			return
-		if order in ["attack", "hunt"]:
-			_walk_to(target.global_position, SPEED)
+		if bow_range > 0.0 and offset.length() <= bow_range and _cooldown <= 0.0:
+			_loose_arrow(target, bow_damage)
+		if order in ["attack", "hunt"] or (order == "follow" and follow_sight > 0.0):
+			_walk_to(target.global_position, speed)
 			return
 	match order:
 		"hunt":
 			# Wait at the hunt place, or where the last fight ended.
 			if global_position.distance_to(hold_point) > 6.0:
-				_walk_to(hold_point, SPEED)
+				_walk_to(hold_point, speed)
 			else:
 				velocity = Vector2.ZERO
 		"patrol":
 			if global_position.distance_to(hold_point) <= 6.0:
 				hold_point = patrol_points[1] if hold_point == patrol_points[0] else patrol_points[0]
-			_walk_to(hold_point, SPEED)
+			_walk_to(hold_point, speed)
 		"hold":
 			if global_position.distance_to(hold_point) > 6.0:
-				_walk_to(hold_point, SPEED)
+				_walk_to(hold_point, speed)
 			else:
 				velocity = Vector2.ZERO
 		_:
 			var leader := _world.player.global_position
 			var goal: Vector2 = leader + FOLLOW_SLOTS[slot % FOLLOW_SLOTS.size()]
 			if global_position.distance_to(goal) > 10.0:
-				_walk_to(goal, SPEED * (1.25 if global_position.distance_to(leader) > 70.0 else 1.0))
+				_walk_to(goal, speed * (1.25 if global_position.distance_to(leader) > 70.0 else 1.0))
 			else:
 				velocity = Vector2.ZERO
 
@@ -244,7 +288,7 @@ func _choose_target(reach: float) -> Node2D:
 		if hunt_point.is_finite():
 			return _world.nearest_hostile(hunt_point, HUNT_AREA)
 		return _world.nearest_hostile(global_position, INF)
-	var sight := ATTACK_SIGHT if order == "attack" else reach
+	var sight := ATTACK_SIGHT if order == "attack" else (maxf(reach, follow_sight) if order == "follow" else reach)
 	var enemy: Node2D = _world.nearest_hostile(global_position, sight)
 	if enemy != null:
 		return enemy
@@ -256,15 +300,11 @@ func _strike(target: Node2D) -> void:
 	if _cooldown > 0.0:
 		return
 	if is_archer():
-		_cooldown = 1.15
-		var projectile := Projectile.new()
-		get_parent().add_child(projectile)
-		var origin := global_position + Vector2(0, -8)
-		projectile.configure(origin, (target.global_position + Vector2(0, -4) - origin).normalized(), 7, 200.0, _reach() + 20.0, true)
+		_loose_arrow(target, 7)
 	else:
-		_cooldown = 1.1 if weapon == "spear" else 0.9
+		_cooldown = strike_cooldown if strike_cooldown > 0.0 else (1.1 if weapon == "spear" else 0.9)
 		if target.has_method("take_damage"):
-			target.take_damage(9 if weapon == "spear" else 10, global_position)
+			target.take_damage(strike_damage if strike_damage > 0 else (9 if weapon == "spear" else 10), global_position)
 		var line := Line2D.new()
 		line.width = 2.0
 		line.default_color = Color(0.8, 0.96, 0.76, 0.9)
@@ -274,6 +314,31 @@ func _strike(target: Node2D) -> void:
 		var tween := create_tween()
 		tween.tween_property(line, "modulate:a", 0.0, 0.14)
 		tween.tween_callback(line.queue_free)
+
+func _loose_arrow(target: Node2D, damage: int) -> void:
+	_cooldown = 1.15
+	var projectile := Projectile.new()
+	get_parent().add_child(projectile)
+	var origin := global_position + Vector2(0, -8)
+	var reach := bow_range if bow_range > 0.0 else _reach()
+	projectile.configure(origin, (target.global_position + Vector2(0, -4) - origin).normalized(), damage, 200.0, reach + 20.0, true)
+
+## Stands up again with full health after being downed.
+func get_up() -> void:
+	if not down:
+		return
+	down = false
+	_get_up_left = 0.0
+	health = max_health
+	collision_layer = 4 | 64
+	if not returning:
+		add_to_group("party_target")
+	_sprite.modulate = Color.WHITE
+	_sprite.rotation = 0.0
+	if _sprite.texture != null:
+		_sprite.position = Vector2(-_sprite.texture.get_width() * 0.5, -_sprite.texture.get_height() + 2)
+	_path_goal = Vector2.INF
+	_refresh_health_bar()
 
 func is_archer() -> bool:
 	return weapon == "bow"
@@ -286,7 +351,7 @@ func _reach() -> float:
 			return 40.0
 	return 26.0
 
-func _walk_to(goal: Vector2, speed: float) -> void:
+func _walk_to(goal: Vector2, walk_speed: float) -> void:
 	var navigation := _world.tiled_loader
 	if _repath <= 0.0 or _path_goal.distance_to(goal) > 12.0 or _path_index >= _path.size():
 		_path = navigation.get_walk_path(global_position, goal)
@@ -294,6 +359,21 @@ func _walk_to(goal: Vector2, speed: float) -> void:
 		_path_index = 1 if _path.size() > 1 else 0
 		_path_goal = goal
 		_repath = REPATH_SECONDS
+		_leap_to = _plan_leap(goal) if can_leap else Vector2.INF
+	if _leap_to.is_finite():
+		# Run straight at the obstacle and jump once close enough.
+		var takeoff := _leap_takeoff_point(_leap_to)
+		if global_position.distance_to(takeoff) <= LEAP_TAKEOFF:
+			_start_leap(_leap_to)
+			return
+		facing = (takeoff - global_position).normalized()
+		velocity = facing * walk_speed * _world.movement_factor(global_position)
+		var before := global_position
+		move_and_slide()
+		# Something blocks the straight run, such as a tree: jump from here.
+		if global_position.distance_to(before) < walk_speed * get_physics_process_delta_time() * 0.3:
+			_start_leap(_leap_to)
+		return
 	while _path_index < _path.size() and global_position.distance_to(_path[_path_index]) < 4.0:
 		_path_index += 1
 	if _path_index >= _path.size():
@@ -301,8 +381,121 @@ func _walk_to(goal: Vector2, speed: float) -> void:
 		return
 	var direction := _path[_path_index] - global_position
 	facing = direction.normalized()
-	velocity = facing * speed * _world.movement_factor(global_position)
+	velocity = facing * walk_speed * _world.movement_factor(global_position)
 	move_and_slide()
+
+# ---- leaping ----
+
+func leaping() -> bool:
+	return _leap_time >= 0.0
+
+## Where to land when the straight line to `goal` crosses a short obstacle that
+## walking would have to go far round, or Vector2.INF when walking is better.
+func _plan_leap(goal: Vector2) -> Vector2:
+	var navigation := _world.tiled_loader
+	var straight := global_position.distance_to(goal)
+	if straight < 24.0:
+		return Vector2.INF
+	var walk := INF if _path.is_empty() else _route_length(_path, global_position)
+	if walk < straight * LEAP_DETOUR + 32.0:
+		return Vector2.INF
+	# The first run of tiles on the straight line that cannot be walked.
+	var direction := (goal - global_position) / straight
+	var tile := Vector2(navigation.tile_size)
+	var cells := {}
+	var run_start := -1.0
+	var run_end := -1.0
+	var distance := 4.0
+	while distance < straight:
+		var point := global_position + direction * distance
+		if not navigation.is_walkable_position(point):
+			if run_start < 0.0:
+				run_start = distance
+			run_end = distance
+			cells[Vector2i(floori(point.x / tile.x), floori(point.y / tile.y))] = true
+		elif run_start >= 0.0:
+			break
+		distance += 4.0
+	if run_start < 0.0 or cells.size() > LEAP_MAX_CELLS:
+		return Vector2.INF
+	var landing := global_position + direction * minf(straight, run_end + 12.0)
+	if not navigation.is_walkable_position(landing):
+		return Vector2.INF
+	var after := navigation.get_walk_path(landing, goal)
+	if after.is_empty() or run_end + _route_length(after, landing) > walk * 0.7:
+		return Vector2.INF
+	return landing
+
+## The last walkable point before the obstacle on the line to `landing`.
+func _leap_takeoff_point(landing: Vector2) -> Vector2:
+	var navigation := _world.tiled_loader
+	var line := landing - global_position
+	var length := line.length()
+	if length < 1.0:
+		return global_position
+	var distance := 0.0
+	while distance < length:
+		if not navigation.is_walkable_position(global_position + line / length * (distance + 4.0)):
+			return global_position + line / length * distance
+		distance += 4.0
+	return landing
+
+func _route_length(route: PackedVector2Array, from: Vector2) -> float:
+	var total := 0.0
+	var last := from
+	for point in route:
+		total += last.distance_to(point)
+		last = point
+	return total
+
+func _start_leap(landing: Vector2) -> void:
+	_leap_from = global_position
+	_leap_to = landing
+	_leap_time = 0.0
+	velocity = Vector2.ZERO
+	_collision.set_deferred("disabled", true)
+	facing = (landing - global_position).normalized()
+	if _leap_shadow == null:
+		_leap_shadow = Polygon2D.new()
+		var points := PackedVector2Array()
+		for step in 10:
+			var angle := TAU * step / 10.0
+			points.append(Vector2(cos(angle) * 7.0, sin(angle) * 3.0))
+		_leap_shadow.polygon = points
+		_leap_shadow.color = Color(0.11, 0.09, 0.19, 0.45)
+		_leap_shadow.z_index = -1
+		add_child(_leap_shadow)
+	_leap_shadow.visible = true
+
+func _step_leap(delta: float) -> void:
+	_leap_time += delta
+	var progress := clampf(_leap_time / LEAP_SECONDS, 0.0, 1.0)
+	global_position = _leap_from.lerp(_leap_to, progress)
+	# The shadow stays on the ground and the soldier is drawn above it.
+	var lift := sin(progress * PI)
+	if _sprite.texture != null:
+		_sprite.position.y = -_sprite.texture.get_height() + 2 - lift * LEAP_HEIGHT
+	_gear.position.y = -lift * LEAP_HEIGHT
+	_leap_shadow.scale = Vector2.ONE * (1.0 - lift * 0.35)
+	if progress >= 1.0:
+		_end_leap(true)
+
+## Ends a leap on landing, or puts the soldier back where it jumped from when
+## the leap is cut short.
+func _end_leap(landed: bool) -> void:
+	if not leaping():
+		return
+	if not landed:
+		global_position = _leap_from
+	_leap_time = -1.0
+	_leap_to = Vector2.INF
+	_path_goal = Vector2.INF
+	_collision.set_deferred("disabled", false)
+	if _sprite.texture != null:
+		_sprite.position.y = -_sprite.texture.get_height() + 2
+	_gear.position.y = 0.0
+	if _leap_shadow != null:
+		_leap_shadow.visible = false
 
 func _refresh_health_bar() -> void:
 	if _health_bar != null:

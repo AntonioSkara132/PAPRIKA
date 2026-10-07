@@ -342,7 +342,7 @@ func _check_squad(game: Node, ui: GameUI, station: StationWorld) -> void:
 		station.player._attack()
 		for tick in 35:
 			await get_tree().physics_frame
-	_check(state.military_stage == "range" and station._round.is_empty() and state.health == health_before, "player and two ordered allies defeat three cadets without player health loss")
+	_check(state.military_stage == "range" and station._round.is_empty() and state.max_health == 24 and state.health == mini(health_before + 4, 24), "squad bout raises maximum and current health by four without player damage")
 
 func _check_range(game: Node, ui: GameUI, station: StationWorld) -> void:
 	var state := GameState
@@ -636,6 +636,8 @@ func _check_migration() -> void:
 	old["planet_positions"].erase("station")
 	old["planet_positions"].erase("artichoke")
 	old["planet_positions"].erase("pomidor")
+	old["planet_positions"].erase("chvarak")
+	old["planet_positions"].erase("engineeria")
 	for field in ["current_area", "military_barracks_position", "military_stage", "military_storage", "military_stored_equipment", "military_meal_credits", "military_cannon_hits", "military_trap_progress"]:
 		old.erase(field)
 	_check(state._valid_save(old), "pre-station schema-eight save still validates with only two planets")

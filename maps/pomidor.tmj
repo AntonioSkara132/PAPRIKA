@@ -10,7 +10,7 @@
   "tileheight": 16,
   "infinite": false,
   "nextlayerid": 5,
-  "nextobjectid": 286,
+  "nextobjectid": 300,
   "backgroundcolor": "#3a2a2a",
   "layers": [
     {
@@ -25900,6 +25900,174 @@
         },
         {
           "id": 254,
+          "name": "story_mila",
+          "type": "pomidor_object",
+          "gid": 167,
+          "x": 760,
+          "y": 818,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 255,
+          "name": "story_collector_0",
+          "type": "pomidor_object",
+          "gid": 165,
+          "x": 738,
+          "y": 820,
+          "width": 18,
+          "height": 26,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 256,
+          "name": "story_collector_1",
+          "type": "pomidor_object",
+          "gid": 166,
+          "x": 782,
+          "y": 820,
+          "width": 18,
+          "height": 26,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 257,
+          "name": "smuggler_crate",
+          "type": "pomidor_object",
+          "gid": 170,
+          "x": 1068,
+          "y": 1158,
+          "width": 20,
+          "height": 18,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 258,
+          "name": "smuggler_crate",
+          "type": "pomidor_object",
+          "gid": 171,
+          "x": 1090,
+          "y": 1158,
+          "width": 20,
+          "height": 18,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 259,
+          "name": "smuggler_crate",
+          "type": "pomidor_object",
+          "gid": 170,
+          "x": 1079,
+          "y": 1174,
+          "width": 20,
+          "height": 18,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 260,
+          "name": "story_smuggler_0",
+          "type": "pomidor_object",
+          "gid": 168,
+          "x": 1050,
+          "y": 1168,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 261,
+          "name": "story_smuggler_1",
+          "type": "pomidor_object",
+          "gid": 169,
+          "x": 1098,
+          "y": 1176,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 262,
+          "name": "story_ludo",
+          "type": "pomidor_object",
+          "gid": 172,
+          "x": 644,
+          "y": 642,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 263,
+          "name": "red_lantern",
+          "type": "pomidor_object",
+          "gid": 174,
+          "x": 530,
+          "y": 1026,
+          "width": 10,
+          "height": 30,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 264,
+          "name": "story_doorman",
+          "type": "pomidor_object",
+          "gid": 173,
+          "x": 512,
+          "y": 1038,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 265,
+          "name": "story_envoy_0",
+          "type": "pomidor_object",
+          "gid": 175,
+          "x": 1000,
+          "y": 1106,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 266,
+          "name": "story_envoy_1",
+          "type": "pomidor_object",
+          "gid": 176,
+          "x": 1018,
+          "y": 1106,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 267,
+          "name": "story_envoy_2",
+          "type": "pomidor_object",
+          "gid": 177,
+          "x": 1036,
+          "y": 1106,
+          "width": 16,
+          "height": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 268,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 135,
@@ -25911,7 +26079,7 @@
           "visible": true
         },
         {
-          "id": 255,
+          "id": 269,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 138,
@@ -25923,7 +26091,7 @@
           "visible": true
         },
         {
-          "id": 256,
+          "id": 270,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 141,
@@ -25935,7 +26103,7 @@
           "visible": true
         },
         {
-          "id": 257,
+          "id": 271,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 144,
@@ -25947,7 +26115,7 @@
           "visible": true
         },
         {
-          "id": 258,
+          "id": 272,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 147,
@@ -25959,7 +26127,7 @@
           "visible": true
         },
         {
-          "id": 259,
+          "id": 273,
           "name": "council_banner",
           "type": "pomidor_object",
           "gid": 150,
@@ -25971,7 +26139,7 @@
           "visible": true
         },
         {
-          "id": 260,
+          "id": 274,
           "name": "council_table",
           "type": "pomidor_object",
           "gid": 115,
@@ -25983,7 +26151,7 @@
           "visible": true
         },
         {
-          "id": 261,
+          "id": 275,
           "name": "council_member_paprika_0",
           "type": "pomidor_object",
           "gid": 136,
@@ -25995,7 +26163,7 @@
           "visible": true
         },
         {
-          "id": 262,
+          "id": 276,
           "name": "council_member_paprika_1",
           "type": "pomidor_object",
           "gid": 137,
@@ -26007,7 +26175,7 @@
           "visible": true
         },
         {
-          "id": 263,
+          "id": 277,
           "name": "council_member_pomidor_0",
           "type": "pomidor_object",
           "gid": 139,
@@ -26019,7 +26187,7 @@
           "visible": true
         },
         {
-          "id": 264,
+          "id": 278,
           "name": "council_member_pomidor_1",
           "type": "pomidor_object",
           "gid": 140,
@@ -26031,7 +26199,7 @@
           "visible": true
         },
         {
-          "id": 265,
+          "id": 279,
           "name": "council_member_brudet_0",
           "type": "pomidor_object",
           "gid": 142,
@@ -26043,7 +26211,7 @@
           "visible": true
         },
         {
-          "id": 266,
+          "id": 280,
           "name": "council_member_brudet_1",
           "type": "pomidor_object",
           "gid": 143,
@@ -26055,7 +26223,7 @@
           "visible": true
         },
         {
-          "id": 267,
+          "id": 281,
           "name": "council_member_artichoke_0",
           "type": "pomidor_object",
           "gid": 145,
@@ -26067,7 +26235,7 @@
           "visible": true
         },
         {
-          "id": 268,
+          "id": 282,
           "name": "council_member_artichoke_1",
           "type": "pomidor_object",
           "gid": 146,
@@ -26079,7 +26247,7 @@
           "visible": true
         },
         {
-          "id": 269,
+          "id": 283,
           "name": "council_member_cichvarda_0",
           "type": "pomidor_object",
           "gid": 148,
@@ -26091,7 +26259,7 @@
           "visible": true
         },
         {
-          "id": 270,
+          "id": 284,
           "name": "council_member_cichvarda_1",
           "type": "pomidor_object",
           "gid": 149,
@@ -26103,7 +26271,7 @@
           "visible": true
         },
         {
-          "id": 271,
+          "id": 285,
           "name": "council_member_chvarak_0",
           "type": "pomidor_object",
           "gid": 151,
@@ -26115,7 +26283,7 @@
           "visible": true
         },
         {
-          "id": 272,
+          "id": 286,
           "name": "council_member_chvarak_1",
           "type": "pomidor_object",
           "gid": 152,
@@ -26127,7 +26295,7 @@
           "visible": true
         },
         {
-          "id": 273,
+          "id": 287,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 154,
@@ -26139,7 +26307,7 @@
           "visible": true
         },
         {
-          "id": 274,
+          "id": 288,
           "name": "council_secretary_army",
           "type": "pomidor_object",
           "gid": 153,
@@ -26151,7 +26319,7 @@
           "visible": true
         },
         {
-          "id": 275,
+          "id": 289,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 156,
@@ -26163,7 +26331,7 @@
           "visible": true
         },
         {
-          "id": 276,
+          "id": 290,
           "name": "council_secretary_gold",
           "type": "pomidor_object",
           "gid": 155,
@@ -26175,7 +26343,7 @@
           "visible": true
         },
         {
-          "id": 277,
+          "id": 291,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 158,
@@ -26187,7 +26355,7 @@
           "visible": true
         },
         {
-          "id": 278,
+          "id": 292,
           "name": "council_secretary_law",
           "type": "pomidor_object",
           "gid": 157,
@@ -26199,7 +26367,7 @@
           "visible": true
         },
         {
-          "id": 279,
+          "id": 293,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 160,
@@ -26211,7 +26379,7 @@
           "visible": true
         },
         {
-          "id": 280,
+          "id": 294,
           "name": "council_secretary_economy",
           "type": "pomidor_object",
           "gid": 159,
@@ -26223,7 +26391,7 @@
           "visible": true
         },
         {
-          "id": 281,
+          "id": 295,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 162,
@@ -26235,7 +26403,7 @@
           "visible": true
         },
         {
-          "id": 282,
+          "id": 296,
           "name": "council_secretary_diplomacy",
           "type": "pomidor_object",
           "gid": 161,
@@ -26247,7 +26415,7 @@
           "visible": true
         },
         {
-          "id": 283,
+          "id": 297,
           "name": "council_desk",
           "type": "pomidor_object",
           "gid": 164,
@@ -26259,7 +26427,7 @@
           "visible": true
         },
         {
-          "id": 284,
+          "id": 298,
           "name": "council_secretary_navy",
           "type": "pomidor_object",
           "gid": 163,
@@ -26271,7 +26439,7 @@
           "visible": true
         },
         {
-          "id": 285,
+          "id": 299,
           "name": "chamber_exit",
           "type": "pomidor_object",
           "gid": 116,

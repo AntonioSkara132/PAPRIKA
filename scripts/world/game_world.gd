@@ -21,6 +21,8 @@ const CAMP_TEXTURE := "res://assets/art/bandit.png"
 const REPATH_SECONDS := 0.45
 
 signal squad_control_changed
+## Asks the main scene to move the player to another planet for the story.
+signal story_travel_requested(destination: String)
 
 var tiled_loader: TiledLoader
 var actors_root: Node2D
@@ -50,6 +52,7 @@ func _ready() -> void:
 	if player == null:
 		_spawn_player(VILLAGE_OFFSET + Vector2(326, 268), "res://art/concepts/source/player.png")
 	_assign_villager_routines()
+	_spawn_work_clerk()
 	GameState.squad_changed.connect(_sync_squad)
 	GameState.job_changed.connect(_sync_hacker)
 	_sync_squad()
@@ -416,6 +419,21 @@ func _spawn_villager(position: Vector2, texture_path: String, stable_id: String)
 	actors_root.add_child(villager)
 	_villager_count += 1
 
+## The clerk stays by the first village's WORK office, where the player
+## accepts and claims the common-fields job.
+func _spawn_work_clerk() -> void:
+	var map_objects := tiled_loader.get_node_or_null("MapObjects")
+	if map_objects == null:
+		return
+	for node in map_objects.get_children():
+		if node is WorldService and node.service_id == "work_office":
+			var clerk := StationStaff.new()
+			clerk.name = "WorkClerk"
+			clerk.configure("work_clerk", "Work Clerk", "res://art/concepts/source/villager2.png", _nearby_open_position(node.get_interaction_position() + Vector2(60, 12)))
+			actors_root.add_child(clerk)
+			clerk.service_requested.connect(_on_service_requested)
+			return
+
 func _spawn_rabbit(position: Vector2, texture_path: String, stable_id: String) -> void:
 	var rabbit := Rabbit.new()
 	rabbit.name = "Rabbit_%s" % stable_id
@@ -546,14 +564,89 @@ func _on_player_respawned() -> void:
 		elif actor is Projectile and not actor.from_player:
 			actor.queue_free()
 
+## Covers the screen in `color` and fades it out over `fade` seconds after
+## holding it for `hold` seconds. Used for hits on a ship and for waking up.
+func screen_flash(color: Color, fade: float, hold: float = 0.0) -> ColorRect:
+	var layer := CanvasLayer.new()
+	layer.name = "ScreenFlash"
+	layer.layer = 5
+	add_child(layer)
+	var cover := ColorRect.new()
+	cover.color = color
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(cover)
+	var tween := create_tween()
+	if hold > 0.0:
+		tween.tween_interval(hold)
+	tween.tween_property(cover, "modulate:a", 0.0, fade)
+	tween.tween_callback(layer.queue_free)
+	return cover
+
+## Shakes the camera for `seconds`.
+func shake_camera(seconds: float, strength: float = 4.0) -> void:
+	if _camera == null:
+		return
+	var tween := create_tween()
+	var steps := maxi(2, int(seconds / 0.05))
+	for step in steps:
+		tween.tween_property(_camera, "offset", Vector2(randf_range(-strength, strength), randf_range(-strength, strength)), 0.05)
+	tween.tween_property(_camera, "offset", Vector2.ZERO, 0.05)
+
+## Puts a small gold triangle over the head of whoever speaks in a scene, and
+## removes it from the last speaker. null only removes it.
+func mark_speaker(node: Node2D) -> void:
+	for marked in get_tree().get_nodes_in_group("speaker_mark"):
+		marked.queue_free()
+	if node == null:
+		return
+	var mark := Polygon2D.new()
+	mark.name = "SpeakerMark"
+	mark.add_to_group("speaker_mark")
+	mark.polygon = PackedVector2Array([Vector2(-5, -6), Vector2(5, -6), Vector2(0, 1)])
+	mark.color = Color("f5c34c")
+	mark.position = Vector2(0, -50)
+	mark.z_index = 50
+	var outline := Line2D.new()
+	outline.points = PackedVector2Array([Vector2(-5, -6), Vector2(5, -6), Vector2(0, 1), Vector2(-5, -6)])
+	outline.width = 1.0
+	outline.default_color = Color("1c1730")
+	mark.add_child(outline)
+	node.add_child(mark)
+
 func _on_prompt_changed(text: String) -> void:
 	var ui := get_tree().get_first_node_in_group("game_ui")
 	if ui != null and ui.has_method("set_interaction_prompt"):
 		ui.set_interaction_prompt(text)
 
 func _on_service_requested(service_id: String, display_name: String) -> void:
+	if service_id == "work_clerk":
+		_talk_work_clerk()
+		return
 	var ui := get_tree().get_first_node_in_group("game_ui")
 	if ui != null and ui.has_method("open_service"):
 		ui.open_service(service_id, display_name)
 	else:
 		GameState.notify("%s is not ready yet." % display_name)
+
+## Short directions for the first job, then the other work around the village.
+func _talk_work_clerk() -> void:
+	var clerk := actors_root.get_node_or_null("WorkClerk") as StationStaff
+	var lines: Array = []
+	if GameState.active_jobs.has("field_work"):
+		if GameState.active_job_ready("field_work"):
+			lines = ["Five crops. Good work. Go to the WORK office door to claim your ten gold."]
+		else:
+			lines = ["The common fields are south and southwest of the square. Press E beside a ready crop; you need five for the job.", "You have harvested %d of five. Return to the WORK office door when you're done." % int(GameState.active_jobs["field_work"])]
+	elif GameState.active_jobs.has("rabbit_catch"):
+		lines = ["For the rabbit job, walk into the forest and press E beside a rabbit. Don't attack it; that gives meat instead.", "Catch five, then return to the WORK office door for your reward."]
+	else:
+		lines = ["First job? Visit the WORK office door behind me and take Help in the Common Fields.", "Press E beside five ready crops in the common fields south and southwest of the square. Return to the WORK office door to claim your reward.", "After that, the office has a rabbit job. The MERCENARY center offers work if you want to fight."]
+	var ui := get_tree().get_first_node_in_group("game_ui") as GameUI
+	if ui != null:
+		var dialogue: Array = []
+		for text in lines:
+			dialogue.append({"speaker": "Work Clerk", "text": text, "focus": clerk})
+		ui.play_scene(dialogue)
+	else:
+		GameState.notify("Work Clerk: %s" % lines[0])

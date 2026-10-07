@@ -423,6 +423,96 @@ def townsfolk():
     return [person(c, cd, SKINS[i % 4], HAIRS[(i * 3) % 4]) for i, (c, cd) in enumerate(colors)]
 
 
+# ---------- Julius's people and the embassy ----------
+
+def collector(index):
+    """Debt collector: a long dark coat and a cudgel."""
+    img = Image.new("RGBA", (18, 26), (0, 0, 0, 0))
+    body = person((62, 58, 66), (38, 34, 42), SKINS[(index + 1) % 4], HAIRS[(index * 2 + 1) % 4])
+    img.alpha_composite(body, (0, 2))
+    d = ImageDraw.Draw(img)
+    d.line([(15, 10), (17, 22)], fill=WOOD_DARK, width=2)
+    if index == 0:
+        d.rectangle((4, 2, 11, 4), fill=(40, 36, 44))  # a flat cap
+    return img
+
+
+def smuggler(index):
+    """Carter's clothes, a scarf over the chin."""
+    img = person(((122, 104, 70), (96, 120, 110))[index], ((90, 74, 50), (64, 86, 80))[index], SKINS[(index + 2) % 4], HAIRS[index % 4])
+    d = ImageDraw.Draw(img)
+    d.rectangle((5, 8, 10, 9), fill=(150, 60, 50) if index == 0 else (60, 70, 120))
+    return img
+
+
+def ludo():
+    """Too well dressed for the lane he stands in: green coat, gold buttons."""
+    img = person((44, 120, 92), (28, 84, 64), SKINS[3], (40, 32, 36))
+    d = ImageDraw.Draw(img)
+    for y in (12, 15, 18):
+        d.point((8, y), fill=GOLD)
+    d.rectangle((4, 0, 11, 2), fill=(30, 26, 34))
+    return img
+
+
+def doorman():
+    img = person((36, 32, 40), (24, 20, 28), SKINS[2], (30, 26, 30))
+    d = ImageDraw.Draw(img)
+    d.rectangle((4, 11, 11, 12), fill=(150, 40, 60))
+    return img
+
+
+def red_lantern():
+    img = Image.new("RGBA", (10, 30), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.line([(4, 6), (4, 29)], fill=WOOD_DARK, width=2)
+    d.line([(4, 3), (8, 3)], fill=INK)
+    d.ellipse((3, 3, 9, 12), fill=(214, 40, 56), outline=INK)
+    d.point((5, 6), fill=(255, 150, 140))
+    return img
+
+
+def smuggler_crate(seed):
+    img = Image.new("RGBA", (20, 18), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((1, 3, 18, 17), fill=WOOD, outline=INK)
+    d.line([(1, 3), (18, 17)], fill=WOOD_DARK)
+    d.line([(18, 3), (1, 17)], fill=WOOD_DARK)
+    d.rectangle((1, 3, 18, 6), fill=(150, 108, 72), outline=INK)
+    if seed == 1:
+        # the lid is open a crack, and iron shows under the straw
+        d.polygon([(1, 3), (18, 3), (16, 0), (3, 0)], fill=(150, 108, 72), outline=INK)
+        d.line([(4, 4), (15, 4)], fill=(200, 176, 96))
+        d.line([(6, 5), (13, 5)], fill=(190, 200, 206))
+    return img
+
+
+ENVOY_TRIM = (78, 131, 207)
+
+
+def envoy(index):
+    """Diplomats wear the Secretary of Diplomacy's blue over grey robes."""
+    img = person((116, 120, 136), (78, 82, 98), SKINS[(index * 3 + 1) % 4], HAIRS[(index + 2) % 4])
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            if px[x, y][:3] == (78, 82, 98):
+                px[x, y] = ENVOY_TRIM + (255,)
+    d = ImageDraw.Draw(img)
+    d.rectangle((12, 13, 15, 17), fill=(222, 206, 160), outline=INK)  # letter case
+    return img
+
+
+def envoy_lying(index):
+    """The same envoy on the ground, for the crash site."""
+    standing = envoy(index)
+    img = standing.rotate(90, expand=True)
+    out = Image.new("RGBA", (img.width + 2, img.height + 4), (0, 0, 0, 0))
+    ImageDraw.Draw(out).ellipse((0, img.height - 6, img.width + 1, img.height + 3), fill=SHADOW)
+    out.alpha_composite(img, (1, 0))
+    return out
+
+
 # ---------- council chamber furniture ----------
 
 def council_table():
@@ -568,6 +658,17 @@ def main():
     save(council_table(), "council_table")
     save(chamber_exit(), "chamber_exit")
     save(terrain(), "pomidor_terrain")
+    for i in range(2):
+        save(collector(i), f"collector_{i}")
+        save(smuggler(i), f"smuggler_{i}")
+        save(smuggler_crate(i), f"smuggler_crate_{i}")
+    save(townsfolk()[3], "mila")
+    save(ludo(), "ludo")
+    save(doorman(), "doorman")
+    save(red_lantern(), "red_lantern")
+    for i in range(3):
+        save(envoy(i), f"envoy_{i}")
+        save(envoy_lying(i), f"envoy_{i}_lying")
     orange = recolor(PLAYER_RED, {TUNIC: ORANGE, TUNIC_DARK: ORANGE_DARK})
     orange.save(ROOT / "assets/art/player_orange.png")
     print("wrote", len(list(OUT.glob("*.png"))), "Pomidor sprites")

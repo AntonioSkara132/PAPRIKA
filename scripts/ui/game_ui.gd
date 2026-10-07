@@ -48,6 +48,15 @@ var _completion_base := ""
 var _completions: PackedStringArray = []
 var _completion_index := -1
 var _notification_timer: Timer
+## Scene lines shown one at a time at the bottom of the screen.
+var scene_panel: PanelContainer
+var scene_speaker_label: Label
+var scene_text_label: Label
+var scene_buttons: HBoxContainer
+var _scene_lines: Array = []
+var _scene_index := -1
+var _scene_finished := Callable()
+var _scene_choices: Array = []
 var _active_service_id := ""
 var _active_service_name := ""
 var _recruit_page := 0
@@ -73,6 +82,16 @@ func _ready() -> void:
 	_fit_to_window()
 
 func _input(event: InputEvent) -> void:
+	if scene_panel.visible:
+		# E, Space and Enter show the next line. The last line of a scene with
+		# choices waits for a button instead.
+		if event.is_action_pressed("interact") or event.is_action_pressed("attack") or event.is_action_pressed("order_type"):
+			if _scene_choices.is_empty() or _scene_index < _scene_lines.size() - 1:
+				advance_scene()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("inventory") or event.is_action_pressed("jobs") or event.is_action_pressed("pause"):
+			get_viewport().set_input_as_handled()
+		return
 	if order_bar.visible:
 		# Keys go to the text box; Escape closes it, Tab completes a word, Up and
 		# Down step through earlier orders.
@@ -139,6 +158,7 @@ func open_service(service_id: String, display_name: String) -> void:
 		"pomidor_market": _build_pomidor_market()
 		"beer_hall": _build_beer_hall()
 		"pomidor_ship": _build_pomidor_ship()
+		"chvarak_ship": _build_chvarak_ship()
 		"pomidor_forge", "pomidor_clothing": _build_gear_shop(service_id)
 		"station_depot": _build_station_depot()
 		"station_barracks": _build_station_barracks()
@@ -156,6 +176,8 @@ func open_inventory() -> void:
 	_active_service_name = "Inventory & Equipment"
 	_open_modal(_active_service_name)
 	_add_body("Gold: %d    Health: %d/%d" % [GameState.gold, GameState.health, GameState.max_health])
+	if not String(GameState.equipment.get("armor", "")).is_empty():
+		_add_action_button("Unequip armor — keep it in your pack", func() -> void: GameState.unequip_armor(); _refresh_inventory_panel())
 	var item_ids := GameState.inventory.keys()
 	item_ids.sort()
 	if item_ids.is_empty():
@@ -280,17 +302,22 @@ func _build_hud() -> void:
 	var notice_panel := _panel_at(Vector2(80, 75), Vector2(480, 52), CYAN)
 	notice_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(notice_panel)
+	var notice_box := VBoxContainer.new()
+	notice_panel.add_child(notice_box)
 	notification_label = _label("", 10, CREAM)
 	notification_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	notification_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	notification_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notice_panel.add_child(notification_label)
+	notification_label.custom_minimum_size = Vector2(460, 36)
+	notice_box.add_child(notification_label)
 	notice_panel.visible = false
 	notification_label.set_meta("panel", notice_panel)
 	_notification_timer = Timer.new()
 	_notification_timer.one_shot = true
-	_notification_timer.timeout.connect(func() -> void: notice_panel.visible = false)
+	_notification_timer.timeout.connect(_hide_notice)
 	add_child(_notification_timer)
+
+	_build_scene_panel(root)
 
 	prompt_panel = _panel_at(Vector2(177, 326), Vector2(286, 26), CREAM)
 	root.add_child(prompt_panel)
@@ -318,7 +345,7 @@ func _build_hud() -> void:
 	order_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	order_input.max_length = 300
 	order_input.placeholder_text = "bowmen to the west ramp · Tab completes · ↑ last order · Esc closes"
-	order_input.add_theme_font_size_override("font_size", 10)
+	order_input.add_theme_font_size_override("font_size", 12)
 	order_input.text_submitted.connect(_on_order_text_submitted)
 	order_row.add_child(order_input)
 	order_bar.visible = false
@@ -373,6 +400,11 @@ func _refresh_all() -> void:
 	_refresh_squad()
 
 func refresh_location() -> void:
+	var titled_world := get_tree().get_first_node_in_group("game_world")
+	if titled_world != null and titled_world.has_method("location_title"):
+		location_label.text = titled_world.location_title()
+		_refresh_job()
+		return
 	match GameState.current_planet:
 		"brudet": location_label.text = "BRUDET RIVER CITY"
 		"station": location_label.text = "MILITARY BARRACKS" if GameState.current_area == "barracks" else "TRAINING STATION"
@@ -404,6 +436,10 @@ func _refresh_job() -> void:
 		var world := get_tree().get_first_node_in_group("game_world")
 		job_label.text = world.front_status_text() if world != null and world.has_method("front_status_text") else "ARTICHOKE FRONT\nCauliflower Base holds the high ground\nThe flagship returns to the station"
 		return
+	var story_world := get_tree().get_first_node_in_group("game_world")
+	if story_world != null and story_world.has_method("story_status_text"):
+		job_label.text = story_world.story_status_text()
+		return
 	if GameState.active_jobs.is_empty():
 		job_label.text = "JOBS\nNo active jobs — visit Town Hall or market" if GameState.current_planet == "brudet" else "JOBS\nNo active jobs — visit WORK"
 		return
@@ -431,10 +467,130 @@ func _refresh_squad() -> void:
 	squad_label.text = "SQUAD  Active: %s (direct control)  |  Q Follow  R Hold  T Attack\n%s" % [active_name, "    |    ".join(summaries)]
 
 func _show_notification(message: String) -> void:
-	notification_label.text = message
 	var panel := notification_label.get_meta("panel") as Control
+	notification_label.text = message
 	panel.visible = true
+	panel.reset_size()
 	_notification_timer.start(3.6)
+
+func _hide_notice() -> void:
+	(notification_label.get_meta("panel") as Control).visible = false
+
+func _build_scene_panel(root: Control) -> void:
+	scene_panel = _panel_at(Vector2(56, 252), Vector2(528, 96), GOLD)
+	scene_panel.name = "ScenePanel"
+	scene_panel.add_to_group("ui_modal")
+	scene_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	root.add_child(scene_panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	scene_panel.add_child(box)
+	scene_speaker_label = _label("", 10, GOLD)
+	box.add_child(scene_speaker_label)
+	scene_text_label = _label("", 10, CREAM)
+	scene_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	scene_text_label.custom_minimum_size = Vector2(508, 40)
+	box.add_child(scene_text_label)
+	scene_buttons = HBoxContainer.new()
+	scene_buttons.alignment = BoxContainer.ALIGNMENT_END
+	scene_buttons.add_theme_constant_override("separation", 6)
+	box.add_child(scene_buttons)
+	scene_panel.visible = false
+
+## Shows `lines` one at a time. Each line is {speaker, text} with an optional
+## `focus` node, which gets a small gold marker over its head while it speaks.
+## `choices` are {label, action} buttons on the last line; picking one ends the
+## scene and calls its action. `finished` runs when the scene ends either way.
+func play_scene(lines: Array, finished: Callable = Callable(), choices: Array = []) -> void:
+	if lines.is_empty():
+		if finished.is_valid():
+			finished.call()
+		return
+	close_modal()
+	if order_bar.visible:
+		close_order_bar()
+	_scene_lines = lines
+	_scene_finished = finished
+	_scene_choices = choices
+	_scene_index = -1
+	_hide_notice()
+	scene_panel.visible = true
+	set_interaction_prompt("")
+	advance_scene()
+
+func scene_playing() -> bool:
+	return scene_panel.visible
+
+## Lines left after the current one; 0 on the last line.
+func scene_lines_left() -> int:
+	return maxi(0, _scene_lines.size() - 1 - _scene_index) if scene_panel.visible else 0
+
+func advance_scene() -> void:
+	if not scene_panel.visible:
+		return
+	_scene_index += 1
+	if _scene_index >= _scene_lines.size():
+		_end_scene(Callable())
+		return
+	var line: Dictionary = _scene_lines[_scene_index]
+	scene_speaker_label.text = String(line.get("speaker", ""))
+	scene_speaker_label.visible = not scene_speaker_label.text.is_empty()
+	scene_text_label.text = String(line.get("text", ""))
+	_mark_speaker(line.get("focus", null))
+	for child in scene_buttons.get_children():
+		scene_buttons.remove_child(child)
+		child.queue_free()
+	var last := _scene_index == _scene_lines.size() - 1
+	if last and not _scene_choices.is_empty():
+		for choice: Dictionary in _scene_choices:
+			var action: Callable = choice.get("action", Callable())
+			scene_buttons.add_child(_scene_button(String(choice["label"]), func() -> void: _end_scene(action)))
+	else:
+		scene_buttons.add_child(_scene_button("Continue  [E]" if not last else "Close  [E]", advance_scene))
+
+## Ends a scene without running its actions, for when the world it belongs to
+## is replaced by a load or a journey.
+func cancel_scene() -> void:
+	if not scene_panel.visible:
+		return
+	scene_panel.visible = false
+	_mark_speaker(null)
+	_scene_lines = []
+	_scene_choices = []
+	_scene_index = -1
+	_scene_finished = Callable()
+
+func _end_scene(action: Callable) -> void:
+	scene_panel.visible = false
+	_mark_speaker(null)
+	var finished := _scene_finished
+	_scene_lines = []
+	_scene_choices = []
+	_scene_index = -1
+	_scene_finished = Callable()
+	if action.is_valid():
+		action.call()
+	if finished.is_valid():
+		finished.call()
+
+func _scene_button(text_value: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.custom_minimum_size = Vector2(0, 20)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 11)
+	button.add_theme_color_override("font_color", CREAM)
+	button.add_theme_color_override("font_hover_color", INK)
+	button.add_theme_stylebox_override("normal", _style(Color("29253b"), Color("57506d")))
+	button.add_theme_stylebox_override("hover", _style(GOLD, GOLD))
+	button.add_theme_stylebox_override("pressed", _style(CYAN, CYAN))
+	button.pressed.connect(action)
+	return button
+
+func _mark_speaker(node: Variant) -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	if world != null and world.has_method("mark_speaker"):
+		world.mark_speaker(node if node is Node2D and is_instance_valid(node) else null)
 
 func _open_modal(title: String) -> void:
 	for child in modal_content.get_children():
@@ -450,10 +606,16 @@ func _build_food_shop(northern: bool = false) -> void:
 		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell produce")
 	for item_id in ["potato", "carrot", "tomato", "grape", "rabbit_meat"]:
-		var definition := GameData.item(item_id)
-		var owned := int(GameState.inventory.get(item_id, 0))
-		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
-		button.disabled = owned <= 0
+		_add_food_sell_buttons(item_id)
+
+func _add_food_sell_buttons(item_id: String) -> void:
+	var definition := GameData.item(item_id)
+	var available := maxi(0, int(GameState.inventory.get(item_id, 0)) - GameState.reserved_item_count(item_id))
+	var price := int(definition.get("sell", 0))
+	var single := _add_action_button("Sell 1 %s — %d gold (owned: %d)" % [definition["name"], price, available], func() -> void: GameState.sell_item(item_id); _reopen_service())
+	single.disabled = available <= 0
+	if available > 1:
+		_add_action_button("Sell all %s x%d — %d gold" % [definition["name"], available, price * available], func() -> void: GameState.sell_all_items(item_id); _reopen_service())
 
 func _build_gear_shop(service_id: String) -> void:
 	var sections: Dictionary
@@ -524,10 +686,7 @@ func _build_river_market() -> void:
 		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell")
 	for item_id in ["river_fish", "potato", "carrot", "tomato", "grape"]:
-		var definition := GameData.item(item_id)
-		var owned := int(GameState.inventory.get(item_id, 0))
-		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
-		button.disabled = owned <= 0
+		_add_food_sell_buttons(item_id)
 	_add_heading("Fishing work")
 	_add_job_button("fishing_work")
 
@@ -543,7 +702,7 @@ func _build_travel_agency() -> void:
 func _build_river_library() -> void:
 	_add_heading("Craft and its history")
 	_add_body("Craft is a game people play while hibernating aboard an interstellar voyage. Its roughly fifty flat planets have breathable space between them.")
-	_add_body("The New Republic holds twenty-four planets and has its capital on Blockovia. Breece holds seven, Engineria five, the Cauliflower Confederation six, Saint Confederation five, and two worlds are independent.")
+	_add_body("The New Republic holds twenty-four planets and has its capital on Blockovia. Breece holds seven, Engineeria five, the Cauliflower Confederation six, Saint Confederation five, and two worlds are independent.")
 	_add_body("The former unified Republic split after the self-modification machine Block was destroyed. Paprika and Brudet belong to the Cauliflower Confederation, which is why ships travel between them.")
 	_add_heading("Field guide")
 	_add_body("The bridges cross the main river. Water cannot be walked across elsewhere. A fishing rod from the market lets you catch fish at ponds; wait before casting again.")
@@ -729,10 +888,7 @@ func _build_pomidor_market() -> void:
 		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell")
 	for item_id in ["river_fish", "potato", "carrot", "tomato", "grape", "rabbit_meat"]:
-		var definition := GameData.item(item_id)
-		var owned := int(GameState.inventory.get(item_id, 0))
-		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
-		button.disabled = owned <= 0
+		_add_food_sell_buttons(item_id)
 
 func _build_beer_hall() -> void:
 	_add_body("Clerks, guards and traders from every planet drink here after the Council closes for the day. Most of the town's news starts at these tables.")
@@ -745,13 +901,22 @@ func _build_beer_hall() -> void:
 		"\"The Secretary of Gold turned down the Navy's new ships again. Not enough in the common treasury, she says.\"",
 		"\"The two Artichoke councillors want more soldiers on the front. The Brudet pair want the money for bridges.\"",
 		"\"A Captain from Artichoke is in town. Burned the whole Republic fleet, they say.\"",
+		"\"Borrow from the Organisation and you pay it back twice. Borrow and don't pay, and the collectors come.\"",
+		"\"The Organisation pays the hacker gangs between the planets. Every ship they stop, Julius takes his share.\"",
+		"\"Julius keeps his own hackers, the Sokoli. The gangs work for money. The Sokoli work only for him.\"",
 	]
 	_add_body(rumors[int(GameState.play_seconds / 20.0) % rumors.size()])
 
 func _build_pomidor_ship() -> void:
 	_add_body("A Confederation transport waits on the landing ground. It flies to the Artichoke front and to Brudet.")
+	if GameState.defeated_persistent_enemies.has(PomidorWorld.EMBASSY_FLAG) and not GameState.defeated_persistent_enemies.has(PomidorWorld.DEPARTED_FLAG):
+		_add_action_button("Fly to Chvarak with the diplomats — free", func() -> void: travel_requested.emit("chvarak"))
 	_add_action_button("Fly to Artichoke — free", func() -> void: travel_requested.emit("artichoke"))
 	_add_action_button("Fly to Brudet — free", func() -> void: travel_requested.emit("brudet"))
+
+func _build_chvarak_ship() -> void:
+	_add_body("The Confederation transport that brought you waits on the west pad. It flies back to Pomidor.")
+	_add_action_button("Fly to Pomidor — free", func() -> void: travel_requested.emit("pomidor"))
 
 func _report_to_council(key: String) -> void:
 	var world := get_tree().get_first_node_in_group("game_world")
@@ -766,6 +931,7 @@ func _build_council_member(key: String) -> void:
 		_add_body("Nobody sits here.")
 		return
 	var reported: bool = world != null and world.has_method("reported_to_council") and world.reported_to_council()
+	var stage: String = world.story_stage() if world != null and world.has_method("story_stage") else "report"
 	if seat.has("planet"):
 		var planet := String(seat["planet"])
 		_add_body("%s speaks for %s in the Big Council, one of its two members." % [seat["name"], planet])
@@ -787,18 +953,33 @@ func _build_council_member(key: String) -> void:
 			if not reported:
 				_add_body("\"General Hickey wrote that you destroyed the Republic warships on Artichoke. Tell me yourself, Captain.\"")
 				_add_action_button("Report what was done on Artichoke", _report_to_council.bind(key))
+			elif stage == "wait":
+				_add_body("\"The Council has your report. We meet once today's petitions are heard. Look around the town; the bell will ring when we sit.\"")
 			else:
 				_add_body("\"The Council has your report. Artichoke is quiet for now, but the Republic will rebuild. When it does, I will send for you.\"")
 		"gold":
 			_add_body("\"I collect the taxes, approve every spending request and keep the common treasury. Every planet wants more from it than it puts in.\"")
 		"law":
 			_add_body("\"The Big Council passes the laws; I see that they are kept, on every planet, the same for all.\"")
+			if stage not in ["report", "wait"]:
+				_add_body("\"Julius's organisation lends, smuggles and runs houses nobody names. Pomidor's guard is a few dozen men. His people are on every planet, in the Republic too.\"")
 		"economy":
 			_add_body("\"I run the markets and watch how much timber, stone and ore each planet takes. A war eats resources faster than a mine can dig them.\"")
 		"diplomacy":
-			_add_body("\"I speak for the Confederation to the other powers: Breece, Engineria, Saint Confederation. The Republic does not answer letters.\"")
+			match stage:
+				"request":
+					_add_body("\"Have you thought about it, Captain? Three diplomats, the Council's letters, and the way through Chvarak to Engineeria.\"")
+					_add_action_button("Agree to guard the diplomats", func() -> void:
+						close_modal()
+						world.accept_embassy())
+				"embassy":
+					_add_body("\"Petar, Nada and Oto are waiting at the landing ground. Keep them alive, Captain.\"")
+				_:
+					_add_body("\"I speak for the Confederation to the other powers: Breece, Engineeria, Saint Confederation. The Republic does not answer letters.\"")
 		"navy":
 			_add_body("\"I run the warships and the transports between the planets. The ship on the landing ground flies to Artichoke and Brudet whenever you need it.\"")
+			if world != null and world.has_method("story_stage") and GameState.defeated_persistent_enemies.has(PomidorWorld.SMUGGLERS_FLAG):
+				_add_body("\"Crates on the landing ground? Cargo goes missing between the ships and the warehouses every week. My cargo masters swear they counted it. Someone pays them to count wrong.\"")
 
 func _build_artichoke_mess() -> void:
 	var world := get_tree().get_first_node_in_group("game_world")
@@ -1156,7 +1337,7 @@ func _add_action_button(text_value: String, action: Callable) -> Button:
 	button.text = text_value
 	button.custom_minimum_size = Vector2(380, 24)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_font_size_override("font_size", 12)
 	button.add_theme_color_override("font_color", CREAM)
 	button.add_theme_color_override("font_hover_color", INK)
 	button.add_theme_stylebox_override("normal", _style(Color("29253b"), Color("57506d")))
@@ -1172,7 +1353,7 @@ func _add_close_button() -> void:
 func _label(text_value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text_value
-	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_size_override("font_size", font_size + 2)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_shadow_color", INK)
 	label.add_theme_constant_override("shadow_offset_x", 1)

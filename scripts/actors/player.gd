@@ -13,6 +13,9 @@ var facing := Vector2.DOWN
 var map_bounds := Rect2(0, 0, 640, 368)
 var respawn_position := RESPAWN_POSITION
 var respawn_location_name := "Paprika village"
+## Replaces the usual "woke up safely" notice when it is not empty, for places
+## where being downed does not end safely, such as a ship under attack.
+var respawn_notice := ""
 var _sprite: Sprite2D
 var _armor_overlay: Sprite2D
 var _held_mine_icon: Sprite2D
@@ -127,8 +130,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_update_nearest_interactable()
 		if is_instance_valid(_current_interactable) and _current_interactable.has_method("interact"):
 			_current_interactable.interact(active)
-		else:
-			GameState.notify("There is nothing nearby to interact with.")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("attack"):
 		if active == self and _holding_field_mine and world != null and world.has_method("place_field_mine"):
@@ -219,7 +220,7 @@ func _respawn() -> void:
 	GameState.player_position = global_position
 	GameState.restore_health()
 	respawned.emit()
-	GameState.notify("You were defeated and woke up safely in %s." % respawn_location_name)
+	GameState.notify(respawn_notice if not respawn_notice.is_empty() else "You were defeated and woke up safely in %s." % respawn_location_name)
 
 func _update_nearest_interactable() -> void:
 	var world := get_parent().get_parent() as GameWorld

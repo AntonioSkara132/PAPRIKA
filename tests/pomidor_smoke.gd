@@ -138,7 +138,7 @@ func _run() -> void:
 	state.player_position = town.player.global_position
 	_check(state.save_game(), "saving on Pomidor succeeds")
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(state.SAVE_PATH))
-	_check(saved is Dictionary and int(saved["schema"]) == state.POMIDOR_SAVE_SCHEMA and saved["current_planet"] == "pomidor" and saved["planet_positions"].has("pomidor") and state._valid_save(saved), "the save records Pomidor")
+	_check(saved is Dictionary and int(saved["schema"]) == state.SAVE_SCHEMA and saved["current_planet"] == "pomidor" and saved["planet_positions"].has("pomidor") and state._valid_save(saved), "the save records Pomidor")
 	var without_unlock: Dictionary = saved.duplicate(true)
 	without_unlock["defeated_persistent_enemies"].erase(state.POMIDOR_UNLOCK_FLAG)
 	_check(not state._valid_save(without_unlock), "a save on Pomidor without the Captain promotion is rejected")
@@ -146,7 +146,20 @@ func _run() -> void:
 	old["schema"] = state.ARTICHOKE_SAVE_SCHEMA
 	old["current_planet"] = "artichoke"
 	old["planet_positions"].erase("pomidor")
+	old["planet_positions"].erase("chvarak")
+	old["planet_positions"].erase("engineeria")
 	_check(state._valid_save(old), "a schema-11 save without Pomidor is still valid")
+	var before_embassy: Dictionary = saved.duplicate(true)
+	before_embassy["schema"] = state.POMIDOR_SAVE_SCHEMA
+	before_embassy["planet_positions"].erase("chvarak")
+	before_embassy["planet_positions"].erase("engineeria")
+	_check(state._valid_save(before_embassy), "a schema-12 save on Pomidor without Chvarak and Engineeria is still valid")
+	var on_chvarak: Dictionary = before_embassy.duplicate(true)
+	on_chvarak["current_planet"] = "chvarak"
+	_check(not state._valid_save(on_chvarak), "a schema-12 save cannot be on Chvarak")
+	FileAccess.open(state.SAVE_PATH, FileAccess.WRITE).store_string(JSON.stringify(before_embassy))
+	_check(state.load_game() and state.current_planet == "pomidor" and state.planet_positions.get("chvarak") == [state.CHVARAK_ARRIVAL.x, state.CHVARAK_ARRIVAL.y] and state.planet_positions.get("engineeria") == [state.ENGINEERIA_ARRIVAL.x, state.ENGINEERIA_ARRIVAL.y], "loading a schema-12 save adds the Chvarak and Engineeria arrival positions")
+	town.apply_loaded_state()
 
 	# The transport flies back to Artichoke and to Brudet.
 	ui.open_service("pomidor_ship", "Confederation Transport")
