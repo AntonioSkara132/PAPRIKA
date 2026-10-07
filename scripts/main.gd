@@ -6,6 +6,7 @@ const WORLD_SCRIPTS := {
 	"station": "res://scripts/world/station_world.gd",
 	"station_barracks": "res://scripts/world/station_barracks_world.gd",
 	"artichoke": "res://scripts/world/artichoke_world.gd",
+	"pomidor": "res://scripts/world/pomidor_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
@@ -114,6 +115,7 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		"station": "StationWorld",
 		"station_barracks": "StationBarracksWorld",
 		"artichoke": "ArtichokeWorld",
+		"pomidor": "PomidorWorld",
 	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader

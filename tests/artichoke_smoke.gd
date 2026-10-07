@@ -129,7 +129,7 @@ func _run() -> void:
 	front.player.global_position = saved_spot
 	_check(_quick_save(game), "quick save on Artichoke writes a valid current-schema save")
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(state.SAVE_PATH))
-	_check(saved is Dictionary and saved.get("current_planet") == "artichoke" and saved.get("planet_positions", {}).size() == state.PLANETS.size(), "the save records Artichoke and all four planet positions")
+	_check(saved is Dictionary and saved.get("current_planet") == "artichoke" and saved.get("planet_positions", {}).size() == state.PLANETS.size(), "the save records Artichoke and every planet position")
 	front.player.global_position = state.ARTICHOKE_ARRIVAL
 	_quick_load(game)
 	await get_tree().process_frame
@@ -140,7 +140,7 @@ func _run() -> void:
 		_check(not state._valid_save(untrained), "a save on Artichoke without graduation is rejected")
 		var missing: Dictionary = saved.duplicate(true)
 		missing["planet_positions"].erase("artichoke")
-		_check(not state._valid_save(missing), "a schema-11 save needs the Artichoke position")
+		_check(not state._valid_save(missing), "a current save needs the Artichoke position")
 
 	await _check_story(game, front, ui)
 	if game.world == front:
@@ -196,6 +196,7 @@ func _check_migration(saved) -> void:
 	station_save["schema"] = state.MILITARY_ROUND_SAVE_SCHEMA
 	station_save["current_planet"] = "station"
 	station_save["planet_positions"].erase("artichoke")
+	station_save["planet_positions"].erase("pomidor")
 	_check(state._valid_save(station_save), "a schema-10 station save without Artichoke stays valid")
 	var on_front: Dictionary = station_save.duplicate(true)
 	on_front["current_planet"] = "artichoke"

@@ -153,7 +153,7 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 			_create_field_plot(cell, local_id, sprite, texture, layer_name == "Common Fields")
 		if layer_name == "Water":
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5, true)
-		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
+		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs", "Chamber Walls"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -189,6 +189,9 @@ func _create_object_layer(layer: Dictionary) -> void:
 		if name == "rabbit":
 			actor_spawn_requested.emit("rabbit", feet, texture_path, "rabbit_%d" % int(object.get("id", 0)))
 			continue
+		if name.begins_with("council_member_") or name.begins_with("council_secretary_"):
+			actor_spawn_requested.emit("council", feet, texture_path, name)
+			continue
 		if name in ["station_recruit", "station_instructor", "station_cook", "station_soldier", "front_soldier", "republic_soldier", "republic_battery_soldier", "confederation_officer", "confederation_cook"]:
 			actor_spawn_requested.emit(name, feet, texture_path, "%s_%d" % [name, int(object.get("id", 0))])
 			continue
@@ -204,11 +207,11 @@ func _create_object_layer(layer: Dictionary) -> void:
 			service_node.z_index = 10 + int(object.get("y", 0))
 			_object_root.add_child(service_node)
 			service_node.configure(texture, size, String(service["id"]), String(service["name"]), float(service.get("door_ratio", 0.5)))
-			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship"]:
+			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship", "pomidor_ship", "chamber_exit"]:
 				for child in service_node.get_children():
 					if child is CollisionShape2D:
 						child.free()
-				if name in ["station_ship", "artichoke_ship"]:
+				if name in ["station_ship", "artichoke_ship", "pomidor_ship"]:
 					_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
 				else:
 					service_node.collision_layer = 0
@@ -235,7 +238,7 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	sprite.scale = size / Vector2(texture.get_width(), texture.get_height())
 	holder.add_child(sprite)
 	# Barbed wire slows walkers and minefield marks are stepped on, so neither blocks movement.
-	if name in ["stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
+	if name in ["stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
@@ -281,6 +284,14 @@ func _service_for_object(name: String) -> Dictionary:
 		"artichoke_ship": return {"id": "artichoke_ship", "name": "Military Transport"}
 		"confederation_arms": return {"id": "artichoke_arms", "name": "Arms"}
 		"confederation_mess": return {"id": "artichoke_mess", "name": "Mess", "door_ratio": 0.32}
+		"pomidor_council_hall": return {"id": "pomidor_council_hall", "name": "Council Hall"}
+		"chamber_exit": return {"id": "chamber_exit", "name": "Council chamber doors"}
+		"pomidor_library": return {"id": "pomidor_library", "name": "Pomidor Library"}
+		"pomidor_market": return {"id": "pomidor_market", "name": "Pomidor Market"}
+		"pomidor_forge": return {"id": "pomidor_forge", "name": "Pomidor Forge"}
+		"pomidor_clothing": return {"id": "pomidor_clothing", "name": "Pomidor Clothier"}
+		"beer_hall": return {"id": "beer_hall", "name": "Beer Hall"}
+		"pomidor_ship": return {"id": "pomidor_ship", "name": "Confederation Transport"}
 		"station_depot": return {"id": "station_depot", "name": "Military Depot"}
 		"station_barracks": return {"id": "station_barracks", "name": "Military Barracks", "door_ratio": 0.27}
 		"station_canteen": return {"id": "station_canteen", "name": "Station Canteen", "door_ratio": 0.32}

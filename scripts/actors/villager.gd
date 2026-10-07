@@ -65,6 +65,9 @@ const ROLE_DIALOGUE := {
 	"fisher": ["The pond is busiest at dawn. A fishing rod and patience are all you need.", "I lower my line where the reeds meet the bank."],
 	"river_farmer": ["The terraces above the river keep our crops watered.", "Good soil and a steady river make a fine harvest.", "I hear the military is recruiting."],
 	"river_market": ["The river market sells everything we bring in from the boats.", "Fresh fish travels quickly from the bank to the market.", "Did you hear the Republic attacked Artichoke? I wouldn't want to be there."],
+	"pomidor_market": ["Pomidor eats well. Every planet sends its best to this market.", "The Secretary of the Economy watches the market prices and how much timber and stone we take.", "Orange is the color this season. The clothier cannot weave it fast enough."],
+	"pomidor_clerk": ["I copy laws for the Council. Twelve members of the Big Council, two from every planet, and they still argue about commas.", "The Big Council chooses the Small Council. Anyone in the Confederation can be named a Secretary.", "The library has the whole history, from the founding in year 83 to now."],
+	"pomidor_neighbor": ["The rich live in the northeast, in houses shaped like fruit. Nothing here has to obey physics, so why not?", "Our town is old and close. Mind the narrow lanes after dark.", "They say a Captain came back from Artichoke. The Council will want to hear it."],
 	"river_neighbor": ["Brudet's bridges keep both riverbanks close.", "I like reading by the river library after work.", "Brudet belongs to the Cauliflower Confederation, just like Paprika.", "The Republic attacked Artichoke. Our Military Headquarters has enlistment information, but training and deployment are still ahead."],
 }
 

@@ -1,0 +1,403 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "pomidor_objects",
+  "tilewidth": 208,
+  "tileheight": 150,
+  "tilecount": 65,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/pomidor/council_hall.png",
+      "imagewidth": 176,
+      "imageheight": 150
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/pomidor/pomidor_library.png",
+      "imagewidth": 96,
+      "imageheight": 88
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/pomidor/pomidor_clothing.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/pomidor/beer_hall.png",
+      "imagewidth": 96,
+      "imageheight": 80
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/river_planet/river_market.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/river_planet/river_forge.png",
+      "imagewidth": 80,
+      "imageheight": 72
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/river_planet/town_center_fountain.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/artichoke/objects/artichoke_ship.png",
+      "imagewidth": 192,
+      "imageheight": 112
+    },
+    {
+      "id": 8,
+      "image": "../art/concepts/source/player.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/pomidor/spiral_house.png",
+      "imagewidth": 64,
+      "imageheight": 120
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/pomidor/tomato_house.png",
+      "imagewidth": 72,
+      "imageheight": 72
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/pomidor/pear_house.png",
+      "imagewidth": 56,
+      "imageheight": 104
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/pomidor/pepper_house.png",
+      "imagewidth": 48,
+      "imageheight": 88
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/pomidor/fruit_tree.png",
+      "imagewidth": 28,
+      "imageheight": 40
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/pomidor/council_guard.png",
+      "imagewidth": 16,
+      "imageheight": 28
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/pomidor/council_table.png",
+      "imagewidth": 208,
+      "imageheight": 40
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/pomidor/chamber_exit.png",
+      "imagewidth": 32,
+      "imageheight": 16
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/pomidor/townhouse_0.png",
+      "imagewidth": 48,
+      "imageheight": 72
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/pomidor/townsfolk_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/pomidor/townhouse_1.png",
+      "imagewidth": 48,
+      "imageheight": 60
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/pomidor/townsfolk_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/pomidor/townhouse_2.png",
+      "imagewidth": 48,
+      "imageheight": 72
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/pomidor/townsfolk_2.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/pomidor/townhouse_3.png",
+      "imagewidth": 48,
+      "imageheight": 60
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/pomidor/townsfolk_3.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/pomidor/townhouse_4.png",
+      "imagewidth": 48,
+      "imageheight": 72
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/pomidor/townsfolk_4.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/pomidor/townhouse_5.png",
+      "imagewidth": 48,
+      "imageheight": 60
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/pomidor/townsfolk_5.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/pomidor/row_house_0.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/pomidor/market_stall_0.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/pomidor/row_house_1.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/pomidor/market_stall_1.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/pomidor/row_house_2.png",
+      "imagewidth": 80,
+      "imageheight": 64
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/pomidor/market_stall_2.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/pomidor/banner_paprika.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/pomidor/councillor_paprika_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/pomidor/councillor_paprika_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/pomidor/banner_pomidor.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/pomidor/councillor_pomidor_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/pomidor/councillor_pomidor_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/pomidor/banner_brudet.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/pomidor/councillor_brudet_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/pomidor/councillor_brudet_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/pomidor/banner_artichoke.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/pomidor/councillor_artichoke_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/pomidor/councillor_artichoke_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/pomidor/banner_cichvarda.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/pomidor/councillor_cichvarda_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/pomidor/councillor_cichvarda_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/pomidor/banner_chvarak.png",
+      "imagewidth": 16,
+      "imageheight": 32
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/pomidor/councillor_chvarak_0.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/pomidor/councillor_chvarak_1.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/pomidor/secretary_army.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/pomidor/desk_army.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/pomidor/secretary_gold.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/pomidor/desk_gold.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/pomidor/secretary_law.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/pomidor/desk_law.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/pomidor/secretary_economy.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/pomidor/desk_economy.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/pomidor/secretary_diplomacy.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/pomidor/desk_diplomacy.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/pomidor/secretary_navy.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/pomidor/desk_navy.png",
+      "imagewidth": 32,
+      "imageheight": 24
+    }
+  ]
+}

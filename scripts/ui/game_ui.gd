@@ -117,6 +117,10 @@ func open_service(service_id: String, display_name: String) -> void:
 	_active_service_id = service_id
 	_active_service_name = display_name
 	_open_modal(display_name)
+	if service_id.begins_with(PomidorWorld.COUNCIL_SERVICE_PREFIX):
+		_build_council_member(service_id.trim_prefix(PomidorWorld.COUNCIL_SERVICE_PREFIX))
+		_add_close_button()
+		return
 	match service_id:
 		"food", "north_food": _build_food_shop(service_id == "north_food")
 		"forge", "north_forge", "river_forge", "clothing", "north_clothing": _build_gear_shop(service_id)
@@ -131,6 +135,11 @@ func open_service(service_id: String, display_name: String) -> void:
 		"artichoke_officer": _build_artichoke_officer()
 		"artichoke_arms": _build_artichoke_arms()
 		"artichoke_mess": _build_artichoke_mess()
+		"pomidor_library": _build_pomidor_library()
+		"pomidor_market": _build_pomidor_market()
+		"beer_hall": _build_beer_hall()
+		"pomidor_ship": _build_pomidor_ship()
+		"pomidor_forge", "pomidor_clothing": _build_gear_shop(service_id)
 		"station_depot": _build_station_depot()
 		"station_barracks": _build_station_barracks()
 		"station_canteen": _build_station_canteen()
@@ -368,8 +377,13 @@ func refresh_location() -> void:
 		"brudet": location_label.text = "BRUDET RIVER CITY"
 		"station": location_label.text = "MILITARY BARRACKS" if GameState.current_area == "barracks" else "TRAINING STATION"
 		"artichoke": location_label.text = "ARTICHOKE FRONT"
+		"pomidor": location_label.text = "COUNCIL CHAMBER" if _in_council_chamber() else "POMIDOR"
 		_: location_label.text = "PAPRIKA VILLAGE"
 	_refresh_job()
+
+func _in_council_chamber() -> bool:
+	var world := get_tree().get_first_node_in_group("game_world")
+	return world is PomidorWorld and world.in_council_chamber()
 
 func _refresh_status() -> void:
 	health_bar.max_value = GameState.max_health
@@ -453,9 +467,12 @@ func _build_gear_shop(service_id: String) -> void:
 		"north_forge":
 			_add_body("Bronze swords, spears, bows, and armor.")
 			sections = {"Swords": ["bronze_sword"], "Spears": ["bronze_spear"], "Bows": ["bronze_bow"], "Armor": ["bronze_armor"]}
-		"river_forge":
-			_add_body("Brudet's iron swords, spears, bows, and armor.")
+		"river_forge", "pomidor_forge":
+			_add_body("Brudet's iron swords, spears, bows, and armor." if service_id == "river_forge" else "Pomidor's smiths work iron for the Council guard and anyone who can pay.")
 			sections = {"Swords": ["iron_sword"], "Spears": ["iron_spear"], "Bows": ["iron_bow"], "Armor": ["iron_armor"]}
+		"pomidor_clothing":
+			_add_body("Pomidor's clothier dyes cloth orange, this season's color on Pomidor. Nobody else sells it.")
+			sections = {"Clothing": ["orange_tunic", "red_tunic", "purple_tunic"]}
 		_:
 			_add_body("Wooden swords, spears, bows, and armor.")
 			sections = {"Swords": ["wood_sword"], "Spears": ["wood_spear"], "Bows": ["wood_bow"], "Armor": ["wood_armor"]}
@@ -470,12 +487,13 @@ func _build_gear_shop(service_id: String) -> void:
 			var equip_button := _add_action_button(equip_text, func() -> void: GameState.equip_item(item_id); _reopen_service())
 			equip_button.disabled = equipped or available <= 0
 			_add_action_button("Buy another %s — %d gold" % [definition["name"], int(definition["buy"])], func() -> void: GameState.buy_item(item_id); _reopen_service())
-	if service_id == "north_clothing":
+	if service_id in ["north_clothing", "pomidor_clothing"]:
 		_add_heading("Cloth trading")
-		var cloth := GameData.item("purple_cloth")
-		_add_action_button("Buy %s — %d gold" % [cloth["name"], cloth["buy"]], func() -> void: GameState.buy_item("purple_cloth"); _reopen_service())
-		var owned := int(GameState.inventory.get("purple_cloth", 0))
-		var sell_button := _add_action_button("Sell %s x%d — %d gold" % [cloth["name"], owned, cloth["sell"]], func() -> void: GameState.sell_item("purple_cloth"); _reopen_service())
+		var cloth_id := "purple_cloth" if service_id == "north_clothing" else "orange_cloth"
+		var cloth := GameData.item(cloth_id)
+		_add_action_button("Buy %s — %d gold" % [cloth["name"], cloth["buy"]], func() -> void: GameState.buy_item(cloth_id); _reopen_service())
+		var owned := int(GameState.inventory.get(cloth_id, 0))
+		var sell_button := _add_action_button("Sell %s x%d — %d gold" % [cloth["name"], owned, cloth["sell"]], func() -> void: GameState.sell_item(cloth_id); _reopen_service())
 		sell_button.disabled = owned <= 0
 
 func _build_job_board(service_id: String) -> void:
@@ -567,6 +585,9 @@ func _build_artichoke_ship() -> void:
 	_add_body("The Confederation flagship stands on cleared ground beside Cauliflower Base. It carries soldiers back to the training station.")
 	_add_body("Your position on Artichoke is saved for your next deployment.")
 	_add_action_button("Return to the training station — free", func() -> void: travel_requested.emit("station"))
+	if GameState.defeated_persistent_enemies.has(GameState.POMIDOR_UNLOCK_FLAG):
+		_add_body("General Hickey has cleared you to fly to Pomidor, where the Council meets.")
+		_add_action_button("Fly to Pomidor — free", func() -> void: travel_requested.emit("pomidor"))
 
 func _build_artichoke_officer() -> void:
 	var world := get_tree().get_first_node_in_group("game_world")
@@ -683,6 +704,101 @@ func _build_artichoke_arms() -> void:
 		mines.disabled = int(GameState.inventory.get("field_mine", 0)) >= allowance or world.mission_active()
 	var bandages := _add_action_button("Bandages (up to %d)" % world.KIT_BANDAGES, func() -> void: world_action_requested.emit("arms_bandages"))
 	bandages.disabled = int(GameState.inventory.get("bandage", 0)) >= world.KIT_BANDAGES
+
+func _build_pomidor_library() -> void:
+	_add_heading("The Founding Alliance")
+	_add_body("In year 83 after Block Founding, Paprika, Pomidor, Brudet and Cichvarda joined as an alliance of free planets. The alliance became the Cauliflower Confederation. Each planet governs itself, and the Council of all the planets meets on Pomidor.")
+	_add_heading("The Later Members")
+	_add_body("Chvarak joined the Confederation later. Artichoke was a Republic planet. Its people rebelled against the Republic's high draft rates and for national independence, led by their national identity movements. Right after the rebellion Artichoke joined the Confederation, and the Republic has fought to take it back ever since.")
+	_add_heading("The Council")
+	_add_body("The Big Council has twelve members, two from each planet: Chvarak, Cichvarda, Artichoke, Paprika, Brudet and Pomidor. It holds the highest power in the Confederation.")
+	_add_body("The Big Council chooses the Small Council, whose six Secretaries can be any resident of the Confederation. Each governs one area:")
+	_add_body("The Secretary of the Army commands the soldiers. The Secretary of Gold collects taxes, approves spending and holds the common treasury. The Secretary of Law keeps the laws the Big Council passes. The Secretary of the Economy runs the markets and supervises the use of natural resources. The Secretary of Diplomacy speaks for the Confederation to other powers. The Secretary of the Navy and Transport runs the warships and the transports between the planets.")
+	_add_heading("Why Pomidor")
+	_add_body("Pomidor lies between the founding planets, so no member has to fly far to reach the Council. It belongs to no single planet's army, and its people are proud to host everyone.")
+	_add_heading("Building without physics")
+	_add_body("Craft was never built to obey ordinary physics. Houses on Pomidor do not need to stand on wide foundations, so the rich build them in any form they like: a spiral on one thin stem, a tomato, a pepper, even a pear that floats above its garden.")
+	_add_heading("Today")
+	_add_body("It is year 97 after Block Founding. The Confederation is at war with the New Republic, which wants Artichoke back.")
+
+func _build_pomidor_market() -> void:
+	_add_body("Every planet's produce comes through Pomidor's market. The Secretary of the Economy's clerks check the scales.")
+	_add_heading("Buy")
+	for item_id in ["tomato_soup", "stuffed_peppers", "olive_bread", "citrus"]:
+		var definition := GameData.item(item_id)
+		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	_add_heading("Sell")
+	for item_id in ["river_fish", "potato", "carrot", "tomato", "grape", "rabbit_meat"]:
+		var definition := GameData.item(item_id)
+		var owned := int(GameState.inventory.get(item_id, 0))
+		var button := _add_action_button("%s x%d — sell for %d" % [definition["name"], owned, definition["sell"]], func() -> void: GameState.sell_item(item_id); _reopen_service())
+		button.disabled = owned <= 0
+
+func _build_beer_hall() -> void:
+	_add_body("Clerks, guards and traders from every planet drink here after the Council closes for the day. Most of the town's news starts at these tables.")
+	_add_heading("Order")
+	for item_id in ["ale", "tomato_soup", "stuffed_peppers"]:
+		var definition := GameData.item(item_id)
+		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	_add_heading("Heard at the tables")
+	var rumors := [
+		"\"The Secretary of Gold turned down the Navy's new ships again. Not enough in the common treasury, she says.\"",
+		"\"The two Artichoke councillors want more soldiers on the front. The Brudet pair want the money for bridges.\"",
+		"\"A Captain from Artichoke is in town. Burned the whole Republic fleet, they say.\"",
+	]
+	_add_body(rumors[int(GameState.play_seconds / 20.0) % rumors.size()])
+
+func _build_pomidor_ship() -> void:
+	_add_body("A Confederation transport waits on the landing ground. It flies to the Artichoke front and to Brudet.")
+	_add_action_button("Fly to Artichoke — free", func() -> void: travel_requested.emit("artichoke"))
+	_add_action_button("Fly to Brudet — free", func() -> void: travel_requested.emit("brudet"))
+
+func _report_to_council(key: String) -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	if world != null and world.has_method("report_to_council"):
+		world.report_to_council()
+	open_service(PomidorWorld.COUNCIL_SERVICE_PREFIX + key, String(PomidorWorld.COUNCIL[key]["name"]))
+
+func _build_council_member(key: String) -> void:
+	var world := get_tree().get_first_node_in_group("game_world")
+	var seat: Dictionary = PomidorWorld.COUNCIL.get(key, {})
+	if seat.is_empty():
+		_add_body("Nobody sits here.")
+		return
+	var reported: bool = world != null and world.has_method("reported_to_council") and world.reported_to_council()
+	if seat.has("planet"):
+		var planet := String(seat["planet"])
+		_add_body("%s speaks for %s in the Big Council, one of its two members." % [seat["name"], planet])
+		match planet:
+			"Artichoke":
+				_add_body("\"Artichoke chose freedom, and Artichoke pays for it every day. Thank you for what you did on the front, Captain.\"" if reported else "\"You came from Artichoke? Then go to the Secretary of the Army first. The Council must hear your report.\"")
+			"Paprika":
+				_add_body("\"Paprika was one of the four founders in year 83. We feed half the Confederation, and we send our children to the front.\"")
+			"Brudet":
+				_add_body("\"Brudet was a founder too. We would rather spend the treasury on bridges than on warships, but the Republic does not let us choose.\"")
+			"Pomidor":
+				_add_body("\"Welcome to Pomidor. We host the Council, not rule it. Every planet has the same two seats at this table.\"")
+			_:
+				_add_body("\"%s has two seats here, like every planet. The Big Council decides together, and nothing passes without a majority.\"" % planet)
+		return
+	_add_body("%s is one of the six Secretaries of the Small Council, chosen by the Big Council." % seat["name"])
+	match String(seat["office"]):
+		"army":
+			if not reported:
+				_add_body("\"General Hickey wrote that you destroyed the Republic warships on Artichoke. Tell me yourself, Captain.\"")
+				_add_action_button("Report what was done on Artichoke", _report_to_council.bind(key))
+			else:
+				_add_body("\"The Council has your report. Artichoke is quiet for now, but the Republic will rebuild. When it does, I will send for you.\"")
+		"gold":
+			_add_body("\"I collect the taxes, approve every spending request and keep the common treasury. Every planet wants more from it than it puts in.\"")
+		"law":
+			_add_body("\"The Big Council passes the laws; I see that they are kept, on every planet, the same for all.\"")
+		"economy":
+			_add_body("\"I run the markets and watch how much timber, stone and ore each planet takes. A war eats resources faster than a mine can dig them.\"")
+		"diplomacy":
+			_add_body("\"I speak for the Confederation to the other powers: Breece, Engineria, Saint Confederation. The Republic does not answer letters.\"")
+		"navy":
+			_add_body("\"I run the warships and the transports between the planets. The ship on the landing ground flies to Artichoke and Brudet whenever you need it.\"")
 
 func _build_artichoke_mess() -> void:
 	var world := get_tree().get_first_node_in_group("game_world")
@@ -1011,7 +1127,7 @@ func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
 	_reopen_service()
 
 func _reopen_service() -> void:
-	if _active_service_id in ["food", "north_food", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel"]:
+	if _active_service_id in ["food", "north_food", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel", "pomidor_forge", "pomidor_clothing", "pomidor_market", "beer_hall", "pomidor_library"]:
 		open_service(_active_service_id, _active_service_name)
 	elif _active_service_id == "inventory":
 		_refresh_inventory_panel()

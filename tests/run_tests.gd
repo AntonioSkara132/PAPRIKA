@@ -650,6 +650,7 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_eight["schema"] = 8
 	schema_eight["planet_positions"].erase("station")
 	schema_eight["planet_positions"].erase("artichoke")
+	schema_eight["planet_positions"].erase("pomidor")
 	for change in ["missing", "false", "wrong_type"]:
 		var invalid: Dictionary = schema_eight.duplicate(true)
 		match change:
@@ -661,6 +662,7 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_seven["schema"] = 7
 	schema_seven["planet_positions"].erase("station")
 	schema_seven["planet_positions"].erase("artichoke")
+	schema_seven["planet_positions"].erase("pomidor")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven mixed deployed camp save remains valid without the new unlock field")
 	var invalid_seven: Dictionary = schema_seven.duplicate(true)
@@ -716,6 +718,7 @@ func _test_planet_save(state) -> void:
 	saved["schema"] = 4
 	saved["planet_positions"].erase("station")
 	saved["planet_positions"].erase("artichoke")
+	saved["planet_positions"].erase("pomidor")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(legacy_file != null, "schema-four Brudet fixture can be written")
 	if legacy_file == null:
@@ -904,6 +907,7 @@ func _test_brudet_save(state) -> void:
 	schema_six["schema"] = 6
 	schema_six["planet_positions"].erase("station")
 	schema_six["planet_positions"].erase("artichoke")
+	schema_six["planet_positions"].erase("pomidor")
 	schema_six.erase("legacy_camp_roster")
 	_check(state._valid_save(schema_six), "schema-six deployed Brudet team remains valid without schema-nine roster field")
 	var schema_six_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -923,6 +927,7 @@ func _test_brudet_save(state) -> void:
 		schema_five["schema"] = 5
 		schema_five["planet_positions"].erase("station")
 		schema_five["planet_positions"].erase("artichoke")
+		schema_five["planet_positions"].erase("pomidor")
 		schema_five["current_planet"] = "paprika"
 		schema_five["player_position"] = [830.0, 1368.0]
 		schema_five["planet_positions"]["paprika"] = [830.0, 1368.0]
@@ -983,12 +988,14 @@ func _test_road_save(state) -> void:
 	old_schema["schema"] = 6
 	old_schema["planet_positions"].erase("station")
 	old_schema["planet_positions"].erase("artichoke")
+	old_schema["planet_positions"].erase("pomidor")
 	old_schema.erase("legacy_camp_roster")
 	_check(not state._valid_save(old_schema), "road cleanup cannot appear in a schema-six save")
 	var schema_seven: Dictionary = saved.duplicate(true)
 	schema_seven["schema"] = 7
 	schema_seven["planet_positions"].erase("station")
 	schema_seven["planet_positions"].erase("artichoke")
+	schema_seven["planet_positions"].erase("pomidor")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven road save remains valid without the new camp unlock field")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1027,6 +1034,7 @@ func _test_solo_save(state) -> void:
 	old_schema["schema"] = 7
 	old_schema["planet_positions"].erase("station")
 	old_schema["planet_positions"].erase("artichoke")
+	old_schema["planet_positions"].erase("pomidor")
 	old_schema.erase("camp_unlocked")
 	_check(not state._valid_save(old_schema), "new solo hacker bounty cannot appear in a schema-seven save")
 	state.start_new_game()
@@ -1044,6 +1052,7 @@ func _test_legacy_hacker_save(state) -> void:
 	legacy["schema"] = 7
 	legacy["planet_positions"].erase("station")
 	legacy["planet_positions"].erase("artichoke")
+	legacy["planet_positions"].erase("pomidor")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"hacker_bounty": 0}
 	legacy["tracked_job_id"] = "hacker_bounty"
@@ -1068,6 +1077,7 @@ func _test_legacy_hacker_save(state) -> void:
 	defeated["schema"] = 7
 	defeated["planet_positions"].erase("station")
 	defeated["planet_positions"].erase("artichoke")
+	defeated["planet_positions"].erase("pomidor")
 	defeated.erase("camp_unlocked")
 	defeated["defeated_persistent_enemies"] = ["hacker_forest"]
 	var old_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1110,6 +1120,7 @@ func _test_legacy_brudet_hacker_save(state) -> void:
 	legacy["schema"] = 7
 	legacy["planet_positions"].erase("station")
 	legacy["planet_positions"].erase("artichoke")
+	legacy["planet_positions"].erase("pomidor")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"brudet_hacker_team": 0}
 	legacy["tracked_job_id"] = "brudet_hacker_team"
@@ -1148,6 +1159,7 @@ func _test_military_save(state) -> void:
 	old["schema"] = 8
 	old["planet_positions"].erase("station")
 	old["planet_positions"].erase("artichoke")
+	old["planet_positions"].erase("pomidor")
 	for key in ["current_area", "military_barracks_position", "military_stage", "military_storage", "military_stored_equipment", "military_meal_credits", "military_cannon_hits", "military_trap_progress"]:
 		old.erase(key)
 	_check(state._valid_save(old), "schema-nine save validates with two planets")
@@ -1212,6 +1224,7 @@ func _test_military_save(state) -> void:
 		var old_station_save: Dictionary = cannon.duplicate(true)
 		old_station_save["schema"] = GameStateScript.STATION_SAVE_SCHEMA
 		old_station_save["planet_positions"].erase("artichoke")
+		old_station_save["planet_positions"].erase("pomidor")
 		old_station_save["military_cannon_hits"] = ["cannon_target_0"]
 		for field in ["military_cannon_round_active", "military_cannon_phase", "military_trap_round_active", "military_trap_equipped", "military_trap_mine_position"]:
 			old_station_save.erase(field)
