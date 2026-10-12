@@ -26,10 +26,10 @@ const FOLLOW_LEASH := 80.0
 const FOLLOW_REJOINED := 16.0
 ## A leap lasts LEAP_SECONDS, crosses at most LEAP_MAX_CELLS tiles that cannot
 ## be walked, and is taken only when walking round is at least LEAP_DETOUR times
-## longer than the straight line.
+## longer than the straight line, or when there is no way round at all.
 const LEAP_SECONDS := 0.6
 const LEAP_MAX_CELLS := 5
-const LEAP_DETOUR := 1.8
+const LEAP_DETOUR := 1.3
 const LEAP_HEIGHT := 26.0
 ## A soldier that can leap walks straight at an obstacle and jumps once it is this close.
 const LEAP_TAKEOFF := 36.0
@@ -57,7 +57,8 @@ var follow_sight := 0.0
 ## while closing in on them; 0 for no bow.
 var bow_range := 0.0
 var bow_damage := 12
-## Leaps over ledges, fences and streams when walking round is much longer.
+## Leaps over ledges, fences, streams and walls when walking round is much
+## longer or impossible.
 var can_leap := false
 ## Seconds after being downed until the soldier gets up with full health; 0 stays down.
 var get_up_seconds := 0.0
@@ -389,42 +390,74 @@ func _walk_to(goal: Vector2, walk_speed: float) -> void:
 func leaping() -> bool:
 	return _leap_time >= 0.0
 
-## Where to land when the straight line to `goal` crosses a short obstacle that
-## walking would have to go far round, or Vector2.INF when walking is better.
+## Where to land when the straight line to `goal` crosses an obstacle of at most
+## LEAP_MAX_CELLS tiles, such as a fence, a stream, a ledge or a wall, and walking
+## round is much longer or impossible. Vector2.INF when walking is better.
 func _plan_leap(goal: Vector2) -> Vector2:
 	var navigation := _world.tiled_loader
-	var straight := global_position.distance_to(goal)
+	# A follow place can fall inside a wall or a tree; aim for open ground next to it.
+	var target := navigation.nearest_walkable_position(goal)
+	if not target.is_finite():
+		return Vector2.INF
+	var straight := global_position.distance_to(target)
 	if straight < 24.0:
 		return Vector2.INF
+	# An empty route means walking cannot get there at all, as behind a wall.
 	var walk := INF if _path.is_empty() else _route_length(_path, global_position)
-	if walk < straight * LEAP_DETOUR + 32.0:
+	if walk < straight * LEAP_DETOUR + 24.0:
 		return Vector2.INF
-	# The first run of tiles on the straight line that cannot be walked.
-	var direction := (goal - global_position) / straight
-	var tile := Vector2(navigation.tile_size)
-	var cells := {}
-	var run_start := -1.0
-	var run_end := -1.0
-	var distance := 4.0
-	while distance < straight:
-		var point := global_position + direction * distance
-		if not navigation.is_walkable_position(point):
-			if run_start < 0.0:
-				run_start = distance
-			run_end = distance
-			cells[Vector2i(floori(point.x / tile.x), floori(point.y / tile.y))] = true
-		elif run_start >= 0.0:
-			break
-		distance += 4.0
-	if run_start < 0.0 or cells.size() > LEAP_MAX_CELLS:
+	var landing := leap_landing(target)
+	if not landing.is_finite():
 		return Vector2.INF
-	var landing := global_position + direction * minf(straight, run_end + 12.0)
-	if not navigation.is_walkable_position(landing):
-		return Vector2.INF
-	var after := navigation.get_walk_path(landing, goal)
-	if after.is_empty() or run_end + _route_length(after, landing) > walk * 0.7:
+	var after := navigation.get_walk_path(landing, target)
+	if after.is_empty() or global_position.distance_to(landing) + _route_length(after, landing) > walk * 0.8:
 		return Vector2.INF
 	return landing
+
+## Where a leap from here towards `target` lands: the first point past the
+## obstacles on the straight line with room to stand and a walking route on to
+## `target`. A gap that leads nowhere, such as the strip between a lamp post and
+## a wall, is jumped as well, and its blocked tiles count with the rest.
+## Vector2.INF when the line is clear, or when the blocked tiles crossed number
+## more than LEAP_MAX_CELLS.
+func leap_landing(target: Vector2) -> Vector2:
+	var navigation := _world.tiled_loader
+	var straight := global_position.distance_to(target)
+	if straight < 1.0:
+		return Vector2.INF
+	var direction := (target - global_position) / straight
+	var tile := Vector2(navigation.tile_size)
+	var cells := {}
+	var tried := {}
+	var distance := 4.0
+	# A target close behind the obstacle leaves little room before it, so the
+	# search goes on up to two tiles past the target.
+	while distance <= straight + tile.x * 2.0:
+		var point := global_position + direction * distance
+		var cell := Vector2i(floori(point.x / tile.x), floori(point.y / tile.y))
+		if not navigation.is_walkable_position(point):
+			cells[cell] = true
+			if cells.size() > LEAP_MAX_CELLS:
+				return Vector2.INF
+		elif cells.is_empty() and distance > straight:
+			return Vector2.INF
+		elif not cells.is_empty() and not tried.has(cell) and _room_to_land(point, direction):
+			# Each open tile is tried once; a tile cut off from the target is no landing.
+			tried[cell] = true
+			if not navigation.get_walk_path(point, target).is_empty():
+				return point
+		distance += 4.0
+	return Vector2.INF
+
+## True when the soldier landing at `point` stands clear of the obstacle behind
+## it and of anything beside or ahead of it.
+func _room_to_land(point: Vector2, direction: Vector2) -> bool:
+	var navigation := _world.tiled_loader
+	var side := direction.orthogonal() * 5.0
+	for offset in [Vector2.ZERO, direction * 6.0, -direction * 5.0, side, -side]:
+		if not navigation.is_walkable_position(point + offset):
+			return false
+	return true
 
 ## The last walkable point before the obstacle on the line to `landing`.
 func _leap_takeoff_point(landing: Vector2) -> Vector2:

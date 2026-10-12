@@ -1,0 +1,517 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "skoljka_objects",
+  "tilewidth": 144,
+  "tileheight": 72,
+  "tilecount": 84,
+  "columns": 0,
+  "objectalignment": "bottomleft",
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/skoljka/port_office.png",
+      "imagewidth": 72,
+      "imageheight": 56
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/skoljka/crane.png",
+      "imagewidth": 44,
+      "imageheight": 70
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/skoljka/cargo.png",
+      "imagewidth": 24,
+      "imageheight": 22
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/skoljka/lift_head.png",
+      "imagewidth": 44,
+      "imageheight": 48
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/skoljka/housing_0.png",
+      "imagewidth": 64,
+      "imageheight": 52
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/skoljka/housing_1.png",
+      "imagewidth": 64,
+      "imageheight": 52
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/skoljka/market_stall_0.png",
+      "imagewidth": 40,
+      "imageheight": 34
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/skoljka/market_stall_1.png",
+      "imagewidth": 40,
+      "imageheight": 34
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/skoljka/market_stall_2.png",
+      "imagewidth": 40,
+      "imageheight": 34
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/skoljka/library_shelf.png",
+      "imagewidth": 40,
+      "imageheight": 32
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/skoljka/bench.png",
+      "imagewidth": 32,
+      "imageheight": 14
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/skoljka/dome_lamp.png",
+      "imagewidth": 10,
+      "imageheight": 32
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/skoljka/blue_lamp.png",
+      "imagewidth": 10,
+      "imageheight": 32
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/skoljka/council_table.png",
+      "imagewidth": 64,
+      "imageheight": 24
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/skoljka/office_desk.png",
+      "imagewidth": 40,
+      "imageheight": 24
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/skoljka/company_sign.png",
+      "imagewidth": 40,
+      "imageheight": 26
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/skoljka/depot_shelf.png",
+      "imagewidth": 40,
+      "imageheight": 32
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/skoljka/company_crates.png",
+      "imagewidth": 24,
+      "imageheight": 22
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/skoljka/big_pump.png",
+      "imagewidth": 48,
+      "imageheight": 44
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/skoljka/pipe_run.png",
+      "imagewidth": 48,
+      "imageheight": 16
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/skoljka/bunk.png",
+      "imagewidth": 32,
+      "imageheight": 20
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/skoljka/kelp_0.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/skoljka/kelp_1.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/skoljka/seabed_rock_0.png",
+      "imagewidth": 28,
+      "imageheight": 18
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/skoljka/seabed_rock_1.png",
+      "imagewidth": 28,
+      "imageheight": 18
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/skoljka/frame_window.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/skoljka/sealed_dock_door.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/skoljka/intake_broken.png",
+      "imagewidth": 44,
+      "imageheight": 34
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/skoljka/suit_rack.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/skoljka/shell_house.png",
+      "imagewidth": 64,
+      "imageheight": 58
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/skoljka/bubble_house.png",
+      "imagewidth": 56,
+      "imageheight": 62
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/skoljka/boat_house.png",
+      "imagewidth": 78,
+      "imageheight": 52
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/skoljka/capsule_stack.png",
+      "imagewidth": 50,
+      "imageheight": 68
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/skoljka/coral_house.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/skoljka/snail_house.png",
+      "imagewidth": 58,
+      "imageheight": 52
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/skoljka/fish_lamp.png",
+      "imagewidth": 12,
+      "imageheight": 32
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/skoljka/laundry_line.png",
+      "imagewidth": 50,
+      "imageheight": 28
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/skoljka/planter.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/skoljka/fish_school_0.png",
+      "imagewidth": 38,
+      "imageheight": 20
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/skoljka/fish_school_1.png",
+      "imagewidth": 38,
+      "imageheight": 20
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/skoljka/jellyfish_0.png",
+      "imagewidth": 16,
+      "imageheight": 22
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/skoljka/jellyfish_1.png",
+      "imagewidth": 16,
+      "imageheight": 22
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/skoljka/coral_0.png",
+      "imagewidth": 24,
+      "imageheight": 20
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/skoljka/coral_1.png",
+      "imagewidth": 24,
+      "imageheight": 20
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/skoljka/coral_2.png",
+      "imagewidth": 24,
+      "imageheight": 20
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/skoljka/bubbles.png",
+      "imagewidth": 12,
+      "imageheight": 30
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/skoljka/buoy.png",
+      "imagewidth": 14,
+      "imageheight": 22
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/skoljka/anchor.png",
+      "imagewidth": 26,
+      "imageheight": 30
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/skoljka/barrels.png",
+      "imagewidth": 28,
+      "imageheight": 26
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/skoljka/net_rack.png",
+      "imagewidth": 42,
+      "imageheight": 32
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/skoljka/shell_statue.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/skoljka/aquarium.png",
+      "imagewidth": 40,
+      "imageheight": 30
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/skoljka/canteen_table.png",
+      "imagewidth": 38,
+      "imageheight": 24
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/skoljka/workbench.png",
+      "imagewidth": 42,
+      "imageheight": 28
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/skoljka/gauge_panel.png",
+      "imagewidth": 34,
+      "imageheight": 32
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/skoljka/lockers.png",
+      "imagewidth": 40,
+      "imageheight": 34
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/skoljka/generator.png",
+      "imagewidth": 38,
+      "imageheight": 32
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/skoljka/fish_bones.png",
+      "imagewidth": 84,
+      "imageheight": 32
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/skoljka/wreck.png",
+      "imagewidth": 96,
+      "imageheight": 52
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/engineeria/ore_ship.png",
+      "imagewidth": 144,
+      "imageheight": 72
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/skoljka/person_port_officer.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/skoljka/person_company_clerk.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/skoljka/person_pumpmaster.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/skoljka/person_technician.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/skoljka/person_councillor.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/skoljka/person_company_rep.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/skoljka/person_crew_lead.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/skoljka/person_resident_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/skoljka/person_resident_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/skoljka/person_resident_2.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/skoljka/person_worker_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/skoljka/person_worker_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/skoljka/person_worker_2.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/skoljka/person_worker_3.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/skoljka/person_engineer.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/skoljka/person_seeker.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/skoljka/person_citizen_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/skoljka/person_citizen_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 78,
+      "image": "../assets/art/skoljka/person_citizen_2.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 79,
+      "image": "../assets/art/skoljka/person_citizen_3.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 80,
+      "image": "../assets/art/skoljka/person_citizen_4.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 81,
+      "image": "../assets/art/skoljka/person_citizen_5.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 82,
+      "image": "../assets/art/skoljka/person_citizen_6.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 83,
+      "image": "../assets/art/skoljka/person_citizen_7.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    }
+  ]
+}

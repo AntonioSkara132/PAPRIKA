@@ -418,8 +418,9 @@ func start_meeting() -> bool:
 func meeting_lines() -> Array:
 	return [
 		_line("member_pomidor_0", "The Big Council is in session. Captain, you may stay and listen. One question today: Artichoke holds, but the Republic will be back. Do we draft a great army?"),
-		_line("secretary_law", "Before the army, the town. This week collectors threatened a woman over a debt two streets from this hall. They take their orders from Julius's organisation, and it is bigger than Pomidor's guard. I can put guards on one street; Julius has people on all of them."),
-		_line("secretary_army", "And I have no soldiers to give you for the streets, Pravdan. The front took every one I had. Artichoke held because of a few good fighters, not because we had enough of them."),
+		_line("secretary_law", "Before the army, the town. This week collectors threatened a woman over a debt two streets from this hall. They take their orders from Julius's organisation. He has friends in this Council and people across the planets. We can protect that woman under our laws, but an open attack on his organisation would be a war, not an arrest."),
+		_line("member_pomidor_0", "Nobody here is proposing a war with Julius. The Republic is the enemy at Artichoke. Can we raise enough soldiers to hold that front?"),
+		_line("secretary_army", "Not without a draft. The front took every soldier I had to spare. Artichoke held because of a few good fighters, not because we had enough of them."),
 		_line("member_artichoke_0", "Then draft them. Every planet sends one in ten. Artichoke already sends more than that."),
 		_line("member_artichoke_1", "Without a real army the Republic takes Artichoke back within a year, and then it comes for the rest of you."),
 		_line("member_paprika_0", "One in ten from Paprika means one in ten farmers. Who brings in the harvest that feeds your soldiers?"),

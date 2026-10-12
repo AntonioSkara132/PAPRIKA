@@ -9,6 +9,8 @@ const WORLD_SCRIPTS := {
 	"pomidor": "res://scripts/world/pomidor_world.gd",
 	"chvarak": "res://scripts/world/chvarak_world.gd",
 	"engineeria": "res://scripts/world/engineeria_world.gd",
+	"skoljka": "res://scripts/world/skoljka_world.gd",
+	"iskra": "res://scripts/world/iskra_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
@@ -136,6 +138,8 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		"pomidor": "PomidorWorld",
 		"chvarak": "ChvarakWorld",
 		"engineeria": "EngineeriaWorld",
+		"skoljka": "SkoljkaWorld",
+		"iskra": "IskraWorld",
 	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader
@@ -171,6 +175,8 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		game_ui.set_interaction_prompt("")
 	_world_planet = planet
 	_world_area = area
+	if game_ui != null:
+		game_ui.refresh_location()
 	return true
 
 func _ensure_input_actions() -> void:
@@ -184,6 +190,8 @@ func _ensure_input_actions() -> void:
 		"attack": [KEY_SPACE],
 		"inventory": [KEY_I],
 		"jobs": [KEY_J],
+		"encyclopedia": [KEY_N],
+		"planet_map": [KEY_M],
 		"use_food": [KEY_H],
 		"party_player": [KEY_1],
 		"party_first": [KEY_2],

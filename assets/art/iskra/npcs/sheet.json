@@ -1,0 +1,146 @@
+[
+  {
+    "id": "civic_engineer",
+    "name": "Civic engineer",
+    "image": "civic_engineer.png",
+    "region": [
+      0,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager1.png"
+  },
+  {
+    "id": "sky_courier",
+    "name": "Sky courier",
+    "image": "sky_courier.png",
+    "region": [
+      16,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager2.png"
+  },
+  {
+    "id": "market_keeper",
+    "name": "Market keeper",
+    "image": "market_keeper.png",
+    "region": [
+      32,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "greenhouse_worker",
+    "name": "Greenhouse worker",
+    "image": "greenhouse_worker.png",
+    "region": [
+      48,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager4.png"
+  },
+  {
+    "id": "library_archivist",
+    "name": "Library archivist",
+    "image": "library_archivist.png",
+    "region": [
+      0,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager5.png"
+  },
+  {
+    "id": "dock_mechanic",
+    "name": "Dock mechanic",
+    "image": "dock_mechanic.png",
+    "region": [
+      16,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager6.png"
+  },
+  {
+    "id": "police_clerk",
+    "name": "Police clerk",
+    "image": "police_clerk.png",
+    "region": [
+      32,
+      24,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_1.png"
+  },
+  {
+    "id": "tower_guard",
+    "name": "Tower guard",
+    "image": "tower_guard.png",
+    "region": [
+      48,
+      24,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_2.png"
+  },
+  {
+    "id": "park_artist",
+    "name": "Park artist",
+    "image": "park_artist.png",
+    "region": [
+      0,
+      48,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "night_watch",
+    "name": "Night watch",
+    "image": "night_watch.png",
+    "region": [
+      16,
+      48,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_1.png"
+  },
+  {
+    "id": "board_officer",
+    "name": "Board officer",
+    "image": "board_officer.png",
+    "region": [
+      32,
+      48,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_2.png"
+  },
+  {
+    "id": "canal_worker",
+    "name": "Canal worker",
+    "image": "canal_worker.png",
+    "region": [
+      48,
+      48,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager2.png"
+  }
+]

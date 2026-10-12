@@ -1,6 +1,9 @@
 class_name GameUI
 extends CanvasLayer
 
+const NpcEncyclopedia = preload("res://scripts/data/npc_encyclopedia.gd")
+const PlanetMap = preload("res://scripts/ui/planet_map.gd")
+
 signal travel_requested(destination: String)
 signal station_area_requested(area: String)
 signal station_action_requested(action: String)
@@ -36,6 +39,7 @@ var prompt_label: Label
 var modal_overlay: ColorRect
 var modal_panel: PanelContainer
 var modal_content: VBoxContainer
+var planet_map: Control
 ## Text box for typed squad orders; Enter opens it when the world accepts them.
 var order_bar: PanelContainer
 var order_input: LineEdit
@@ -89,7 +93,7 @@ func _input(event: InputEvent) -> void:
 			if _scene_choices.is_empty() or _scene_index < _scene_lines.size() - 1:
 				advance_scene()
 			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("inventory") or event.is_action_pressed("jobs") or event.is_action_pressed("pause"):
+		elif event.is_action_pressed("inventory") or event.is_action_pressed("jobs") or event.is_action_pressed("encyclopedia") or event.is_action_pressed("planet_map") or event.is_action_pressed("pause"):
 			get_viewport().set_input_as_handled()
 		return
 	if order_bar.visible:
@@ -122,6 +126,12 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("jobs"):
 		open_jobs()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("encyclopedia"):
+		open_encyclopedia()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("planet_map"):
+		open_planet_map()
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("pause") and modal_overlay.visible:
 		close_modal()
 		get_viewport().set_input_as_handled()
@@ -142,11 +152,15 @@ func open_service(service_id: String, display_name: String) -> void:
 		return
 	match service_id:
 		"food", "north_food": _build_food_shop(service_id == "north_food")
-		"forge", "north_forge", "river_forge", "clothing", "north_clothing": _build_gear_shop(service_id)
+		"skoljka_food": _build_skoljka_food_shop()
+		"iskra_food": _build_iskra_food_shop()
+		"iskra_forge": _build_gear_shop(service_id)
+		"forge", "north_forge", "river_forge", "clothing", "north_clothing", "skoljka_clothing": _build_gear_shop(service_id)
 		"work_office", "mercenary", "north_mercenary": _build_job_board(service_id)
 		"river_market": _build_river_market()
 		"travel": _build_travel_agency()
 		"river_library": _build_river_library()
+		"skoljka_library": _build_skoljka_library()
 		"river_town_hall": _build_river_town_hall()
 		"military_hq": _build_military_hq()
 		"station_ship": _build_station_ship()
@@ -166,6 +180,64 @@ func open_service(service_id: String, display_name: String) -> void:
 		"station_track", "station_spar", "station_squad_spar", "station_range", "station_cannon_start", "station_tnt_pile", "station_cannon", "station_trap_pad": _build_station_training(service_id)
 		"player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit": _build_barracks_fixture(service_id)
 		_: _add_body("This service is not available yet.")
+	_add_close_button()
+
+func open_planet_map() -> void:
+	if scene_panel.visible or order_bar.visible:
+		return
+	if modal_overlay.visible and _active_service_id == "planet_map":
+		close_modal()
+		return
+	_active_service_id = "planet_map"
+	_active_service_name = "Planet Map"
+	modal_overlay.visible = true
+	modal_panel.visible = false
+	planet_map.show_map(GameState.current_planet)
+
+func open_encyclopedia() -> void:
+	if modal_overlay.visible and _active_service_id.begins_with("encyclopedia"):
+		close_modal()
+		return
+	_show_encyclopedia_categories()
+
+func _show_encyclopedia_categories() -> void:
+	_active_service_id = "encyclopedia_categories"
+	_open_modal("People & Creatures")
+	_add_body("Everyone listed here can be encountered in the playable game. Choose a group to browse its entries.")
+	for category in NpcEncyclopedia.CATEGORIES:
+		_add_action_button(category, func() -> void: _show_encyclopedia_list(category))
+	_add_close_button()
+
+func _show_encyclopedia_list(category: String) -> void:
+	_active_service_id = "encyclopedia_list"
+	_open_modal(category)
+	var entries := NpcEncyclopedia.entries()
+	for entry in entries:
+		if entry["category"] == category:
+			var selected: Dictionary = entry
+			_add_action_button("%s  —  %s" % [entry["name"], entry["location"]], func() -> void: _show_encyclopedia_entry(selected))
+	_add_action_button("← All groups", _show_encyclopedia_categories)
+	_add_close_button()
+
+func _show_encyclopedia_entry(entry: Dictionary) -> void:
+	_active_service_id = "encyclopedia_entry"
+	_open_modal(String(entry["name"]))
+	var texture := load(String(entry["image"])) as Texture2D
+	if texture != null:
+		var picture := TextureRect.new()
+		picture.name = "EntryImage"
+		picture.texture = texture
+		picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.custom_minimum_size = Vector2(380, 80)
+		modal_content.add_child(picture)
+	_add_body("Found in: %s" % entry["location"])
+	_add_body(String(entry["intro"]))
+	_add_heading("At a glance")
+	_add_body(NpcEncyclopedia.stats(entry))
+	var category: String = entry["category"]
+	_add_action_button("← %s" % category, func() -> void: _show_encyclopedia_list(category))
 	_add_close_button()
 
 func open_inventory() -> void:
@@ -261,6 +333,8 @@ func open_jobs() -> void:
 
 func close_modal() -> void:
 	modal_overlay.visible = false
+	planet_map.visible = false
+	modal_panel.visible = true
 	_active_service_id = ""
 	_active_service_name = ""
 
@@ -350,7 +424,7 @@ func _build_hud() -> void:
 	order_row.add_child(order_input)
 	order_bar.visible = false
 
-	var controls := _label("WASD move   E interact   SPACE attack / place mine   I pack   J jobs   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
+	var controls := _label("WASD move   E interact   SPACE attack / mine   I pack   J jobs   N people   M planets   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
 	controls.position = Vector2(8, 349)
 	controls.size = Vector2(624, 10)
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -381,6 +455,13 @@ func _build_modal() -> void:
 	modal_content.custom_minimum_size = Vector2(390, 0)
 	modal_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(modal_content)
+	planet_map = PlanetMap.new()
+	planet_map.name = "PlanetMap"
+	planet_map.position = Vector2(10, 10)
+	planet_map.size = PlanetMap.VIEW_SIZE
+	planet_map.close_requested.connect(close_modal)
+	modal_overlay.add_child(planet_map)
+	planet_map.visible = false
 	modal_overlay.visible = false
 
 func _connect_state() -> void:
@@ -593,6 +674,8 @@ func _mark_speaker(node: Variant) -> void:
 		world.mark_speaker(node if node is Node2D and is_instance_valid(node) else null)
 
 func _open_modal(title: String) -> void:
+	planet_map.visible = false
+	modal_panel.visible = true
 	for child in modal_content.get_children():
 		child.queue_free()
 	modal_overlay.visible = true
@@ -606,6 +689,26 @@ func _build_food_shop(northern: bool = false) -> void:
 		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell produce")
 	for item_id in ["potato", "carrot", "tomato", "grape", "rabbit_meat"]:
+		_add_food_sell_buttons(item_id)
+
+func _build_iskra_food_shop() -> void:
+	_add_body("Bread from the food works and hot meals for the dock crews. Food restores health.")
+	_add_heading("Buy")
+	for item_id in ["bread", "stew", "smoked_fish"]:
+		var definition := GameData.item(item_id)
+		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	_add_heading("Sell food")
+	for item_id in ["bread", "stew", "smoked_fish"]:
+		_add_food_sell_buttons(item_id)
+
+func _build_skoljka_food_shop() -> void:
+	_add_body("Tala serves hot kelp broth and shellfish stew at the plaza. Food restores health. The company ordered meals for a night repair shift before anyone reported a leak.")
+	_add_heading("Buy")
+	for item_id in ["kelp_broth", "shellfish_stew", "smoked_fish"]:
+		var definition := GameData.item(item_id)
+		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	_add_heading("Sell food and catches")
+	for item_id in ["river_fish", "smoked_fish", "kelp_broth", "shellfish_stew"]:
 		_add_food_sell_buttons(item_id)
 
 func _add_food_sell_buttons(item_id: String) -> void:
@@ -635,6 +738,12 @@ func _build_gear_shop(service_id: String) -> void:
 		"pomidor_clothing":
 			_add_body("Pomidor's clothier dyes cloth orange, this season's color on Pomidor. Nobody else sells it.")
 			sections = {"Clothing": ["orange_tunic", "red_tunic", "purple_tunic"]}
+		"iskra_forge":
+			_add_body("The navy has reserved this month's Tvrdium production. Iron weapons and armor are available to visitors.")
+			sections = {"Swords": ["iron_sword"], "Spears": ["iron_spear"], "Bows": ["iron_bow"], "Armor": ["iron_armor"]}
+		"skoljka_clothing":
+			_add_body("Lumi makes sea-glass and coral clothes for life below the waves. Workers need colors that look like home, not company overalls.")
+			sections = {"Clothing": ["sea_glass_tunic", "coral_tunic"]}
 		_:
 			_add_body("Wooden swords, spears, bows, and armor.")
 			sections = {"Swords": ["wood_sword"], "Spears": ["wood_spear"], "Bows": ["wood_bow"], "Armor": ["wood_armor"]}
@@ -649,9 +758,9 @@ func _build_gear_shop(service_id: String) -> void:
 			var equip_button := _add_action_button(equip_text, func() -> void: GameState.equip_item(item_id); _reopen_service())
 			equip_button.disabled = equipped or available <= 0
 			_add_action_button("Buy another %s — %d gold" % [definition["name"], int(definition["buy"])], func() -> void: GameState.buy_item(item_id); _reopen_service())
-	if service_id in ["north_clothing", "pomidor_clothing"]:
+	if service_id in ["north_clothing", "pomidor_clothing", "skoljka_clothing"]:
 		_add_heading("Cloth trading")
-		var cloth_id := "purple_cloth" if service_id == "north_clothing" else "orange_cloth"
+		var cloth_id := "purple_cloth" if service_id == "north_clothing" else ("orange_cloth" if service_id == "pomidor_clothing" else "sea_glass_cloth")
 		var cloth := GameData.item(cloth_id)
 		_add_action_button("Buy %s — %d gold" % [cloth["name"], cloth["buy"]], func() -> void: GameState.buy_item(cloth_id); _reopen_service())
 		var owned := int(GameState.inventory.get(cloth_id, 0))
@@ -707,6 +816,18 @@ func _build_river_library() -> void:
 	_add_heading("Field guide")
 	_add_body("The bridges cross the main river. Water cannot be walked across elsewhere. A fishing rod from the market lets you catch fish at ponds; wait before casting again.")
 	_add_body("Buy food or sell a catch at the market; Brudet's forge sells iron equipment. Town Hall offers civilian cleanup jobs outside town. The Military Headquarters offers enlistment at the playable training station and has an arrow target for practice. Save with F5 and load with F9.")
+
+func _build_skoljka_library() -> void:
+	_add_heading("After the Destruction of Block")
+	_add_body("When Block was destroyed, most of the engineers from Blockovia fled to Otpornik. Its prominent school of engineering gave them a place to work together after the war.")
+	_add_body("They rebuilt Otpornik's damaged cities. Their work won public support for a self-governing nation led by the world's foremost engineers: Engineeria.")
+	_add_heading("A city beneath the sea")
+	_add_body("Engineeria's engineers built Skoljka's underwater city on a sparsely inhabited ocean planet. They opened it as a refuge for immigrants from other nations.")
+	_add_body("Elektrika joined next. Its people faced economic shortages and lacked protection against hackers and the Republic. Otpornik, Skoljka and Elektrika were Engineeria's first three planets.")
+	_add_heading("The artificial capital")
+	_add_body("With more immigrants arriving, the engineers used their national resources to build Iskra, a man-made planet in space. It became Engineeria's fourth planet, soon surpassed the others in population, and became the capital. Rudnik joined later, bringing Engineeria to five planets.")
+	_add_heading("How Engineeria is governed")
+	_add_body("The Engineering Board elects short-term Heads of Technology, Architecture, Navy, Demographics, Finance and Defense. The Head of Nation coordinates their work.")
 
 func _build_river_town_hall() -> void:
 	_add_body("Welcome to Brudet's river city. The market sells food and fishing rods; the nearby library has local advice and Craft history.")
@@ -1308,7 +1429,7 @@ func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
 	_reopen_service()
 
 func _reopen_service() -> void:
-	if _active_service_id in ["food", "north_food", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel", "pomidor_forge", "pomidor_clothing", "pomidor_market", "beer_hall", "pomidor_library"]:
+	if _active_service_id in ["iskra_food", "iskra_forge", "food", "north_food", "skoljka_food", "skoljka_clothing", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel", "pomidor_forge", "pomidor_clothing", "pomidor_market", "beer_hall", "pomidor_library"]:
 		open_service(_active_service_id, _active_service_name)
 	elif _active_service_id == "inventory":
 		_refresh_inventory_panel()
@@ -1388,6 +1509,10 @@ func apply_ui_scale(ui_scale: float) -> void:
 				_place_box(box, screen)
 
 func _place_box(box: Control, screen: Vector2) -> void:
+	if box == planet_map:
+		box.size = PlanetMap.VIEW_SIZE
+		box.position = (screen - box.size) * 0.5
+		return
 	if not box.has_meta("base_rect"):
 		box.set_meta("base_rect", Rect2(box.position, box.size))
 	var base: Rect2 = box.get_meta("base_rect")

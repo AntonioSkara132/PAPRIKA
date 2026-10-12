@@ -199,6 +199,7 @@ func _check_migration(saved) -> void:
 	station_save["planet_positions"].erase("pomidor")
 	station_save["planet_positions"].erase("chvarak")
 	station_save["planet_positions"].erase("engineeria")
+	station_save["planet_positions"].erase("skoljka")
 	_check(state._valid_save(station_save), "a schema-10 station save without Artichoke stays valid")
 	var on_front: Dictionary = station_save.duplicate(true)
 	on_front["current_planet"] = "artichoke"

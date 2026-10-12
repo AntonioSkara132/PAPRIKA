@@ -5,9 +5,9 @@
   "name": "engineeria_terrain",
   "tilewidth": 16,
   "tileheight": 16,
-  "tilecount": 24,
+  "tilecount": 32,
   "columns": 8,
   "image": "../assets/art/engineeria/engineeria_terrain.png",
   "imagewidth": 128,
-  "imageheight": 48
+  "imageheight": 64
 }

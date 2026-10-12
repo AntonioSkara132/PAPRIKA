@@ -27,6 +27,8 @@ var _current_interactable: Node2D
 var _last_prompt := ""
 var _built := false
 var _holding_field_mine := false
+var damage_scale := 1.0
+var _costume_texture_path := ""
 
 func configure(texture_path: String, spawn_position: Vector2, bounds: Rect2) -> void:
 	global_position = spawn_position
@@ -145,7 +147,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			world.attack_as(active)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
-		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "bandage"]:
+		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "kelp_broth", "shellfish_stew", "bandage"]:
 			if active == self and GameState.use_food(food_id):
 				break
 			if active is Villager and GameState.heal_recruit(active.villager_id, food_id):
@@ -200,10 +202,10 @@ func _show_melee_swing(reach: float) -> void:
 	tween.tween_property(line, "modulate:a", 0.0, 0.14)
 	tween.tween_callback(line.queue_free)
 
-func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO) -> void:
+func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO, bypass_armor: bool = false) -> void:
 	if _invulnerability > 0.0 or GameState.health <= 0:
 		return
-	var applied := GameState.damage_player(raw_damage)
+	var applied := GameState.damage_player(roundi(raw_damage * damage_scale), bypass_armor)
 	if applied <= 0:
 		return
 	_invulnerability = 0.65
@@ -256,7 +258,14 @@ func _update_nearest_interactable() -> void:
 		_last_prompt = next_prompt
 		prompt_changed.emit(next_prompt)
 
+func set_costume_texture(texture_path: String) -> void:
+	_costume_texture_path = texture_path
+	_refresh_appearance()
+
 func _refresh_appearance() -> void:
+	if not _costume_texture_path.is_empty() and ResourceLoader.exists(_costume_texture_path):
+		_sprite.texture = load(_costume_texture_path) as Texture2D
+		return
 	var outfit := String(GameState.equipment.get("clothing", ""))
 	var color_name := String(GameData.item(outfit).get("color", ""))
 	var texture_path := "res://assets/art/space_military_base/player_uniform.png" if outfit == "military_uniform" else ("res://assets/art/northern_village/player_purple.png" if color_name == "purple" else "res://assets/art/player_%s.png" % color_name)

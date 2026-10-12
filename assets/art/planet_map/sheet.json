@@ -1,0 +1,122 @@
+[
+  {
+    "id": "otpornik",
+    "image": "otpornik.png",
+    "region": [
+      0,
+      0,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "elektrika",
+    "image": "elektrika.png",
+    "region": [
+      32,
+      0,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "iskra",
+    "image": "iskra.png",
+    "region": [
+      64,
+      0,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "skoljka",
+    "image": "skoljka.png",
+    "region": [
+      96,
+      0,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "rudnik",
+    "image": "rudnik.png",
+    "region": [
+      0,
+      32,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "paprika",
+    "image": "paprika.png",
+    "region": [
+      32,
+      32,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "brudet",
+    "image": "brudet.png",
+    "region": [
+      64,
+      32,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "pomidor",
+    "image": "pomidor.png",
+    "region": [
+      96,
+      32,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "cichvarda",
+    "image": "cichvarda.png",
+    "region": [
+      0,
+      64,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "chvarak",
+    "image": "chvarak.png",
+    "region": [
+      32,
+      64,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "artichoke",
+    "image": "artichoke.png",
+    "region": [
+      64,
+      64,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "unknown",
+    "image": "unknown.png",
+    "region": [
+      96,
+      64,
+      32,
+      32
+    ]
+  }
+]

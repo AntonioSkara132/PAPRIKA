@@ -23,6 +23,14 @@ var _object_root: Node2D
 var _field_root: Node2D
 var _collision_body: StaticBody2D
 var _water_body: StaticBody2D
+## Tile layers named "Door <id>" or "Flood <id>" form groups that block like
+## walls but can be opened at runtime with set_group_blocked. Each id maps to
+## {"blocked": bool, "cells": Array[Vector2i], "shapes": Array, "layers": Array}.
+var _groups: Dictionary = {}
+## Cells the map's fixed blockers make solid, before any group is applied, in
+## the walking and amphibious grids.
+var _base_solid: Dictionary = {}
+var _base_amphibious_solid: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("tiled_world")
@@ -76,6 +84,9 @@ func clear_map() -> void:
 	_solid_footprints.clear()
 	_navigation = null
 	_amphibious_navigation = null
+	_groups.clear()
+	_base_solid.clear()
+	_base_amphibious_solid.clear()
 	while get_child_count() > 0:
 		get_child(0).free()
 
@@ -131,6 +142,9 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 	var data: Array = layer.get("data", [])
 	if width <= 0 or data.is_empty():
 		return
+	var group_id := _group_id_for_layer(layer_name)
+	if not group_id.is_empty():
+		_add_group_layer(group_id, layer_node)
 	for index in data.size():
 		var raw_gid := int(data[index])
 		if raw_gid == 0:
@@ -151,9 +165,11 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 		var local_id := _local_tile_id(gid)
 		if not scenery_only and layer_name in ["Common Fields", "Private Fields"] and GameData.CROP_BY_TILE_ID.has(local_id):
 			_create_field_plot(cell, local_id, sprite, texture, layer_name == "Common Fields")
-		if layer_name == "Water":
+		if not group_id.is_empty():
+			_add_group_cell(group_id, cell, sprite.position + Vector2(tile_size) * 0.5)
+		elif layer_name == "Water":
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5, true)
-		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs", "Chamber Walls", "Mountain Rock", "Fences", "Ship Walls", "Ledges", "Thicket"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
+		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs", "Chamber Walls", "Mountain Rock", "Fences", "Ship Walls", "Ledges", "Thicket", "Mine Rock", "Ore Heaps", "Port Walls", "Hull Walls", "Seabed Rock"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -214,11 +230,11 @@ func _create_object_layer(layer: Dictionary) -> void:
 			service_node.z_index = 10 + int(object.get("y", 0))
 			_object_root.add_child(service_node)
 			service_node.configure(texture, size, String(service["id"]), String(service["name"]), float(service.get("door_ratio", 0.5)))
-			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship", "pomidor_ship", "chamber_exit", "chvarak_ship", "diplomatic_ship"]:
+			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship", "pomidor_ship", "chamber_exit", "chvarak_ship", "diplomatic_ship", "rudnik_ore_ship"]:
 				for child in service_node.get_children():
 					if child is CollisionShape2D:
 						child.free()
-				if name in ["station_ship", "artichoke_ship", "pomidor_ship", "chvarak_ship", "diplomatic_ship"]:
+				if name in ["station_ship", "artichoke_ship", "pomidor_ship", "chvarak_ship", "diplomatic_ship", "rudnik_ore_ship"]:
 					_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
 				else:
 					service_node.collision_layer = 0
@@ -236,7 +252,7 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	holder.name = name
 	holder.set_meta("object_name", name)
 	holder.position = top_left
-	holder.z_index = 10 + bottom_y
+	holder.z_index = -10 if name == "ground_backdrop" else 10 + bottom_y
 	_object_root.add_child(holder)
 	var sprite := Sprite2D.new()
 	sprite.texture = texture
@@ -245,7 +261,8 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	sprite.scale = size / Vector2(texture.get_width(), texture.get_height())
 	holder.add_child(sprite)
 	# Barbed wire slows walkers and minefield marks are stepped on, so neither blocks movement.
-	if name in ["stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
+	# Skoljka's fish, jellyfish, coral and buoys ("sea_decor") are scenery only.
+	if name in ["ground_backdrop", "iskra_scenery", "stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern", "rudnik_gate", "sea_decor"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))
@@ -273,6 +290,9 @@ func _service_for_object(name: String) -> Dictionary:
 	match name:
 		"food_shop": return {"id": "food", "name": "Paprika Food Shop"}
 		"north_food_shop": return {"id": "north_food", "name": "Northern Food Shop"}
+		"skoljka_food": return {"id": "skoljka_food", "name": "Skoljka Food Stall"}
+		"skoljka_clothing": return {"id": "skoljka_clothing", "name": "Skoljka Clothier"}
+		"skoljka_library": return {"id": "skoljka_library", "name": "Skoljka Library"}
 		"forge": return {"id": "forge", "name": "Forge & Armor"}
 		"north_forge": return {"id": "north_forge", "name": "Northern Forge"}
 		"mercenary": return {"id": "mercenary", "name": "Mercenary Center"}
@@ -302,6 +322,10 @@ func _service_for_object(name: String) -> Dictionary:
 		"chvarak_ship": return {"id": "chvarak_ship", "name": "Confederation Transport"}
 		"chvarak_terminal": return {"id": "chvarak_terminal", "name": "Chvarak Spaceport"}
 		"diplomatic_ship": return {"id": "diplomatic_ship", "name": "Diplomatic Ship"}
+		"rudnik_lift": return {"id": "rudnik_lift", "name": "Mine Lift"}
+		"rudnik_shed": return {"id": "rudnik_shed", "name": "Maintenance Shed"}
+		"rudnik_dispatch": return {"id": "rudnik_dispatch", "name": "Dispatch Engine"}
+		"rudnik_ore_ship": return {"id": "rudnik_ore_ship", "name": "Ore Ship"}
 		"station_depot": return {"id": "station_depot", "name": "Military Depot"}
 		"station_barracks": return {"id": "station_barracks", "name": "Military Barracks", "door_ratio": 0.27}
 		"station_canteen": return {"id": "station_canteen", "name": "Station Canteen", "door_ratio": 0.32}
@@ -344,6 +368,95 @@ func _build_navigation() -> void:
 	_amphibious_navigation = _new_navigation_grid()
 	_mark_solid_cells(_navigation, _collision_footprints)
 	_mark_solid_cells(_amphibious_navigation, _solid_footprints)
+	for group_id in _groups:
+		for cell: Vector2i in _groups[group_id]["cells"]:
+			if _navigation.is_in_boundsv(cell):
+				_base_solid[cell] = _navigation.is_point_solid(cell)
+				_base_amphibious_solid[cell] = _amphibious_navigation.is_point_solid(cell)
+	for group_id in _groups:
+		_apply_group(String(group_id))
+
+# ---- doors and floods ----
+
+func _group_id_for_layer(layer_name: String) -> String:
+	for prefix in ["Door ", "Flood "]:
+		if layer_name.begins_with(prefix) and layer_name.length() > prefix.length():
+			return layer_name.substr(prefix.length())
+	return ""
+
+func _add_group_layer(group_id: String, layer_node: Node2D) -> void:
+	if not _groups.has(group_id):
+		var body := StaticBody2D.new()
+		body.name = "Group_" + group_id
+		body.collision_layer = 1
+		body.collision_mask = 0
+		add_child(body)
+		_groups[group_id] = {"blocked": true, "cells": [], "shapes": [], "layers": [], "body": body}
+	_groups[group_id]["layers"].append(layer_node)
+
+func _add_group_cell(group_id: String, cell: Vector2i, center: Vector2) -> void:
+	var collision := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(tile_size)
+	collision.shape = shape
+	collision.position = center
+	(_groups[group_id]["body"] as StaticBody2D).add_child(collision)
+	_groups[group_id]["shapes"].append(collision)
+	_groups[group_id]["cells"].append(cell)
+
+## The ids of every door and flood group on the map.
+func group_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for group_id in _groups:
+		ids.append(String(group_id))
+	return ids
+
+func has_group(group_id: String) -> bool:
+	return _groups.has(group_id)
+
+func group_blocked(group_id: String) -> bool:
+	return _groups.has(group_id) and bool(_groups[group_id]["blocked"])
+
+## The cells a door or flood group covers.
+func group_cells(group_id: String) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if _groups.has(group_id):
+		for cell: Vector2i in _groups[group_id]["cells"]:
+			cells.append(cell)
+	return cells
+
+## Closes (blocked) or opens a door or flood group: its collision, its cells in
+## both walking grids, and whether its tiles are drawn.
+func set_group_blocked(group_id: String, blocked: bool) -> void:
+	if not _groups.has(group_id) or bool(_groups[group_id]["blocked"]) == blocked:
+		return
+	_groups[group_id]["blocked"] = blocked
+	_apply_group(group_id)
+
+func _apply_group(group_id: String) -> void:
+	var group: Dictionary = _groups[group_id]
+	var blocked := bool(group["blocked"])
+	for collision: CollisionShape2D in group["shapes"]:
+		if collision.is_inside_tree():
+			collision.set_deferred("disabled", not blocked)
+		else:
+			collision.disabled = not blocked
+	for layer_node: Node2D in group["layers"]:
+		layer_node.visible = blocked
+	if _navigation == null:
+		return
+	for cell: Vector2i in group["cells"]:
+		if not _navigation.is_in_boundsv(cell):
+			continue
+		var covered := _cell_blocked_by_group(cell)
+		_navigation.set_point_solid(cell, covered or bool(_base_solid.get(cell, false)))
+		_amphibious_navigation.set_point_solid(cell, covered or bool(_base_amphibious_solid.get(cell, false)))
+
+func _cell_blocked_by_group(cell: Vector2i) -> bool:
+	for group_id in _groups:
+		if bool(_groups[group_id]["blocked"]) and _groups[group_id]["cells"].has(cell):
+			return true
+	return false
 
 func _new_navigation_grid() -> AStarGrid2D:
 	var grid := AStarGrid2D.new()
@@ -400,6 +513,18 @@ func is_walkable_position(world_position: Vector2) -> bool:
 
 func is_amphibious_walkable_position(world_position: Vector2) -> bool:
 	return _walkable_on_grid(_amphibious_navigation, world_position)
+
+## The centre of the nearest walkable cell to `world_position`, searching up to
+## six cells away, or Vector2.INF when there is none.
+func nearest_walkable_position(world_position: Vector2) -> Vector2:
+	if _navigation == null:
+		return Vector2.INF
+	if is_walkable_position(world_position):
+		return world_position
+	var local := to_local(world_position)
+	var cell := Vector2i(floori(local.x / tile_size.x), floori(local.y / tile_size.y))
+	var open := _nearest_open_cell(_navigation, cell.clamp(_navigation.region.position, _navigation.region.end - Vector2i.ONE))
+	return Vector2.INF if open.x < 0 else to_global(_navigation.get_point_position(open))
 
 func _walkable_on_grid(grid: AStarGrid2D, world_position: Vector2) -> bool:
 	if grid == null:

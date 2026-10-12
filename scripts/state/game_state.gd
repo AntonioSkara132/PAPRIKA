@@ -12,7 +12,9 @@ signal military_changed
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 13
+const SAVE_SCHEMA := 15
+const ISKRA_SAVE_SCHEMA := 15
+const SKOLJKA_SAVE_SCHEMA := 14
 const EMBASSY_SAVE_SCHEMA := 13
 const POMIDOR_SAVE_SCHEMA := 12
 const ARTICHOKE_SAVE_SCHEMA := 11
@@ -28,7 +30,9 @@ const PAPRIKA_OLD_SOUTH_Y := 352.0
 const PAPRIKA_OLD_SOUTH_ROW := 22
 const PAPRIKA_LAYOUT_SHIFT := 768.0
 const PAPRIKA_FIELD_ROW_SHIFT := 48
-const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria"]
+const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka", "iskra"]
+const SKOLJKA_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka"]
+const EMBASSY_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria"]
 const POMIDOR_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor"]
 const ARTICHOKE_PLANETS := ["paprika", "brudet", "station", "artichoke"]
 const STATION_PLANETS := ["paprika", "brudet", "station"]
@@ -50,6 +54,13 @@ const EMBASSY_FLAG := "pomidor_embassy_accepted"
 ## Set when the diplomatic ship goes down in Engineeria. Chvarak closes behind it,
 ## and Engineeria has no flight out yet.
 const CRASH_FLAG := "embassy_crashed"
+## The landing pad on Skoljka's surface dock, where the Rudnik ore ship ties up.
+const SKOLJKA_ARRIVAL := Vector2(1120, 200)
+const ISKRA_ARRIVAL := Vector2(3448, 824)
+const ISKRA_UNLOCK_FLAG := "skoljka_aftermath"
+## Set on Rudnik when Captain Bruno promises two seats on the ore ship. A save on
+## Skoljka needs it, because the ore ship is the only way there.
+const PASSAGE_FLAG := "rudnik_passage_earned"
 const SQUAD_BOUT_MAX_HEALTH := 24
 ## Max health after graduating from the training station.
 const GRADUATED_MAX_HEALTH := 28
@@ -86,7 +97,7 @@ var completed_unique_jobs: Array[String] = []
 var camp_unlocked: bool = false
 var player_position := Vector2(320, 220)
 var current_planet := "paprika"
-var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]}
+var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y]}
 var current_area := "exterior"
 var military_barracks_position := [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 var military_stage := "none"
@@ -165,7 +176,7 @@ func start_new_game() -> void:
 	camp_unlocked = false
 	player_position = Vector2(320, 220)
 	current_planet = "paprika"
-	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]}
+	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y]}
 	current_area = "exterior"
 	military_barracks_position = [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 	military_stage = "none"
@@ -696,8 +707,9 @@ func armor_protection() -> int:
 	var armor_id := String(equipment.get("armor", ""))
 	return int(GameData.item(armor_id).get("protection", 0))
 
-func damage_player(raw_damage: int) -> int:
-	var applied := maxi(0, raw_damage - armor_protection())
+func damage_player(raw_damage: int, bypass_armor: bool = false) -> int:
+	var protection := 0 if bypass_armor else armor_protection()
+	var applied := maxi(0, raw_damage - protection)
 	if applied == 0:
 		notify("Your armor blocked the hit.")
 		return 0
@@ -1218,6 +1230,10 @@ func load_game() -> bool:
 	if int(data["schema"]) < EMBASSY_SAVE_SCHEMA:
 		planet_positions["chvarak"] = [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y]
 		planet_positions["engineeria"] = [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y]
+	if int(data["schema"]) < SKOLJKA_SAVE_SCHEMA:
+		planet_positions["skoljka"] = [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y]
+	if int(data["schema"]) < ISKRA_SAVE_SCHEMA:
+		planet_positions["iskra"] = [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y]
 	current_area = String(data.get("current_area", "exterior"))
 	military_barracks_position = data.get("military_barracks_position", [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]).duplicate()
 	military_stage = String(data.get("military_stage", "none"))
@@ -1287,7 +1303,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA, EMBASSY_SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA, EMBASSY_SAVE_SCHEMA, SKOLJKA_SAVE_SCHEMA, ISKRA_SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -1301,7 +1317,7 @@ func _valid_save(data: Variant) -> bool:
 	if schema >= PLANET_SAVE_SCHEMA:
 		var planet = data.get("current_planet", null)
 		var positions = data.get("planet_positions", null)
-		var allowed_planets: Array = PLANETS if schema >= EMBASSY_SAVE_SCHEMA else POMIDOR_PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
+		var allowed_planets: Array = PLANETS if schema >= ISKRA_SAVE_SCHEMA else SKOLJKA_PLANETS if schema >= SKOLJKA_SAVE_SCHEMA else EMBASSY_PLANETS if schema >= EMBASSY_SAVE_SCHEMA else POMIDOR_PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
 		if not planet is String or not allowed_planets.has(planet) or not positions is Dictionary or positions.size() != allowed_planets.size():
 			return false
 		for planet_id in allowed_planets:
@@ -1438,6 +1454,10 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 	if data["current_planet"] == "chvarak" and not Array(data.get("defeated_persistent_enemies", [])).has(EMBASSY_FLAG):
 		return false
 	if data["current_planet"] == "engineeria" and not Array(data.get("defeated_persistent_enemies", [])).has(CRASH_FLAG):
+		return false
+	if data["current_planet"] == "skoljka" and not Array(data.get("defeated_persistent_enemies", [])).has(PASSAGE_FLAG):
+		return false
+	if data["current_planet"] == "iskra" and not Array(data.get("defeated_persistent_enemies", [])).has(ISKRA_UNLOCK_FLAG):
 		return false
 	if schema >= MILITARY_ROUND_SAVE_SCHEMA:
 		if (not cannon_round_active and cannon_phase != "empty") or (cannon_round_active and stage != "cannon") or (stage != "cannon" and cannon_phase != "empty"):

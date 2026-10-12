@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-"""Draw the Engineeria forest sprites and terrain used by maps/engineeria.tmj.
+"""Draw the Rudnik sprites and terrain used by maps/engineeria.tmj.
 
-The diplomatic ship came down in a broadleaf forest somewhere in Engineeria. The
-map has the wreck, a stream with fords, rocky ledges with ramps, the forest
-beasts that chase the player, and Davor's house in a clearing with a fence.
+The diplomatic ship came down in a broadleaf forest on Rudnik, a mining planet
+of Engineeria. The map has the wreck, a stream with fords, rocky ledges with
+ramps, the forest beasts that chase the player, Davor's house in a clearing with
+a fence, and the walled mining port east of the house.
 
 Writes PNGs to assets/art/engineeria/.
 """
@@ -288,13 +289,278 @@ def forest_beast():
     return img
 
 
+# ---- Rudnik mining port ----
+# Engineeria builds in grey stone and steel, marks its work in orange and lights
+# its instruments in blue.
+GREY = (128, 132, 140)
+GREY_DARK = (84, 88, 98)
+GREY_LIGHT = (172, 176, 184)
+ORANGE = (232, 128, 44)
+ORANGE_DARK = (176, 86, 30)
+BLUE = (70, 130, 210)
+BLUE_LIGHT = (140, 200, 250)
+BLUE_DARK = (40, 70, 130)
+ORE = (150, 96, 70)
+ORE_DARK = (104, 64, 50)
+ORE_LIGHT = (196, 140, 96)
+MINE_ROCK = (92, 86, 84)
+MINE_ROCK_DARK = (62, 58, 60)
+
+
+def stripes(d, box, width=4):
+    """Orange and dark hazard stripes across `box`."""
+    x0, y0, x1, y1 = box
+    for x in range(x0, x1 + 1):
+        for y in range(y0, y1 + 1):
+            band = (x + (y1 - y)) // width
+            d.point((x, y), fill=ORANGE if band % 2 == 0 else INK)
+
+
+def port_gate():
+    """The wicket gate in the port's west wall, seen from the side: a steel door
+    under an orange-striped lintel."""
+    img = Image.new("RGBA", (20, 46), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((1, 2, 18, 45), fill=GREY_DARK, outline=INK)
+    d.rectangle((3, 10, 16, 43), fill=GREY, outline=INK)
+    for y in (16, 24, 32, 40):
+        d.line([(4, y), (15, y)], fill=GREY_DARK)
+    d.rectangle((1, 2, 18, 8), fill=ORANGE, outline=INK)
+    for x in range(3, 18, 5):
+        d.line([(x, 3), (x + 2, 7)], fill=INK)
+    d.rectangle((12, 26, 14, 29), fill=BLUE_LIGHT, outline=INK)
+    return img
+
+
+def gate_bell():
+    img = Image.new("RGBA", (14, 26), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((2, 22, 12, 25), fill=SHADOW)
+    d.rectangle((6, 6, 8, 24), fill=GREY_DARK, outline=INK)
+    d.rectangle((3, 4, 12, 6), fill=GREY, outline=INK)
+    d.polygon([(7, 7), (3, 14), (11, 14)], fill=ORANGE, outline=INK)
+    d.point((7, 15), fill=INK)
+    return img
+
+
+def gate_lever():
+    img = Image.new("RGBA", (14, 24), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((1, 20, 13, 23), fill=SHADOW)
+    d.rectangle((2, 12, 12, 21), fill=GREY, outline=INK)
+    d.rectangle((4, 14, 6, 16), fill=BLUE_LIGHT)
+    d.line([(9, 13), (11, 3)], fill=GREY_DARK, width=2)
+    d.ellipse((9, 1, 13, 5), fill=ORANGE, outline=INK)
+    return img
+
+
+def mine_entrance():
+    img = Image.new("RGBA", (52, 40), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((2, 4, 49, 39), fill=MINE_ROCK, outline=INK)
+    d.rectangle((10, 12, 41, 39), fill=(18, 16, 22))
+    # steel frame and an orange-striped header beam
+    d.rectangle((7, 10, 10, 39), fill=GREY, outline=INK)
+    d.rectangle((41, 10, 44, 39), fill=GREY, outline=INK)
+    stripes(d, (6, 6, 45, 11), 3)
+    d.rectangle((6, 6, 45, 11), outline=INK)
+    for y in (20, 30):
+        d.line([(12, y), (39, y)], fill=(40, 36, 44))
+    d.rectangle((24, 14, 27, 17), fill=BLUE_LIGHT, outline=INK)
+    return img
+
+
+def lift_headframe(broken=True):
+    """The lift tower over the shaft: a steel lattice with the sheave wheel on
+    top and the winch house at its foot."""
+    img = Image.new("RGBA", (48, 76), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((4, 68, 44, 75), fill=SHADOW)
+    for x0, x1 in ((8, 18), (40, 30)):
+        d.line([(x0, 70), (x1, 8)], fill=GREY_DARK, width=3)
+    for y in range(16, 66, 10):
+        t = (y - 8) / 62
+        d.line([(18 - 10 * t, y), (30 + 10 * t, y)], fill=GREY)
+        d.line([(18 - 10 * t, y), (30 + 10 * (t + .16), y + 10)], fill=GREY_DARK)
+    d.ellipse((14, 2, 34, 22), outline=INK, fill=None, width=3)
+    d.ellipse((15, 3, 33, 21), outline=ORANGE, width=2)
+    d.line([(24, 12), (24, 60)], fill=INK)
+    # the winch house
+    d.rectangle((2, 50, 46, 72), fill=GREY, outline=INK)
+    stripes(d, (3, 51, 45, 54), 3)
+    d.rectangle((6, 58, 18, 68), fill=BLUE_DARK, outline=INK)
+    d.rectangle((8, 60, 11, 62), fill=BLUE_LIGHT if not broken else (90, 110, 140))
+    d.rectangle((13, 60, 16, 62), fill=BLUE_LIGHT)
+    d.ellipse((26, 57, 40, 71), fill=GREY_DARK, outline=INK)
+    d.ellipse((30, 61, 36, 67), fill=ORANGE)
+    return img
+
+
+def maintenance_shed():
+    img = Image.new("RGBA", (60, 50), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((2, 44, 58, 49), fill=SHADOW)
+    d.polygon([(0, 16), (30, 4), (59, 16)], fill=GREY_DARK, outline=INK)
+    d.rectangle((3, 16, 56, 46), fill=GREY, outline=INK)
+    for x in range(6, 56, 4):
+        d.line([(x, 17), (x, 45)], fill=GREY_LIGHT)
+    d.rectangle((20, 26, 38, 46), fill=ORANGE, outline=INK)
+    d.line([(29, 26), (29, 46)], fill=ORANGE_DARK)
+    d.rectangle((6, 20, 17, 25), fill=BLUE_DARK, outline=INK)
+    d.line([(8, 22), (15, 22)], fill=BLUE_LIGHT)
+    # a cog painted on the wall
+    d.ellipse((42, 22, 52, 32), outline=ORANGE, width=2)
+    return img
+
+
+def bunkhouse(variant):
+    img = Image.new("RGBA", (66, 50), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((2, 44, 64, 49), fill=SHADOW)
+    d.rectangle((2, 8, 63, 46), fill=GREY if variant == 0 else GREY_LIGHT, outline=INK)
+    d.rectangle((0, 4, 65, 10), fill=GREY_DARK, outline=INK)
+    stripes(d, (1, 11, 64, 13), 3)
+    for wx in (6, 22, 44):
+        d.rectangle((wx, 18, wx + 12, 28), fill=BLUE, outline=INK)
+        d.line([(wx + 2, 20), (wx + 6, 20)], fill=BLUE_LIGHT)
+    d.rectangle((26, 32, 38, 46), fill=GREY_DARK, outline=INK)
+    d.point((36, 39), fill=ORANGE)
+    return img
+
+
+def dispatch_engine():
+    """The port's dispatch engine: a hall-sized logic machine. Racks of switching
+    blocks behind glass, cable runs and cooling vents. It schedules the lift, the
+    ore stores and the ship."""
+    img = Image.new("RGBA", (124, 78), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rng = random.Random(41)
+    d.ellipse((4, 70, 120, 77), fill=SHADOW)
+    d.rectangle((2, 16, 121, 74), fill=GREY, outline=INK)
+    d.rectangle((0, 10, 123, 18), fill=GREY_DARK, outline=INK)
+    stripes(d, (1, 19, 122, 21), 4)
+    # vents and cooling stacks on the roof
+    for x in (14, 40, 96):
+        d.rectangle((x, 0, x + 10, 10), fill=GREY_DARK, outline=INK)
+        d.line([(x + 2, 3), (x + 8, 3)], fill=INK)
+        d.line([(x + 2, 6), (x + 8, 6)], fill=INK)
+    # the racks of logic blocks seen through long windows
+    for row_y in (26, 46):
+        d.rectangle((6, row_y, 117, row_y + 14), fill=BLUE_DARK, outline=INK)
+        for bx in range(8, 116, 6):
+            d.rectangle((bx, row_y + 2, bx + 4, row_y + 12), fill=GREY_DARK)
+            for ly in range(row_y + 3, row_y + 12, 3):
+                if rng.random() < .55:
+                    d.point((bx + rng.randint(1, 3), ly), fill=BLUE_LIGHT if rng.random() < .8 else ORANGE)
+    # orange cable runs and the door
+    d.line([(2, 64), (121, 64)], fill=ORANGE, width=2)
+    d.rectangle((54, 62, 70, 74), fill=GREY_DARK, outline=INK)
+    d.rectangle((60, 66, 64, 68), fill=BLUE_LIGHT)
+    return img
+
+
+def ore_pile():
+    img = Image.new("RGBA", (28, 18), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((1, 12, 27, 17), fill=SHADOW)
+    d.polygon([(2, 15), (8, 6), (13, 2), (19, 5), (26, 15)], fill=ORE, outline=INK)
+    for p in ((9, 9), (14, 6), (18, 11), (12, 12), (21, 12)):
+        d.point(p, fill=ORE_LIGHT)
+        d.point((p[0] + 1, p[1] + 1), fill=ORE_DARK)
+    return img
+
+
+def ore_cart():
+    img = Image.new("RGBA", (22, 18), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((2, 14, 20, 17), fill=SHADOW)
+    d.polygon([(2, 6), (20, 6), (17, 14), (5, 14)], fill=GREY, outline=INK)
+    d.line([(3, 9), (19, 9)], fill=ORANGE)
+    d.polygon([(4, 6), (8, 2), (12, 3), (17, 6)], fill=ORE, outline=INK)
+    for wx in (6, 15):
+        d.ellipse((wx - 2, 13, wx + 2, 17), fill=GREY_DARK, outline=INK)
+    return img
+
+
+def supply_crates():
+    img = Image.new("RGBA", (24, 22), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((1, 17, 23, 21), fill=SHADOW)
+    d.rectangle((1, 8, 12, 19), fill=GREY, outline=INK)
+    d.rectangle((11, 10, 22, 19), fill=GREY_LIGHT, outline=INK)
+    d.rectangle((5, 1, 16, 10), fill=GREY_DARK, outline=INK)
+    d.line([(1, 13), (12, 13)], fill=ORANGE)
+    d.line([(11, 14), (22, 14)], fill=BLUE)
+    return img
+
+
+def lamp_post():
+    img = Image.new("RGBA", (10, 32), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((1, 28, 9, 31), fill=SHADOW)
+    d.rectangle((4, 6, 5, 29), fill=GREY_DARK)
+    d.rectangle((1, 1, 8, 6), fill=GREY, outline=INK)
+    d.rectangle((2, 3, 7, 5), fill=BLUE_LIGHT)
+    return img
+
+
+def ore_ship():
+    """An Engineeria ore ship: the same hull plan as the diplomatic ship, in
+    working grey with orange cargo pods and blue running lights."""
+    ship = Image.open(CHVARAK / "diplomatic_ship.png").convert("RGBA")
+    px = ship.load()
+    for y in range(ship.height):
+        for x in range(ship.width):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            brightness = (r + g + b) / 3
+            if b > r + 40:
+                px[x, y] = BLUE_LIGHT + (a,) if brightness > 150 else ORANGE + (a,) if brightness > 90 else ORANGE_DARK + (a,)
+            elif brightness > 170:
+                px[x, y] = GREY_LIGHT + (a,)
+            elif brightness > 120:
+                px[x, y] = GREY + (a,)
+            elif brightness > 70:
+                px[x, y] = GREY_DARK + (a,)
+    d = ImageDraw.Draw(ship)
+    # two ore pods slung under the hull
+    for x in (40, 82):
+        d.rectangle((x, 44, x + 22, 56), fill=ORANGE, outline=INK)
+        d.line([(x + 2, 50), (x + 20, 50)], fill=ORANGE_DARK)
+    return ship
+
+
+def port_person(tunic, tunic_dark, skin_index, helmet):
+    """An Engineeria worker: the hair is drawn as a helmet or a cap in `helmet`."""
+    img = Image.new("RGBA", (18, 26), (0, 0, 0, 0))
+    img.alpha_composite(person(tunic, tunic_dark, SKINS[skin_index % 4], helmet), (1, 2))
+    return img
+
+
+PORT_PEOPLE = {
+    # The foreman wears orange; miners wear orange vests over grey, with blue helmets.
+    "foreman": (ORANGE, ORANGE_DARK, 1, GREY_LIGHT),
+    "captain": (BLUE, BLUE_DARK, 3, GREY_DARK),
+    "dispatcher": (BLUE_DARK, (28, 48, 92), 0, (60, 48, 40)),
+    "gatekeeper": (GREY, GREY_DARK, 2, ORANGE),
+    "resident_0": (GREY_LIGHT, GREY, 0, (91, 57, 44)),
+    "resident_1": ((150, 120, 96), (110, 86, 70), 3, (40, 32, 36)),
+    "miner_0": (ORANGE, GREY_DARK, 0, BLUE),
+    "miner_1": (ORANGE, GREY_DARK, 2, BLUE),
+    "miner_2": (ORANGE, GREY_DARK, 3, BLUE),
+    "miner_3": (ORANGE, GREY_DARK, 1, BLUE),
+}
+
+
 TERRAIN = ["floor", "floor_2", "moss", "leaves", "path", "path_2", "water", "water_2",
            "ford", "ledge", "ramp", "clearing", "scorch", "fence_h", "fence_v", "fence_post",
-           "thicket", "thicket_2", "bank", "ledge_face"]
+           "thicket", "thicket_2", "bank", "ledge_face", "port_wall", "paving", "paving_2", "rail",
+           "mine_rock", "mine_face", "pad", "ore_heap"]
 
 
 def terrain():
-    img = Image.new("RGBA", (16 * 8, 16 * 3), (0, 0, 0, 0))
+    img = Image.new("RGBA", (16 * 8, 16 * 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     rng = random.Random(31)
 
@@ -374,6 +640,46 @@ def terrain():
                 bx, by, r = x + rng.randrange(16), y + rng.randrange(16), rng.randint(3, 6)
                 d.ellipse((bx - r, by - r, bx + r, by + r), fill=THICKET if name == "thicket" else CANOPY[2][0])
             speckle(x, y, [CANOPY[0][2]], 4)
+        elif name == "port_wall":
+            # Dressed grey blocks with an orange band, the top lit from the north.
+            d.rectangle((x, y, x + 15, y + 15), fill=GREY_DARK)
+            d.rectangle((x, y, x + 15, y + 3), fill=GREY_LIGHT)
+            for by in (4, 10):
+                d.line([(x, y + by), (x + 15, y + by)], fill=INK)
+            for bx in (3, 11):
+                d.line([(x + bx, y + 4), (x + bx, y + 9)], fill=INK)
+            d.line([(x + 7, y + 10), (x + 7, y + 15)], fill=INK)
+            d.rectangle((x, y + 12, x + 15, y + 13), fill=ORANGE)
+        elif name in ("paving", "paving_2"):
+            d.rectangle((x, y, x + 15, y + 15), fill=GREY if name == "paving" else (120, 124, 130))
+            d.line([(x, y + 7), (x + 15, y + 7)], fill=GREY_DARK)
+            d.line([(x + (4 if name == "paving" else 11), y), (x + (4 if name == "paving" else 11), y + 6)], fill=GREY_DARK)
+            d.line([(x + 9, y + 8), (x + 9, y + 15)], fill=GREY_DARK)
+            speckle(x, y, [GREY_LIGHT, (110, 112, 118)], 5)
+        elif name == "rail":
+            d.rectangle((x, y, x + 15, y + 15), fill=(120, 124, 130))
+            for sy in range(1, 16, 4):
+                d.rectangle((x + 1, y + sy, x + 14, y + sy + 1), fill=LOG_DARK)
+            d.line([(x + 4, y), (x + 4, y + 15)], fill=GREY_LIGHT)
+            d.line([(x + 11, y), (x + 11, y + 15)], fill=GREY_LIGHT)
+        elif name in ("mine_rock", "mine_face"):
+            d.rectangle((x, y, x + 15, y + 15), fill=MINE_ROCK if name == "mine_rock" else MINE_ROCK_DARK)
+            speckle(x, y, [MINE_ROCK_DARK, ORE, (120, 112, 108)], 12)
+            if name == "mine_face":
+                for cx in range(2, 16, 5):
+                    d.line([(x + cx, y), (x + cx - 1, y + 13)], fill=INK)
+                d.rectangle((x, y + 14, x + 15, y + 15), fill=(52, 50, 54))
+        elif name == "pad":
+            d.rectangle((x, y, x + 15, y + 15), fill=(104, 108, 116))
+            d.rectangle((x, y, x + 15, y + 15), outline=GREY_DARK)
+            d.line([(x + 2, y + 2), (x + 5, y + 2)], fill=BLUE_LIGHT)
+            d.line([(x + 10, y + 13), (x + 13, y + 13)], fill=ORANGE)
+        elif name == "ore_heap":
+            d.rectangle((x, y, x + 15, y + 15), fill=ORE_DARK)
+            for _ in range(5):
+                bx, by, r = x + rng.randrange(16), y + rng.randrange(16), rng.randint(3, 5)
+                d.ellipse((bx - r, by - r, bx + r, by + r), fill=ORE, outline=ORE_DARK)
+            speckle(x, y, [ORE_LIGHT], 5)
     return img
 
 
@@ -393,6 +699,22 @@ def main():
     save(woodpile(), "woodpile")
     save(chopping_block(), "chopping_block")
     save(forest_beast(), "forest_beast")
+    save(port_gate(), "port_gate")
+    save(gate_bell(), "gate_bell")
+    save(gate_lever(), "gate_lever")
+    save(mine_entrance(), "mine_entrance")
+    save(lift_headframe(), "lift_headframe")
+    save(maintenance_shed(), "maintenance_shed")
+    for i in range(2):
+        save(bunkhouse(i), f"bunkhouse_{i}")
+    save(dispatch_engine(), "dispatch_engine")
+    save(ore_pile(), "ore_pile")
+    save(ore_cart(), "ore_cart")
+    save(supply_crates(), "supply_crates")
+    save(lamp_post(), "lamp_post")
+    save(ore_ship(), "ore_ship")
+    for key, (tunic, dark, skin, helmet) in PORT_PEOPLE.items():
+        save(port_person(tunic, dark, skin, helmet), f"port_{key}")
     print("wrote", len(list(OUT.glob("*.png"))), "Engineeria sprites")
 
 

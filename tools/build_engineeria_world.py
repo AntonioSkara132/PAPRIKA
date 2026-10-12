@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Build the Engineeria forest Tiled map and its tilesets.
+"""Build the Rudnik Tiled map and its tilesets.
 
-The diplomatic ship came down in the southwest of a broadleaf forest. A stream
-runs from north to south through the middle with two fords, and a rocky ledge
-crosses the east half with a single ramp. Davor's house stands in a fenced
-clearing in the northeast, with smoke rising from its chimney.
+Rudnik is a mining planet of Engineeria. The diplomatic ship came down in the
+southwest of a broadleaf forest. A stream runs from north to south through the
+middle with two fords, and a rocky ledge crosses the east half with a single
+ramp. Davor's house stands in a fenced clearing, with smoke rising from its
+chimney.
 
 A path leads from the wreck over the southern ford, up the ramp and north to
 the clearing. Thickets that cannot be walked through keep the run on or near
 the path, and they ring the whole map.
+
+East of the clearing a road leads to the Rudnik mining port: an unbroken stone
+wall with a wicket gate, the mine and its lift, a maintenance shed, the dispatch
+engine, bunkhouses, ore heaps and an ore ship on its pad. The internal planet
+key stays `engineeria`, so saves made before the port existed still load.
 
 Run tools/create_engineeria_art.py first; it draws the sprites used here.
 """
@@ -24,14 +30,19 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 MAPS = ROOT / "maps"
 ART = "../assets/art/engineeria"
+# The forest is the first WIDTH columns and is drawn exactly as it was before the
+# port existed; the port and the forest round it take the columns up to FULL_WIDTH.
 WIDTH, HEIGHT, CELL = 96, 72, 16
+FULL_WIDTH = 150
 RNG = random.Random(7310)
+PORT_RNG = random.Random(4417)
 
 # Terrain atlas order from create_engineeria_art.TERRAIN; the map uses firstgid 1.
 T = {name: i + 1 for i, name in enumerate(
     ["floor", "floor_2", "moss", "leaves", "path", "path_2", "water", "water_2",
      "ford", "ledge", "ramp", "clearing", "scorch", "fence_h", "fence_v", "fence_post",
-     "thicket", "thicket_2", "bank", "ledge_face"])}
+     "thicket", "thicket_2", "bank", "ledge_face", "port_wall", "paving", "paving_2", "rail",
+     "mine_rock", "mine_face", "pad", "ore_heap"])}
 
 OBJECT_IMAGES = {
     "player": "../art/concepts/source/player.png",
@@ -42,7 +53,22 @@ OBJECT_IMAGES = {
     "fern": f"{ART}/fern.png",
     "fallen_log": f"{ART}/fallen_log.png",
     "flame": f"{ART}/flame.png",
+    "port_gate": f"{ART}/port_gate.png",
+    "mine_entrance": f"{ART}/mine_entrance.png",
+    "lift_headframe": f"{ART}/lift_headframe.png",
+    "maintenance_shed": f"{ART}/maintenance_shed.png",
+    "dispatch_engine": f"{ART}/dispatch_engine.png",
+    "ore_pile": f"{ART}/ore_pile.png",
+    "ore_cart": f"{ART}/ore_cart.png",
+    "supply_crates": f"{ART}/supply_crates.png",
+    "lamp_post": f"{ART}/lamp_post.png",
+    "ore_ship": f"{ART}/ore_ship.png",
 }
+for key in ("foreman", "captain", "dispatcher", "gatekeeper", "resident_0", "resident_1",
+            "miner_0", "miner_1", "miner_2", "miner_3"):
+    OBJECT_IMAGES[f"port_{key}"] = f"{ART}/port_{key}.png"
+for i in range(2):
+    OBJECT_IMAGES[f"bunkhouse_{i}"] = f"{ART}/bunkhouse_{i}.png"
 for i in range(3):
     OBJECT_IMAGES[f"broadleaf_{i}"] = f"{ART}/broadleaf_{i}.png"
     OBJECT_IMAGES[f"envoy_{i}_lying"] = f"../assets/art/pomidor/envoy_{i}_lying.png"
@@ -67,6 +93,15 @@ RAMP_X = (66, 69)
 FORDS = (22, 50)                # rows where the path crosses the stream
 GATE_X = (82, 84)               # the gap in the yard's south fence
 
+# The Rudnik mining port, walls included: the wall runs round the edge of this box.
+PORT = (106, 4, 146, 44)
+PORT_GATE_ROWS = (20, 22)       # the wicket gate in the west wall; the wall stays solid
+ROAD_ROWS = (20, 22)            # the road from Davor's yard to the gate
+MINE_ROCK_ROWS = (5, 10)        # the mine hill inside the north wall; the last row is its face
+ORE_HEAPS = (116, 24, 121, 27)  # five cells wide, so Davor can just jump it
+PAD = (128, 28, 144, 42)
+RAIL_X = 124
+
 
 def stream_x(y: int) -> int:
     """The stream's west column on row y."""
@@ -81,17 +116,27 @@ NORTH_PATH = [(24, 58), (20, 46), (22, 34), (28, 26), (stream_x(FORDS[0]) - 2, F
               (stream_x(FORDS[0]) + 4, FORDS[0]), (54, 20), (64, 22), (70, 28)]
 
 
-def blank(fill: int = 0) -> list[int]:
-    return [fill] * (WIDTH * HEIGHT)
+def blank(fill: int = 0, width: int = WIDTH) -> list[int]:
+    return [fill] * (width * HEIGHT)
 
 
+# Layers are flat lists; their width follows from their length, so the same
+# helpers draw on the forest (WIDTH wide) and on the widened map (FULL_WIDTH).
 def paint(data: list[int], x: int, y: int, gid: int) -> None:
-    if 0 <= x < WIDTH and 0 <= y < HEIGHT:
-        data[y * WIDTH + x] = gid
+    width = len(data) // HEIGHT
+    if 0 <= x < width and 0 <= y < HEIGHT:
+        data[y * width + x] = gid
 
 
 def get(data: list[int], x: int, y: int) -> int:
-    return data[y * WIDTH + x] if 0 <= x < WIDTH and 0 <= y < HEIGHT else -1
+    width = len(data) // HEIGHT
+    return data[y * width + x] if 0 <= x < width and 0 <= y < HEIGHT else -1
+
+
+def widen(data: list[int]) -> list[int]:
+    """The forest layer with empty columns added on the east for the port."""
+    extra = [0] * (FULL_WIDTH - WIDTH)
+    return [gid for y in range(HEIGHT) for gid in data[y * WIDTH:(y + 1) * WIDTH] + extra]
 
 
 def rect(data: list[int], x0: int, y0: int, x1: int, y1: int, gid: int) -> None:
@@ -113,7 +158,7 @@ def line_cells(points: list[tuple[int, int]]):
 
 def layer(name: str, data: list[int], index: int) -> dict:
     return {"id": index, "name": name, "type": "tilelayer", "x": 0, "y": 0,
-            "width": WIDTH, "height": HEIGHT, "opacity": 1, "visible": True, "data": data}
+            "width": FULL_WIDTH, "height": HEIGHT, "opacity": 1, "visible": True, "data": data}
 
 
 def main() -> None:
@@ -259,15 +304,23 @@ def main() -> None:
         elif (x, y) not in clear and (x + 1, y) not in clear:
             add("fallen_log", "fallen_log", x * CELL - 4, y * CELL + 13)
 
+    # ---- the Rudnik mining port, east of Davor's clearing ----
+    ground, paths, water, ledges, thicket, fences = (widen(data) for data in (ground, paths, water, ledges, thicket, fences))
+    mine_rock = blank(width=FULL_WIDTH)
+    ore_heaps = blank(width=FULL_WIDTH)
+    port_walls = blank(width=FULL_WIDTH)
+    port_trees = build_port(ground, paths, thicket, mine_rock, ore_heaps, port_walls, add)
+
     layers = [layer("Ground", ground, 1), layer("Paths", paths, 2), layer("Water", water, 3),
               layer("Ledges", ledges, 4), layer("Thicket", thicket, 5), layer("Fences", fences, 6),
-              {"id": 7, "name": "Trees and People", "type": "objectgroup",
+              layer("Mine Rock", mine_rock, 7), layer("Ore Heaps", ore_heaps, 8), layer("Port Walls", port_walls, 9),
+              {"id": 10, "name": "Trees and People", "type": "objectgroup",
                "draworder": "topdown", "opacity": 1, "visible": True,
                "x": 0, "y": 0, "objects": objects}]
     map_data = {"type": "map", "version": "1.10", "tiledversion": "1.12.2",
-                "orientation": "orthogonal", "renderorder": "right-down", "width": WIDTH,
+                "orientation": "orthogonal", "renderorder": "right-down", "width": FULL_WIDTH,
                 "height": HEIGHT, "tilewidth": CELL, "tileheight": CELL,
-                "infinite": False, "nextlayerid": 8, "nextobjectid": len(objects) + 1,
+                "infinite": False, "nextlayerid": 11, "nextobjectid": len(objects) + 1,
                 "backgroundcolor": "#26442c", "layers": layers,
                 "tilesets": [{"firstgid": 1, "source": "engineeria_terrain.tsj"},
                              {"firstgid": 100, "source": "engineeria_objects.tsj"}]}
@@ -279,12 +332,116 @@ def main() -> None:
                                 for i, name in enumerate(NAMES)]}
     terrain_tileset = {"type": "tileset", "version": "1.10", "tiledversion": "1.12.2",
                        "name": "engineeria_terrain", "tilewidth": 16, "tileheight": 16,
-                       "tilecount": 24, "columns": 8,
-                       "image": f"{ART}/engineeria_terrain.png", "imagewidth": 128, "imageheight": 48}
+                       "tilecount": 32, "columns": 8,
+                       "image": f"{ART}/engineeria_terrain.png", "imagewidth": 128, "imageheight": 64}
     for filename, data in (("engineeria.tmj", map_data), ("engineeria_objects.tsj", object_tileset),
                            ("engineeria_terrain.tsj", terrain_tileset)):
         (MAPS / filename).write_text(json.dumps(data, indent=2) + "\n")
-    print(f"Generated {WIDTH}x{HEIGHT} Engineeria: {len(objects)} objects, {len(taken)} trees")
+    print(f"Generated {FULL_WIDTH}x{HEIGHT} Rudnik: {len(objects)} objects, {len(taken) + port_trees} trees")
+
+
+def build_port(ground, paths, thicket, mine_rock, ore_heaps, port_walls, add) -> int:
+    """Draws the forest east of the clearing, the road and the walled port.
+
+    The wall is one cell thick and unbroken; the gate is drawn over it and the
+    game moves the player through it, so beasts have no way in. Returns the
+    number of trees planted."""
+    px0, py0, px1, py1 = PORT
+    clear: set[tuple[int, int]] = set()
+
+    def in_port(x: int, y: int, margin: int = 0) -> bool:
+        return px0 - margin <= x < px1 + margin and py0 - margin <= y < py1 + margin
+
+    # Forest floor and the ring of thicket for the new columns.
+    for y in range(HEIGHT):
+        for x in range(WIDTH, FULL_WIDTH):
+            r = PORT_RNG.random()
+            paint(ground, x, y, T["floor"] if r < .55 else T["floor_2"] if r < .78 else T["leaves"] if r < .92 else T["moss"])
+            if y < 2 or y >= HEIGHT - 2 or x >= FULL_WIDTH - 2:
+                paint(thicket, x, y, T["thicket"] if PORT_RNG.random() < .6 else T["thicket_2"])
+
+    # The road leaves the yard gate, crosses the clearing and the old thicket ring
+    # and widens into a small square in front of the port gate.
+    for x, y in line_cells([(GATE_X[0], ROAD_ROWS[0]), (px0 - 1, ROAD_ROWS[0])]):
+        for dy in range(ROAD_ROWS[1] - ROAD_ROWS[0]):
+            paint(paths, x, y + dy, T["path"] if PORT_RNG.random() < .75 else T["path_2"])
+            paint(paths, x + 1, y + dy, T["path"] if PORT_RNG.random() < .75 else T["path_2"])
+    for x in range(WIDTH - 4, px0):
+        for y in range(ROAD_ROWS[0] - 3, ROAD_ROWS[1] + 3):
+            paint(thicket, x, y, 0)
+            clear.add((x, y))
+    for x in range(px0 - 4, px0):
+        for y in range(ROAD_ROWS[0] - 1, ROAD_ROWS[1] + 1):
+            paint(paths, x, y, T["path"] if PORT_RNG.random() < .75 else T["path_2"])
+
+    # Inside the walls: paving, the mine hill, the rails, the ore heaps and the pad.
+    for y in range(py0, py1):
+        for x in range(px0, px1):
+            clear.add((x, y))
+            if x in (px0, px1 - 1) or y in (py0, py1 - 1):
+                paint(port_walls, x, y, T["port_wall"])
+                continue
+            paint(ground, x, y, T["paving"] if PORT_RNG.random() < .7 else T["paving_2"])
+            if MINE_ROCK_ROWS[0] <= y < MINE_ROCK_ROWS[1]:
+                paint(mine_rock, x, y, T["mine_face"] if y == MINE_ROCK_ROWS[1] - 1 else T["mine_rock"])
+    hx0, hy0, hx1, hy1 = ORE_HEAPS
+    rect(ore_heaps, hx0, hy0, hx1, hy1, T["ore_heap"])
+    ax0, ay0, ax1, ay1 = PAD
+    rect(paths, ax0, ay0, ax1, ay1, T["pad"])
+    for y in range(MINE_ROCK_ROWS[1] + 3, 34):
+        paint(paths, RAIL_X, y, T["rail"])
+    for x in range(RAIL_X, ax0):
+        paint(paths, x, 33, T["rail"])
+
+    # Buildings, the lift and the ship. Map objects with service names are used
+    # by scripts/world/engineeria_world.gd; their positions match its constants.
+    gw, gh = SIZE["port_gate"]
+    add("rudnik_gate", "port_gate", px0 * CELL + 8 - gw // 2, PORT_GATE_ROWS[1] * CELL)
+    add("mine_entrance", "mine_entrance", 111 * CELL, 11 * CELL)
+    add("rudnik_lift", "lift_headframe", 121 * CELL, 13 * CELL)
+    add("rudnik_shed", "maintenance_shed", 108 * CELL + 4, 16 * CELL)
+    add("rudnik_dispatch", "dispatch_engine", 131 * CELL, 15 * CELL)
+    add("bunkhouse", "bunkhouse_0", 108 * CELL, 31 * CELL)
+    add("bunkhouse", "bunkhouse_1", 108 * CELL, 38 * CELL)
+    add("rudnik_ore_ship", "ore_ship", 128 * CELL + 8, 38 * CELL)
+    for sprite, x, y in (("ore_pile", 115, 29), ("ore_pile", 121, 29), ("ore_cart", 126, 31),
+                         ("ore_cart", 126, 22), ("supply_crates", 140, 18), ("supply_crates", 142, 25),
+                         ("supply_crates", 117, 40)):
+        add(sprite, sprite, x * CELL, y * CELL)
+    for x, y in ((px0 - 2, ROAD_ROWS[0] - 1), (px0 - 2, ROAD_ROWS[1] + 2), (115, 19), (128, 19), (127, 27), (144, 27)):
+        add("lamp_post", "lamp_post", x * CELL + 3, y * CELL)
+
+    # The people of the port. The four miners stand where the lift lets them out;
+    # the game shows them once they are brought up.
+    people = {"gatekeeper": (1762, 302), "foreman": (2012, 222), "dispatcher": (2196, 262),
+              "captain": (2150, 628), "resident_0": (1838, 520), "resident_1": (1900, 650),
+              "miner_0": (1930, 238), "miner_1": (1950, 244), "miner_2": (1972, 238), "miner_3": (1992, 246)}
+    for key, (fx, fy) in people.items():
+        w, _ = SIZE[f"port_{key}"]
+        add(f"story_{key}", f"port_{key}", fx - w // 2, fy + 2)
+
+    # Thicket patches and trees in the forest round the port.
+    for _ in range(14):
+        sx, sy = PORT_RNG.randrange(WIDTH, FULL_WIDTH - 4), PORT_RNG.randrange(4, HEIGHT - 4)
+        rw, rh = PORT_RNG.randint(2, 5), PORT_RNG.randint(2, 4)
+        cells = [(x, y) for x in range(sx, sx + rw) for y in range(sy, sy + rh)]
+        if any((x, y) in clear or in_port(x, y, 2) for x, y in cells):
+            continue
+        for x, y in cells:
+            paint(thicket, x, y, T["thicket"] if PORT_RNG.random() < .6 else T["thicket_2"])
+            clear.add((x, y))
+    taken: list[tuple[int, int]] = []
+    for _ in range(3000):
+        if len(taken) >= 150:
+            break
+        x, y = PORT_RNG.randrange(WIDTH, FULL_WIDTH - 2), PORT_RNG.randrange(3, HEIGHT - 2)
+        if (x, y) in clear or in_port(x, y, 2) or get(thicket, x, y) or any(abs(x - tx) < 2 and abs(y - ty) < 2 for tx, ty in taken):
+            continue
+        taken.append((x, y))
+        sprite = f"broadleaf_{PORT_RNG.randrange(3)}"
+        w, _ = SIZE[sprite]
+        add("tree_broadleaf", sprite, x * CELL + 8 - w // 2, y * CELL + 14)
+    return len(taken)
 
 
 if __name__ == "__main__":

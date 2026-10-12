@@ -43,10 +43,13 @@ const WAVES := [
 	{"at": 34.0, "kinds": ["hacker", "hacker", "hacker"]},
 ]
 const SHIP_GUARD_HEALTH := 80
-## Julius's hired hackers hit far softer than Paprika's level-5 hacker (18), so a
-## player with 20 health can hold the corridor through more than one group
-## before the ship goes down.
-const AMBUSH_DAMAGE := {"hacker": 6, "phase_hacker": 5}
+## Julius's hired hackers are stronger than the hackers met first on Paprika
+## and Brudet, who are the weakest of them. Being downed in the fight is not a
+## defeat: it brings the ship down, and the story goes on in Engineeria.
+const AMBUSH_STATS := {
+	"hacker": {"level": 7, "max_health": 150, "damage": 24},
+	"phase_hacker": {"level": 7, "max_health": 130, "damage": 18},
+}
 
 var _story: Dictionary = {}
 var _flying := false
@@ -310,7 +313,9 @@ func _send_wave(index: int) -> void:
 		var hacker := Enemy.new()
 		var texture := "res://assets/art/hacker.png"
 		hacker.configure(kind, texture, HATCH_SPAWNS[slot % HATCH_SPAWNS.size()], "story_ambush_%d_%d_%d" % [Time.get_ticks_msec(), index, slot])
-		hacker.definition["damage"] = AMBUSH_DAMAGE[kind]
+		hacker.definition.merge(AMBUSH_STATS[kind], true)
+		hacker.max_health = int(hacker.definition["max_health"])
+		hacker.health = hacker.max_health
 		# Their leash centres on the ship, so they go after anyone in it.
 		hacker.spawn_position = ship_center
 		actors_root.add_child(hacker)

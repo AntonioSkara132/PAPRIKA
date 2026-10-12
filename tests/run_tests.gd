@@ -679,6 +679,7 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_eight["planet_positions"].erase("pomidor")
 	schema_eight["planet_positions"].erase("chvarak")
 	schema_eight["planet_positions"].erase("engineeria")
+	schema_eight["planet_positions"].erase("skoljka")
 	for change in ["missing", "false", "wrong_type"]:
 		var invalid: Dictionary = schema_eight.duplicate(true)
 		match change:
@@ -693,6 +694,7 @@ func _test_undeployed_legacy_camp(state, deployed_save: Variant) -> void:
 	schema_seven["planet_positions"].erase("pomidor")
 	schema_seven["planet_positions"].erase("chvarak")
 	schema_seven["planet_positions"].erase("engineeria")
+	schema_seven["planet_positions"].erase("skoljka")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven mixed deployed camp save remains valid without the new unlock field")
 	var invalid_seven: Dictionary = schema_seven.duplicate(true)
@@ -751,6 +753,7 @@ func _test_planet_save(state) -> void:
 	saved["planet_positions"].erase("pomidor")
 	saved["planet_positions"].erase("chvarak")
 	saved["planet_positions"].erase("engineeria")
+	saved["planet_positions"].erase("skoljka")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
 	_check(legacy_file != null, "schema-four Brudet fixture can be written")
 	if legacy_file == null:
@@ -855,6 +858,10 @@ func _test_embassy_travel() -> void:
 	_check(state.story_travel("engineeria", Vector2(700, 300)) and state.current_planet == "engineeria" and state.gold == gold and state.player_position == state.ENGINEERIA_ARRIVAL, "the crash takes the player to Engineeria without a fare")
 	_check(state.planet_positions["chvarak"] == [700.0, 300.0], "the crash remembers where the player left Chvarak")
 	_check(state.travel_fare("chvarak") == -1 and state.travel_fare("pomidor") == -1 and not state.can_travel("pomidor"), "Engineeria has no way off yet")
+	# Passage on the Rudnik ore ship is a story flag; it opens no paid route.
+	state.defeated_persistent_enemies.append(state.PASSAGE_FLAG)
+	_check(state.travel_fare("chvarak") == -1 and not state.can_travel("pomidor") and not state.can_travel("chvarak") and not state.can_travel("skoljka"), "passage on the ore ship opens no paid route off Rudnik")
+	_check(state.add_item("winch_gear") and not state.sell_item("winch_gear") and int(state.inventory.get("winch_gear", 0)) == 1, "the winch gear is a key item that cannot be sold")
 	_check(state.save_game(), "a save on Engineeria after the crash is written")
 	saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
 	_check(saved is Dictionary and state._valid_save(saved), "a save on Engineeria after the crash is valid")
@@ -862,6 +869,35 @@ func _test_embassy_travel() -> void:
 		var before_crash: Dictionary = saved.duplicate(true)
 		before_crash["defeated_persistent_enemies"].erase(state.CRASH_FLAG)
 		_check(not state._valid_save(before_crash), "a save on Engineeria without the crash is rejected")
+		# A schema-13 save from Rudnik still loads and gains the Skoljka arrival.
+		var schema_thirteen: Dictionary = saved.duplicate(true)
+		schema_thirteen["schema"] = GameStateScript.EMBASSY_SAVE_SCHEMA
+		schema_thirteen["planet_positions"].erase("skoljka")
+		_check(state._valid_save(schema_thirteen), "a schema-13 save without Skoljka is valid")
+		var with_skoljka: Dictionary = schema_thirteen.duplicate(true)
+		with_skoljka["planet_positions"]["skoljka"] = [1.0, 2.0]
+		_check(not state._valid_save(with_skoljka), "a schema-13 save cannot name Skoljka")
+		var on_skoljka_thirteen: Dictionary = schema_thirteen.duplicate(true)
+		on_skoljka_thirteen["current_planet"] = "skoljka"
+		_check(not state._valid_save(on_skoljka_thirteen), "a schema-13 save cannot be on Skoljka")
+		FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE).store_string(JSON.stringify(schema_thirteen))
+		_check(state.load_game() and state.current_planet == "engineeria" and state.planet_positions.get("skoljka") == [state.SKOLJKA_ARRIVAL.x, state.SKOLJKA_ARRIVAL.y], "loading a schema-13 save adds the Skoljka arrival")
+	# The ore ship to Skoljka is story travel only, one way.
+	_check(state.travel_fare("skoljka") == -1 and not state.can_travel("skoljka"), "no paid route goes to Skoljka")
+	_check(state.story_travel("skoljka", Vector2(2200, 560)) and state.current_planet == "skoljka" and state.gold == gold and state.player_position == state.SKOLJKA_ARRIVAL, "sailing takes the player to the Skoljka dock without a fare")
+	_check(state.planet_positions["engineeria"] == [2200.0, 560.0], "sailing remembers where the player left Rudnik")
+	_check(state.travel_fare("engineeria") == -1 and not state.can_travel("engineeria"), "no ship goes back to Rudnik")
+	_check(state.save_game(), "a save on Skoljka is written")
+	saved = JSON.parse_string(FileAccess.get_file_as_string(GameStateScript.SAVE_PATH))
+	_check(saved is Dictionary and saved.get("schema") == GameStateScript.SKOLJKA_SAVE_SCHEMA and state._valid_save(saved), "a schema-14 save on Skoljka is valid")
+	if saved is Dictionary:
+		var no_passage: Dictionary = saved.duplicate(true)
+		no_passage["defeated_persistent_enemies"].erase(state.PASSAGE_FLAG)
+		_check(not state._valid_save(no_passage), "a save on Skoljka without passage on the ore ship is rejected")
+		var missing_position: Dictionary = saved.duplicate(true)
+		missing_position["planet_positions"].erase("skoljka")
+		_check(not state._valid_save(missing_position), "a schema-14 save needs the Skoljka position")
+	_check(state.load_game() and state.current_planet == "skoljka" and state.player_position == state.SKOLJKA_ARRIVAL, "the Skoljka save loads back on the dock")
 	state.current_planet = "pomidor"
 	_check(not state.can_travel("chvarak"), "after the crash the transport no longer flies to Chvarak")
 	state.free()
@@ -975,6 +1011,7 @@ func _test_brudet_save(state) -> void:
 	schema_six["planet_positions"].erase("pomidor")
 	schema_six["planet_positions"].erase("chvarak")
 	schema_six["planet_positions"].erase("engineeria")
+	schema_six["planet_positions"].erase("skoljka")
 	schema_six.erase("legacy_camp_roster")
 	_check(state._valid_save(schema_six), "schema-six deployed Brudet team remains valid without schema-nine roster field")
 	var schema_six_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -997,6 +1034,7 @@ func _test_brudet_save(state) -> void:
 		schema_five["planet_positions"].erase("pomidor")
 		schema_five["planet_positions"].erase("chvarak")
 		schema_five["planet_positions"].erase("engineeria")
+		schema_five["planet_positions"].erase("skoljka")
 		schema_five["current_planet"] = "paprika"
 		schema_five["player_position"] = [830.0, 1368.0]
 		schema_five["planet_positions"]["paprika"] = [830.0, 1368.0]
@@ -1060,6 +1098,7 @@ func _test_road_save(state) -> void:
 	old_schema["planet_positions"].erase("pomidor")
 	old_schema["planet_positions"].erase("chvarak")
 	old_schema["planet_positions"].erase("engineeria")
+	old_schema["planet_positions"].erase("skoljka")
 	old_schema.erase("legacy_camp_roster")
 	_check(not state._valid_save(old_schema), "road cleanup cannot appear in a schema-six save")
 	var schema_seven: Dictionary = saved.duplicate(true)
@@ -1069,6 +1108,7 @@ func _test_road_save(state) -> void:
 	schema_seven["planet_positions"].erase("pomidor")
 	schema_seven["planet_positions"].erase("chvarak")
 	schema_seven["planet_positions"].erase("engineeria")
+	schema_seven["planet_positions"].erase("skoljka")
 	schema_seven.erase("camp_unlocked")
 	_check(state._valid_save(schema_seven), "schema-seven road save remains valid without the new camp unlock field")
 	var legacy_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1110,6 +1150,7 @@ func _test_solo_save(state) -> void:
 	old_schema["planet_positions"].erase("pomidor")
 	old_schema["planet_positions"].erase("chvarak")
 	old_schema["planet_positions"].erase("engineeria")
+	old_schema["planet_positions"].erase("skoljka")
 	old_schema.erase("camp_unlocked")
 	_check(not state._valid_save(old_schema), "new solo hacker bounty cannot appear in a schema-seven save")
 	state.start_new_game()
@@ -1130,6 +1171,7 @@ func _test_legacy_hacker_save(state) -> void:
 	legacy["planet_positions"].erase("pomidor")
 	legacy["planet_positions"].erase("chvarak")
 	legacy["planet_positions"].erase("engineeria")
+	legacy["planet_positions"].erase("skoljka")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"hacker_bounty": 0}
 	legacy["tracked_job_id"] = "hacker_bounty"
@@ -1157,6 +1199,7 @@ func _test_legacy_hacker_save(state) -> void:
 	defeated["planet_positions"].erase("pomidor")
 	defeated["planet_positions"].erase("chvarak")
 	defeated["planet_positions"].erase("engineeria")
+	defeated["planet_positions"].erase("skoljka")
 	defeated.erase("camp_unlocked")
 	defeated["defeated_persistent_enemies"] = ["hacker_forest"]
 	var old_file := FileAccess.open(GameStateScript.SAVE_PATH, FileAccess.WRITE)
@@ -1202,6 +1245,7 @@ func _test_legacy_brudet_hacker_save(state) -> void:
 	legacy["planet_positions"].erase("pomidor")
 	legacy["planet_positions"].erase("chvarak")
 	legacy["planet_positions"].erase("engineeria")
+	legacy["planet_positions"].erase("skoljka")
 	legacy.erase("camp_unlocked")
 	legacy["active_jobs"] = {"brudet_hacker_team": 0}
 	legacy["tracked_job_id"] = "brudet_hacker_team"
@@ -1243,6 +1287,7 @@ func _test_military_save(state) -> void:
 	old["planet_positions"].erase("pomidor")
 	old["planet_positions"].erase("chvarak")
 	old["planet_positions"].erase("engineeria")
+	old["planet_positions"].erase("skoljka")
 	for key in ["current_area", "military_barracks_position", "military_stage", "military_storage", "military_stored_equipment", "military_meal_credits", "military_cannon_hits", "military_trap_progress"]:
 		old.erase(key)
 	_check(state._valid_save(old), "schema-nine save validates with two planets")
@@ -1320,6 +1365,7 @@ func _test_military_save(state) -> void:
 		old_station_save["planet_positions"].erase("pomidor")
 		old_station_save["planet_positions"].erase("chvarak")
 		old_station_save["planet_positions"].erase("engineeria")
+		old_station_save["planet_positions"].erase("skoljka")
 		old_station_save["military_cannon_hits"] = ["cannon_target_0"]
 		for field in ["military_cannon_round_active", "military_cannon_phase", "military_trap_round_active", "military_trap_equipped", "military_trap_mine_position"]:
 			old_station_save.erase(field)

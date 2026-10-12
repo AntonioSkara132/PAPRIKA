@@ -38,6 +38,8 @@ var _attack_target: Node2D
 var _weapon_visual: Line2D
 ## Soldiers that hold a trench fire from where they stand instead of walking up to a target.
 var hold_ground := false
+## Optional room-sized chase limit for guards protecting nearby machinery.
+var guard_radius := 0.0
 var _march := PackedVector2Array()
 var _march_index := 0
 ## Walking route for Republic soldiers, so a chase goes round cliffs and walls.
@@ -169,6 +171,16 @@ func _physics_process(delta: float) -> void:
 		return
 	if target == null:
 		velocity = Vector2.ZERO
+		return
+	if guard_radius > 0.0 and (target.global_position.distance_to(spawn_position) > guard_radius or global_position.distance_to(spawn_position) > guard_radius):
+		state = State.RETURN
+		_attack_target = null
+		_sprite.modulate = _base_modulate()
+		if global_position.distance_to(spawn_position) > 5.0:
+			_move_toward(spawn_position, float(definition.get("speed", 35.0)))
+		else:
+			velocity = Vector2.ZERO
+		z_index = 100 + int(global_position.y)
 		return
 	var distance := global_position.distance_to(target.global_position)
 	_label.visible = distance < 92.0 or health < max_health
@@ -382,7 +394,7 @@ func _move_toward(target: Vector2, movement_speed: float) -> void:
 				velocity = Vector2.ZERO
 				return
 	var world := get_parent().get_parent() as GameWorld
-	if world != null and (enemy_id.begins_with("republic_") or relentless) and world.tiled_loader != null and global_position.distance_to(target) > 20.0:
+	if world != null and (enemy_id.begins_with("republic_") or relentless or guard_radius > 0.0) and world.tiled_loader != null and global_position.distance_to(target) > 20.0:
 		if _ground_repath_timer <= 0.0 or _ground_path.is_empty() or _ground_path[_ground_path.size() - 1].distance_to(target) > 16.0:
 			_ground_path = world.tiled_loader.get_walk_path(global_position, target)
 			# The first point is the centre of the current cell; walking back to it
@@ -416,7 +428,7 @@ func _choose_patrol() -> void:
 	state = State.PATROL
 
 func _is_river_monster() -> bool:
-	return enemy_id in ["finling", "lake_maw", "river_serpent"]
+	return enemy_id in ["finling", "lake_maw", "river_serpent", "sea_creature"]
 
 func _river_navigation() -> TiledLoader:
 	var world := get_parent().get_parent() as GameWorld

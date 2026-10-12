@@ -5,7 +5,7 @@
   "name": "engineeria_objects",
   "tilewidth": 176,
   "tileheight": 96,
-  "tilecount": 18,
+  "tilecount": 40,
   "columns": 0,
   "objectalignment": "bottomleft",
   "tiles": [
@@ -59,60 +59,192 @@
     },
     {
       "id": 8,
+      "image": "../assets/art/engineeria/port_gate.png",
+      "imagewidth": 20,
+      "imageheight": 46
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/engineeria/mine_entrance.png",
+      "imagewidth": 52,
+      "imageheight": 40
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/engineeria/lift_headframe.png",
+      "imagewidth": 48,
+      "imageheight": 76
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/engineeria/maintenance_shed.png",
+      "imagewidth": 60,
+      "imageheight": 50
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/engineeria/dispatch_engine.png",
+      "imagewidth": 124,
+      "imageheight": 78
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/engineeria/ore_pile.png",
+      "imagewidth": 28,
+      "imageheight": 18
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/engineeria/ore_cart.png",
+      "imagewidth": 22,
+      "imageheight": 18
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/engineeria/supply_crates.png",
+      "imagewidth": 24,
+      "imageheight": 22
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/engineeria/lamp_post.png",
+      "imagewidth": 10,
+      "imageheight": 32
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/engineeria/ore_ship.png",
+      "imagewidth": 144,
+      "imageheight": 72
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/engineeria/port_foreman.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/engineeria/port_captain.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/engineeria/port_dispatcher.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/engineeria/port_gatekeeper.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/engineeria/port_resident_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/engineeria/port_resident_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/engineeria/port_miner_0.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/engineeria/port_miner_1.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/engineeria/port_miner_2.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/engineeria/port_miner_3.png",
+      "imagewidth": 18,
+      "imageheight": 26
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/engineeria/bunkhouse_0.png",
+      "imagewidth": 66,
+      "imageheight": 50
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/engineeria/bunkhouse_1.png",
+      "imagewidth": 66,
+      "imageheight": 50
+    },
+    {
+      "id": 30,
       "image": "../assets/art/engineeria/broadleaf_0.png",
       "imagewidth": 44,
       "imageheight": 54
     },
     {
-      "id": 9,
+      "id": 31,
       "image": "../assets/art/pomidor/envoy_0_lying.png",
       "imagewidth": 26,
       "imageheight": 20
     },
     {
-      "id": 10,
+      "id": 32,
       "image": "../assets/art/engineeria/broadleaf_1.png",
       "imagewidth": 44,
       "imageheight": 54
     },
     {
-      "id": 11,
+      "id": 33,
       "image": "../assets/art/pomidor/envoy_1_lying.png",
       "imagewidth": 26,
       "imageheight": 20
     },
     {
-      "id": 12,
+      "id": 34,
       "image": "../assets/art/engineeria/broadleaf_2.png",
       "imagewidth": 52,
       "imageheight": 62
     },
     {
-      "id": 13,
+      "id": 35,
       "image": "../assets/art/pomidor/envoy_2_lying.png",
       "imagewidth": 26,
       "imageheight": 20
     },
     {
-      "id": 14,
+      "id": 36,
       "image": "../assets/art/engineeria/bush_0.png",
       "imagewidth": 22,
       "imageheight": 16
     },
     {
-      "id": 15,
+      "id": 37,
       "image": "../assets/art/engineeria/debris_0.png",
       "imagewidth": 22,
       "imageheight": 14
     },
     {
-      "id": 16,
+      "id": 38,
       "image": "../assets/art/engineeria/bush_1.png",
       "imagewidth": 22,
       "imageheight": 16
     },
     {
-      "id": 17,
+      "id": 39,
       "image": "../assets/art/engineeria/debris_1.png",
       "imagewidth": 22,
       "imageheight": 14

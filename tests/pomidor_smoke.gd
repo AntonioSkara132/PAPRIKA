@@ -148,11 +148,13 @@ func _run() -> void:
 	old["planet_positions"].erase("pomidor")
 	old["planet_positions"].erase("chvarak")
 	old["planet_positions"].erase("engineeria")
+	old["planet_positions"].erase("skoljka")
 	_check(state._valid_save(old), "a schema-11 save without Pomidor is still valid")
 	var before_embassy: Dictionary = saved.duplicate(true)
 	before_embassy["schema"] = state.POMIDOR_SAVE_SCHEMA
 	before_embassy["planet_positions"].erase("chvarak")
 	before_embassy["planet_positions"].erase("engineeria")
+	before_embassy["planet_positions"].erase("skoljka")
 	_check(state._valid_save(before_embassy), "a schema-12 save on Pomidor without Chvarak and Engineeria is still valid")
 	var on_chvarak: Dictionary = before_embassy.duplicate(true)
 	on_chvarak["current_planet"] = "chvarak"

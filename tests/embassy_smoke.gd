@@ -144,7 +144,9 @@ func _pomidor() -> bool:
 	_check(town.council_person("member_pomidor_0").get_node_or_null("SpeakerMark") != null, "the speaker has a marker over their head")
 	ui.advance_scene()
 	_check(ui.scene_speaker_label.text.contains("Secretary of Law") and town.council_person("secretary_law").get_node_or_null("SpeakerMark") != null, "the marker moves to the Secretary of Law")
-	_check(_scene_text().contains("Julius"), "the Secretary of Law names Julius's organisation")
+	_check(_scene_text().contains("Julius") and _scene_text().contains("friends in this Council") and _scene_text().contains("war, not an arrest"), "the Secretary of Law treats an open attack on Julius as a war")
+	ui.advance_scene()
+	_check(ui.scene_speaker_label.text.contains("Rosa Pelat") and _scene_text().contains("Nobody here is proposing a war with Julius"), "the Council refuses an open fight with Julius")
 	var said := ""
 	while ui.scene_lines_left() > 0:
 		said += _scene_text() + "\n"
@@ -257,7 +259,7 @@ func _chvarak() -> bool:
 	port.advance_flight(ChvarakWorld.ALARM_SECONDS + 0.5)
 	_check(port.ambushers().size() == 2 and ui.job_label.text.contains("hatch"), "the alarm sounds and two hackers come through the hatch")
 	_check(port.ambushers().all(func(e: Enemy) -> bool: return e.persistent_id.begins_with("story_ambush_") and port.on_ship(e.global_position)), "the hackers board inside the ship")
-	_check(port.ambushers().all(func(e: Enemy) -> bool: return int(e.definition["damage"]) == ChvarakWorld.AMBUSH_DAMAGE[e.enemy_id] and int(GameData.enemy(e.enemy_id)["damage"]) > int(e.definition["damage"])), "the boarding hackers hit softer than Paprika's hacker")
+	_check(port.ambushers().all(func(e: Enemy) -> bool: return int(e.definition["damage"]) == int(ChvarakWorld.AMBUSH_STATS[e.enemy_id]["damage"]) and int(e.definition["damage"]) > int(GameData.enemy(e.enemy_id)["damage"]) and e.max_health == int(ChvarakWorld.AMBUSH_STATS[e.enemy_id]["max_health"])), "the boarding hackers are stronger than the hackers on Paprika and Brudet")
 	port.advance_flight(14.0)
 	_check(port.ambushers().size() >= 3 and port.ambushers().any(func(e: Enemy) -> bool: return e.enemy_id == "phase_hacker"), "the second group brings a phase hacker")
 
@@ -424,11 +426,11 @@ func _engineeria() -> bool:
 		await get_tree().physics_frame
 		if ui.scene_playing():
 			break
-	_check(ui.scene_playing() and _scene_has_line("Engineeria") and _scene_has_line("Iskra") and _scene_has_line("doesn't ask"), "Davor introduces himself, names Engineeria and Iskra, and asks nothing about the letters")
+	_check(ui.scene_playing() and _scene_has_line("Rudnik") and _scene_has_line("Engineeria") and _scene_has_line("Iskra") and _scene_has_line("port") and _scene_has_line("doesn't ask"), "Davor introduces himself, names Rudnik, Engineeria, Iskra and the port, and asks nothing about the letters")
 	_check(String(ui._scene_lines[1]["speaker"]) == "Old Man" and String(ui._scene_lines[2]["speaker"]) == "Davor", "he is the old man until he gives his name")
 	_end_scene()
 	_check(state.defeated_persistent_enemies.has(EngineeriaWorld.DAVOR_FLAG) and davor.order == "follow" and davor.is_in_group("party_target"), "Davor joins and follows the player")
-	_check(ui.location_label.text == "ENGINEERIA" and ui.job_label.text.contains("Travel to Iskra with Davor"), "the title names Engineeria and the objective is the road to Iskra")
+	_check(ui.location_label.text == "RUDNIK" and ui.job_label.text.contains("mining port"), "the title names Rudnik and the objective is the road to the mining port")
 	_check((davor.get_node("NameLabel") as Label).text == "Davor  Lv.8" and player.respawn_location_name == "Davor's house", "his label gives his name and being downed now wakes the player at his house")
 
 	# Davor leaps the ledge rather than walk round by the ramp.
@@ -468,6 +470,232 @@ func _engineeria() -> bool:
 	var loaded_davor := forest.davor()
 	_check(loaded_davor != null and loaded_davor.order == "follow" and loaded_davor.global_position.distance_to(player.global_position) < 48.0, "loading keeps Davor at the player's side")
 	_check(player.global_position.distance_to(Vector2(60 * 16, 30 * 16)) < 24.0 and not forest.chasing() and forest.beasts().is_empty(), "loading keeps the player where they saved and the chase stays over")
+	_leap_limits(forest)
+	return await _rudnik_port(forest)
+
+## Davor's leap over obstacles of one to six tiles, built on open paving in the port.
+func _leap_limits(forest: EngineeriaWorld) -> void:
+	var loader := forest.tiled_loader
+	var davor := forest.davor()
+	var grid := loader._navigation
+	var row := 23
+	var open := range(126, 142).all(func(x: int) -> bool: return range(row - 1, row + 2).all(func(y: int) -> bool: return not grid.is_point_solid(Vector2i(x, y))))
+	_check(open, "the test ground in the port is open paving")
+	if not open:
+		return
+	var start := Vector2(128 * 16 + 4, row * 16 + 8)
+	var spans_ok := true
+	var too_wide := false
+	for width in range(1, 7):
+		var cells: Array[Vector2i] = []
+		for x in range(130, 130 + width):
+			for y in range(row - 1, row + 2):
+				cells.append(Vector2i(x, y))
+				grid.set_point_solid(Vector2i(x, y), true)
+		davor.global_position = start
+		var target := Vector2((130 + width + 1) * 16 + 8, row * 16 + 8)
+		var landing := davor.leap_landing(target)
+		if width <= RaidSoldier.LEAP_MAX_CELLS:
+			spans_ok = spans_ok and landing.is_finite() and landing.x >= (130 + width) * 16 and loader.is_walkable_position(landing) and absf(landing.y - start.y) < 1.0
+		else:
+			too_wide = not landing.is_finite()
+		for cell in cells:
+			grid.set_point_solid(cell, false)
+	_check(spans_ok, "Davor can leap obstacles one to five tiles wide, landing on open ground past them")
+	# Three tiles, then a one-tile pocket boxed in by blocked tiles, then open ground.
+	var boxed: Array[Vector2i] = [Vector2i(133, row - 1), Vector2i(133, row + 1), Vector2i(134, row - 1), Vector2i(134, row), Vector2i(134, row + 1)]
+	for x in range(130, 133):
+		for y in range(row - 1, row + 2):
+			boxed.append(Vector2i(x, y))
+	for cell in boxed:
+		grid.set_point_solid(cell, true)
+	davor.global_position = start
+	var past_pocket := davor.leap_landing(Vector2(137 * 16 + 8, row * 16 + 8))
+	_check(past_pocket.is_finite() and past_pocket.x >= 135 * 16, "Davor does not land in a pocket cut off from where he is going, and jumps on past it")
+	# The ground past the pocket blocked as well: more than five tiles in all.
+	var further: Array[Vector2i] = []
+	for x in range(135, 137):
+		for y in range(row - 1, row + 2):
+			further.append(Vector2i(x, y))
+			grid.set_point_solid(Vector2i(x, y), true)
+	_check(not davor.leap_landing(Vector2(139 * 16 + 8, row * 16 + 8)).is_finite(), "Davor finds no landing when the blocked ground runs on past five tiles")
+	for cell in boxed + further:
+		grid.set_point_solid(cell, false)
+	_check(too_wide, "Davor cannot leap an obstacle six tiles wide")
+	_check(not davor.leap_landing(start + Vector2(64, 0)).is_finite(), "Davor finds no leap when the straight line is clear")
+
+func _rudnik_port(forest: EngineeriaWorld) -> bool:
+	var loader := forest.tiled_loader
+	var player := forest.player
+	var davor := forest.davor()
+	# The wall has no gap, and walking cannot get from the road into the port.
+	var tile := 16
+	var wall_whole := true
+	for x in range(106, 146):
+		for y in [4, 43]:
+			wall_whole = wall_whole and not loader.is_walkable_position(Vector2(x * tile + 8, y * tile + 8))
+	for y in range(4, 44):
+		for x in [106, 145]:
+			wall_whole = wall_whole and not loader.is_walkable_position(Vector2(x * tile + 8, y * tile + 8))
+	_check(wall_whole, "the port wall is unbroken all the way round")
+	_check(loader.get_walk_path(EngineeriaWorld.GATE_OUTSIDE, EngineeriaWorld.GATE_INSIDE).is_empty() and loader.is_walkable_position(EngineeriaWorld.GATE_OUTSIDE) and loader.is_walkable_position(EngineeriaWorld.GATE_INSIDE), "walking cannot get through the gate; both of its sides are open ground")
+	var road := loader.get_walk_path(EngineeriaWorld.YARD_GATE, EngineeriaWorld.GATE_OUTSIDE)
+	_check(not road.is_empty() and road[-1].distance_to(EngineeriaWorld.GATE_OUTSIDE) < 20.0, "the road leads from Davor's yard to the port gate")
+	for id in ["rudnik_lift", "rudnik_shed", "rudnik_dispatch", "rudnik_ore_ship"]:
+		_check(_service(forest, id) != null and loader.is_walkable_position(_service(forest, id).get_interaction_position()), "%s can be reached on foot" % id)
+	for key in EngineeriaWorld.STORY_PEOPLE:
+		_check(forest.story_person(key) != null and forest.in_port(forest.story_person(key).global_position), "%s is inside the port" % EngineeriaWorld.STORY_PEOPLE[key])
+	_check(["miner_0", "miner_1", "miner_2", "miner_3"].all(func(k: String) -> bool: return not forest.story_person(k).visible), "the trapped miners are not in the yard yet")
+	var prowlers := forest.prowlers()
+	_check(prowlers.size() == EngineeriaWorld.PROWLER_CELLS.size() and prowlers.all(func(b: Enemy) -> bool: return not b.relentless and not forest.in_port(b.global_position) and loader.is_walkable_position(b.global_position)), "beasts prowl the forest outside the wall")
+	_check(forest.story_status_text().contains("Ring the bell"), "the objective is to ring the bell at the gate")
+
+	# The gatekeeper lets the player in, and Davor jumps the wall after them.
+	player.global_position = EngineeriaWorld.GATE_OUTSIDE
+	davor.global_position = _open_point_near(loader, EngineeriaWorld.GATE_OUTSIDE + Vector2(-30, 10))
+	player._update_nearest_interactable()
+	_check(player._current_interactable == forest.gate_bell(), "the gate bell can be rung from the road")
+	_interact(player)
+	_check(ui.scene_playing() and _scene_has_line("Zora") and _scene_has_line("four of ours"), "the gatekeeper tells them about the trapped miners")
+	_end_scene()
+	_check(forest.in_port(player.global_position) and state.defeated_persistent_enemies.has(EngineeriaWorld.PORT_FLAG) and ui.location_label.text == "RUDNIK PORT", "the player is let in and the title names the port")
+	_check(player.respawn_location_name == "the Rudnik port gate", "being downed now wakes the player inside the gate")
+	var jumped := false
+	for frame in 300:
+		player._invulnerability = 1.0
+		await get_tree().physics_frame
+		jumped = jumped or davor.leaping()
+		if jumped and not davor.leaping() and forest.in_port(davor.global_position):
+			break
+	_check(jumped and forest.in_port(davor.global_position) and loader.is_walkable_position(davor.global_position), "Davor jumps the wall and lands inside the port")
+
+	# A beast at the wall cannot follow the player in.
+	var beast := Enemy.new()
+	beast.configure("forest_beast", EngineeriaWorld.BEAST_TEXTURE, EngineeriaWorld.GATE_OUTSIDE + Vector2(-20, 0), "story_test_beast")
+	beast.relentless = true
+	forest.actors_root.add_child(beast)
+	var prowler := prowlers[0]
+	prowler.global_position = EngineeriaWorld.GATE_OUTSIDE + Vector2(-8, 20)
+	prowler.spawn_position = prowler.global_position
+	davor.set_order("hold")
+	davor.hold_point = davor.global_position
+	davor.fights = false
+	var got_in := false
+	for frame in 360:
+		player._invulnerability = 1.0
+		await get_tree().physics_frame
+		got_in = got_in or (is_instance_valid(beast) and forest.in_port(beast.global_position)) or (is_instance_valid(prowler) and forest.in_port(prowler.global_position))
+	_check(not got_in and is_instance_valid(beast) and beast.global_position.distance_to(EngineeriaWorld.GATE_OUTSIDE) < 80.0, "beasts at the gate cannot get into the port")
+	beast.queue_free()
+	davor.fights = true
+	davor.set_order("follow")
+
+	# The lever lets the player out, and the bell back in without the scene again.
+	player.global_position = EngineeriaWorld.GATE_INSIDE
+	player._update_nearest_interactable()
+	_check(player._current_interactable == forest.gate_lever(), "the gate lever can be pulled from inside")
+	_interact(player)
+	_check(not forest.in_port(player.global_position) and player.global_position.distance_to(EngineeriaWorld.GATE_OUTSIDE) < 1.0, "the lever puts the player outside the wall")
+	forest.ring_gate_bell()
+	_check(not ui.scene_playing() and player.global_position.distance_to(EngineeriaWorld.GATE_INSIDE) < 1.0, "the bell lets them back in without the scene again")
+
+	# Before the rescue the ship stays shut and the captain takes no one.
+	_talk(forest, "captain")
+	_check(ui.scene_playing() and _scene_has_line("No passengers"), "the captain takes no passengers before the rescue")
+	_end_scene()
+	_check(_interact_service(forest, "rudnik_ore_ship") and ui.scene_playing() and _scene_has_line("sealed"), "the ore ship's hatch is sealed")
+	_end_scene()
+	_check(_interact_service(forest, "rudnik_shed") and ui.scene_playing() and _scene_has_line("don't know"), "the shed gives nothing before the lift is inspected")
+	_end_scene()
+	_check(int(state.inventory.get("winch_gear", 0)) == 0, "no gear is taken before the lift is inspected")
+
+	# Inspect the lift, fetch the gear, repair the winch.
+	_check(_interact_service(forest, "rudnik_lift") and ui.scene_playing() and _scene_has_line("drive gear") and _scene_has_line("maintenance shed"), "the lift shows the stripped gear and Zora asks for the spare")
+	_end_scene()
+	_check(state.defeated_persistent_enemies.has(EngineeriaWorld.LIFT_FLAG) and ui.job_label.text.contains("maintenance shed"), "the objective is the maintenance shed")
+	_check(_interact_service(forest, "rudnik_shed"), "the shed can be searched")
+	_end_scene()
+	_check(int(state.inventory.get("winch_gear", 0)) == 1 and state.defeated_persistent_enemies.has(EngineeriaWorld.GEAR_FLAG), "the player takes the winch gear")
+	_interact_service(forest, "rudnik_shed")
+	_end_scene()
+	_check(int(state.inventory.get("winch_gear", 0)) == 1, "the shed gives only one gear")
+	_check(_interact_service(forest, "rudnik_lift") and _scene_has_line("drive the new one home"), "the gear is fitted to the winch")
+	_end_scene()
+	_check(int(state.inventory.get("winch_gear", 0)) == 0 and state.defeated_persistent_enemies.has(EngineeriaWorld.WINCH_FLAG) and ui.job_label.text.contains("0 of 2"), "the gear is used and the objective is two trips of the lift")
+
+	# A trip fails when the player walks away or lets the brake slip.
+	_interact_service(forest, "rudnik_lift")
+	_check(forest.trip_running(), "the winch starts a trip")
+	var lift_point := player.global_position
+	player.global_position = _open_point_near(loader, lift_point + Vector2(0, 120))
+	forest.advance_trip(1.0)
+	_check(not forest.trip_running() and not state.defeated_persistent_enemies.has(EngineeriaWorld.TRIP_FLAG), "walking away from the winch drops the cage back down")
+	_interact_service(forest, "rudnik_lift")
+	forest.advance_trip(EngineeriaWorld.BRAKE_AT + 0.25)
+	_check(forest.brake_slipping() and ui.job_label.text.contains("brake"), "halfway up the brake slips")
+	forest.advance_trip(EngineeriaWorld.BRAKE_SECONDS + 0.5)
+	_check(not forest.trip_running() and not state.defeated_persistent_enemies.has(EngineeriaWorld.TRIP_FLAG), "a brake left slipping drops the cage back down")
+
+	# Two good trips bring the four miners up.
+	var gold_before := state.gold
+	_interact_service(forest, "rudnik_lift")
+	forest.advance_trip(EngineeriaWorld.BRAKE_AT + 0.25)
+	_interact_service(forest, "rudnik_lift")
+	_check(forest.trip_running() and not forest.brake_slipping(), "holding the brake at the winch keeps the cage climbing")
+	forest.advance_trip(EngineeriaWorld.TRIP_SECONDS)
+	_check(state.defeated_persistent_enemies.has(EngineeriaWorld.TRIP_FLAG) and forest.story_person("miner_0").visible and forest.story_person("miner_1").visible and not forest.story_person("miner_2").visible, "the first trip brings up two miners")
+	_end_scene()
+	_check(state.gold == gold_before and ui.job_label.text.contains("1 of 2"), "the first trip pays nothing yet")
+
+	# A save between trips keeps the first trip; being downed wakes the player inside the gate.
+	forest.capture_player_position()
+	state.remember_player_position(state.player_position)
+	_check(state.save_game(), "saving between trips succeeds")
+	_quick_load()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(forest.story_person("miner_1").visible and not forest.story_person("miner_2").visible and not forest.trip_running() and forest.davor() != null, "loading keeps the first trip and Davor")
+	player._invulnerability = 0.0
+	player.take_damage(9999, player.global_position)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(player.global_position.distance_to(EngineeriaWorld.GATE_INSIDE) < 4.0 and forest.in_port(player.global_position), "being downed in the port wakes the player inside the gate")
+
+	_interact_service(forest, "rudnik_lift")
+	forest.advance_trip(EngineeriaWorld.BRAKE_AT + 0.25)
+	_interact_service(forest, "rudnik_lift")
+	forest.advance_trip(EngineeriaWorld.TRIP_SECONDS)
+	_check(state.defeated_persistent_enemies.has(EngineeriaWorld.RESCUED_FLAG) and ["miner_0", "miner_1", "miner_2", "miner_3"].all(func(k: String) -> bool: return forest.story_person(k).visible), "the second trip brings up the last two")
+	_check(state.gold == gold_before + EngineeriaWorld.RESCUE_REWARD and _scene_has_line("All four"), "Zora pays the rescue reward")
+	_end_scene()
+	forest._finish_trip()
+	forest.start_trip()
+	_end_scene()
+	_check(state.gold == gold_before + EngineeriaWorld.RESCUE_REWARD and not forest.trip_running(), "the reward is paid once and the lift does no more trips")
+
+	# The captain promises two seats, and the ore ship then offers to sail.
+	_talk(forest, "captain")
+	_check(ui.scene_playing() and _scene_has_line("Two seats") and _scene_has_line("Skoljka"), "the captain promises two seats as far as Skoljka")
+	_end_scene()
+	_check(state.defeated_persistent_enemies.has(EngineeriaWorld.PASSAGE_FLAG) and ui.job_label.text.contains("Board the ore ship"), "passage is earned and the objective points at the ore ship")
+	_check(_interact_service(forest, "rudnik_ore_ship") and ui.scene_playing(), "E at the ore ship asks to sail")
+	_skip_to_choices()
+	_check(_scene_choice_labels() == ["Sail on the ore ship", "Not yet"], "the ore ship offers Sail and Not yet")
+	_choose("Not yet")
+	_end_scene()
+	_check(state.current_planet == "engineeria" and game.world == forest and not state.defeated_persistent_enemies.has(EngineeriaWorld.SAILED_FLAG), "Not yet keeps the player on Rudnik")
+	_talk(forest, "captain")
+	_end_scene()
+	_check(state.gold == gold_before + EngineeriaWorld.RESCUE_REWARD, "talking to the captain again changes nothing")
+
+	# The finished rescue survives a save and load.
+	forest.capture_player_position()
+	state.remember_player_position(state.player_position)
+	_check(state.save_game(), "saving after the rescue succeeds")
+	_quick_load()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(forest.story_person("miner_3").visible and state.defeated_persistent_enemies.has(EngineeriaWorld.PASSAGE_FLAG) and forest.in_port(player.global_position), "loading keeps the rescue and the passage")
 	return true
 
 # ---- helpers ----

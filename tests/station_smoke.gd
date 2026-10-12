@@ -638,6 +638,7 @@ func _check_migration() -> void:
 	old["planet_positions"].erase("pomidor")
 	old["planet_positions"].erase("chvarak")
 	old["planet_positions"].erase("engineeria")
+	old["planet_positions"].erase("skoljka")
 	for field in ["current_area", "military_barracks_position", "military_stage", "military_storage", "military_stored_equipment", "military_meal_credits", "military_cannon_hits", "military_trap_progress"]:
 		old.erase(field)
 	_check(state._valid_save(old), "pre-station schema-eight save still validates with only two planets")

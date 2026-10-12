@@ -1,0 +1,3137 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "name": "iskra_objects",
+  "tilewidth": 4400,
+  "tileheight": 2600,
+  "tilecount": 521,
+  "columns": 0,
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/iskra/ground.png",
+      "imagewidth": 2200,
+      "imageheight": 1300
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/iskra/sprite_0000.png",
+      "imagewidth": 236,
+      "imageheight": 262
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/iskra/sprite_0001.png",
+      "imagewidth": 52,
+      "imageheight": 108
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/iskra/sprite_0002.png",
+      "imagewidth": 52,
+      "imageheight": 108
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/iskra/sprite_0003.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/iskra/sprite_0004.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/iskra/npcs/tower_guard.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/iskra/sprite_0009.png",
+      "imagewidth": 132,
+      "imageheight": 112
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/iskra/sprite_0010.png",
+      "imagewidth": 124,
+      "imageheight": 92
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/iskra/sprite_0011.png",
+      "imagewidth": 84,
+      "imageheight": 64
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/iskra/sprite_0012.png",
+      "imagewidth": 84,
+      "imageheight": 64
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/iskra/sprite_0013.png",
+      "imagewidth": 120,
+      "imageheight": 74
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/iskra/sprite_0014.png",
+      "imagewidth": 150,
+      "imageheight": 96
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/iskra/sprite_0015.png",
+      "imagewidth": 150,
+      "imageheight": 96
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/iskra/sprite_0016.png",
+      "imagewidth": 64,
+      "imageheight": 112
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/iskra/sprite_0017.png",
+      "imagewidth": 64,
+      "imageheight": 112
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/iskra/sprite_0018.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/iskra/sprite_0019.png",
+      "imagewidth": 88,
+      "imageheight": 76
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/iskra/sprite_0020.png",
+      "imagewidth": 84,
+      "imageheight": 52
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/iskra/sprite_0021.png",
+      "imagewidth": 120,
+      "imageheight": 52
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/iskra/sprite_0022.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/iskra/sprite_0023.png",
+      "imagewidth": 96,
+      "imageheight": 64
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/iskra/sprite_0024.png",
+      "imagewidth": 18,
+      "imageheight": 10
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/iskra/sprite_0025.png",
+      "imagewidth": 18,
+      "imageheight": 10
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/iskra/sprite_0026.png",
+      "imagewidth": 18,
+      "imageheight": 10
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/iskra/sprite_0027.png",
+      "imagewidth": 104,
+      "imageheight": 122
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/iskra/sprite_0028.png",
+      "imagewidth": 78,
+      "imageheight": 78
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/iskra/sprite_0029.png",
+      "imagewidth": 184,
+      "imageheight": 192
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/iskra/sprite_0030.png",
+      "imagewidth": 184,
+      "imageheight": 162
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/iskra/sprite_0031.png",
+      "imagewidth": 134,
+      "imageheight": 142
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/iskra/sprite_0032.png",
+      "imagewidth": 46,
+      "imageheight": 18
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/iskra/npcs/dock_mechanic.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/iskra/sprite_0036.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/iskra/sprite_0037.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/iskra/sprite_0038.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/iskra/sprite_0039.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/iskra/sprite_0040.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/iskra/sprite_0041.png",
+      "imagewidth": 48,
+      "imageheight": 46
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/iskra/npcs/greenhouse_worker.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/iskra/npcs/library_archivist.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/iskra/npcs/civic_engineer.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/iskra/npcs/market_keeper.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/iskra/npcs/sky_courier.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/iskra/npcs/canal_worker.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/iskra/npcs/night_watch.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/iskra/sprite_0053.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/iskra/sprite_0057.png",
+      "imagewidth": 32,
+      "imageheight": 15
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/iskra/sprite_0058.png",
+      "imagewidth": 18,
+      "imageheight": 18
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/iskra/sprite_0059.png",
+      "imagewidth": 6,
+      "imageheight": 6
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/iskra/sprite_0060.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/iskra/sprite_0061.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/iskra/sprite_0062.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/iskra/sprite_0063.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/iskra/sprite_0064.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/iskra/sprite_0065.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/iskra/sprite_0066.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/iskra/sprite_0067.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/iskra/sprite_0068.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/iskra/sprite_0069.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/iskra/sprite_0070.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/iskra/sprite_0071.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/iskra/sprite_0072.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/iskra/sprite_0073.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/iskra/sprite_0074.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/iskra/sprite_0075.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/iskra/sprite_0076.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/iskra/sprite_0077.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/iskra/sprite_0078.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/iskra/sprite_0079.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/iskra/sprite_0080.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/iskra/sprite_0081.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/iskra/sprite_0082.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/iskra/sprite_0083.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/iskra/sprite_0084.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/iskra/sprite_0085.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/iskra/sprite_0086.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/iskra/sprite_0087.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/iskra/sprite_0088.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 78,
+      "image": "../assets/art/iskra/sprite_0089.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 79,
+      "image": "../assets/art/iskra/sprite_0090.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 80,
+      "image": "../assets/art/iskra/sprite_0091.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 81,
+      "image": "../assets/art/iskra/sprite_0092.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 82,
+      "image": "../assets/art/iskra/sprite_0093.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 83,
+      "image": "../assets/art/iskra/sprite_0094.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 84,
+      "image": "../assets/art/iskra/sprite_0095.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 85,
+      "image": "../assets/art/iskra/sprite_0096.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 86,
+      "image": "../assets/art/iskra/sprite_0097.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 87,
+      "image": "../assets/art/iskra/sprite_0098.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 88,
+      "image": "../assets/art/iskra/sprite_0099.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 89,
+      "image": "../assets/art/iskra/sprite_0100.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 90,
+      "image": "../assets/art/iskra/sprite_0101.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 91,
+      "image": "../assets/art/iskra/sprite_0102.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 92,
+      "image": "../assets/art/iskra/sprite_0103.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 93,
+      "image": "../assets/art/iskra/sprite_0104.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 94,
+      "image": "../assets/art/iskra/sprite_0105.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 95,
+      "image": "../assets/art/iskra/sprite_0106.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 96,
+      "image": "../assets/art/iskra/sprite_0107.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 97,
+      "image": "../assets/art/iskra/sprite_0108.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 98,
+      "image": "../assets/art/iskra/sprite_0109.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 99,
+      "image": "../assets/art/iskra/sprite_0110.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 100,
+      "image": "../assets/art/iskra/sprite_0111.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 101,
+      "image": "../assets/art/iskra/sprite_0112.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 102,
+      "image": "../assets/art/iskra/sprite_0113.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 103,
+      "image": "../assets/art/iskra/sprite_0114.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 104,
+      "image": "../assets/art/iskra/sprite_0115.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 105,
+      "image": "../assets/art/iskra/sprite_0116.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 106,
+      "image": "../assets/art/iskra/sprite_0117.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 107,
+      "image": "../assets/art/iskra/sprite_0118.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 108,
+      "image": "../assets/art/iskra/sprite_0119.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 109,
+      "image": "../assets/art/iskra/sprite_0120.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 110,
+      "image": "../assets/art/iskra/sprite_0121.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 111,
+      "image": "../assets/art/iskra/sprite_0122.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 112,
+      "image": "../assets/art/iskra/sprite_0123.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 113,
+      "image": "../assets/art/iskra/sprite_0124.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 114,
+      "image": "../assets/art/iskra/sprite_0125.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 115,
+      "image": "../assets/art/iskra/sprite_0126.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 116,
+      "image": "../assets/art/iskra/sprite_0127.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 117,
+      "image": "../assets/art/iskra/sprite_0128.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 118,
+      "image": "../assets/art/iskra/sprite_0129.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 119,
+      "image": "../assets/art/iskra/sprite_0130.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 120,
+      "image": "../assets/art/iskra/sprite_0131.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 121,
+      "image": "../assets/art/iskra/sprite_0132.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 122,
+      "image": "../assets/art/iskra/sprite_0133.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 123,
+      "image": "../assets/art/iskra/sprite_0134.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 124,
+      "image": "../assets/art/iskra/sprite_0135.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 125,
+      "image": "../assets/art/iskra/sprite_0136.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 126,
+      "image": "../assets/art/iskra/sprite_0137.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 127,
+      "image": "../assets/art/iskra/sprite_0138.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 128,
+      "image": "../assets/art/iskra/sprite_0139.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 129,
+      "image": "../assets/art/iskra/sprite_0140.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 130,
+      "image": "../assets/art/iskra/sprite_0141.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 131,
+      "image": "../assets/art/iskra/sprite_0142.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 132,
+      "image": "../assets/art/iskra/sprite_0143.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 133,
+      "image": "../assets/art/iskra/sprite_0144.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 134,
+      "image": "../assets/art/iskra/sprite_0145.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 135,
+      "image": "../assets/art/iskra/sprite_0146.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 136,
+      "image": "../assets/art/iskra/sprite_0147.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 137,
+      "image": "../assets/art/iskra/sprite_0148.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 138,
+      "image": "../assets/art/iskra/sprite_0149.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 139,
+      "image": "../assets/art/iskra/sprite_0150.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 140,
+      "image": "../assets/art/iskra/sprite_0151.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 141,
+      "image": "../assets/art/iskra/sprite_0152.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 142,
+      "image": "../assets/art/iskra/sprite_0153.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 143,
+      "image": "../assets/art/iskra/sprite_0154.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 144,
+      "image": "../assets/art/iskra/sprite_0155.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 145,
+      "image": "../assets/art/iskra/sprite_0156.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 146,
+      "image": "../assets/art/iskra/sprite_0157.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 147,
+      "image": "../assets/art/iskra/sprite_0158.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 148,
+      "image": "../assets/art/iskra/sprite_0159.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 149,
+      "image": "../assets/art/iskra/sprite_0160.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 150,
+      "image": "../assets/art/iskra/sprite_0161.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 151,
+      "image": "../assets/art/iskra/sprite_0162.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 152,
+      "image": "../assets/art/iskra/sprite_0163.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 153,
+      "image": "../assets/art/iskra/sprite_0164.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 154,
+      "image": "../assets/art/iskra/sprite_0165.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 155,
+      "image": "../assets/art/iskra/sprite_0166.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 156,
+      "image": "../assets/art/iskra/sprite_0167.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 157,
+      "image": "../assets/art/iskra/sprite_0168.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 158,
+      "image": "../assets/art/iskra/sprite_0169.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 159,
+      "image": "../assets/art/iskra/sprite_0170.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 160,
+      "image": "../assets/art/iskra/sprite_0171.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 161,
+      "image": "../assets/art/iskra/sprite_0172.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 162,
+      "image": "../assets/art/iskra/sprite_0173.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 163,
+      "image": "../assets/art/iskra/sprite_0174.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 164,
+      "image": "../assets/art/iskra/sprite_0175.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 165,
+      "image": "../assets/art/iskra/sprite_0176.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 166,
+      "image": "../assets/art/iskra/sprite_0177.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 167,
+      "image": "../assets/art/iskra/sprite_0178.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 168,
+      "image": "../assets/art/iskra/sprite_0179.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 169,
+      "image": "../assets/art/iskra/sprite_0180.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 170,
+      "image": "../assets/art/iskra/sprite_0181.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 171,
+      "image": "../assets/art/iskra/sprite_0182.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 172,
+      "image": "../assets/art/iskra/sprite_0183.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 173,
+      "image": "../assets/art/iskra/sprite_0184.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 174,
+      "image": "../assets/art/iskra/sprite_0185.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 175,
+      "image": "../assets/art/iskra/sprite_0186.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 176,
+      "image": "../assets/art/iskra/sprite_0187.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 177,
+      "image": "../assets/art/iskra/sprite_0188.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 178,
+      "image": "../assets/art/iskra/sprite_0189.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 179,
+      "image": "../assets/art/iskra/sprite_0190.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 180,
+      "image": "../assets/art/iskra/sprite_0191.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 181,
+      "image": "../assets/art/iskra/sprite_0192.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 182,
+      "image": "../assets/art/iskra/sprite_0193.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 183,
+      "image": "../assets/art/iskra/sprite_0194.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 184,
+      "image": "../assets/art/iskra/sprite_0195.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 185,
+      "image": "../assets/art/iskra/sprite_0196.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 186,
+      "image": "../assets/art/iskra/sprite_0197.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 187,
+      "image": "../assets/art/iskra/sprite_0198.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 188,
+      "image": "../assets/art/iskra/sprite_0199.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 189,
+      "image": "../assets/art/iskra/sprite_0200.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 190,
+      "image": "../assets/art/iskra/sprite_0201.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 191,
+      "image": "../assets/art/iskra/sprite_0202.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 192,
+      "image": "../assets/art/iskra/sprite_0203.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 193,
+      "image": "../assets/art/iskra/sprite_0204.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 194,
+      "image": "../assets/art/iskra/sprite_0205.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 195,
+      "image": "../assets/art/iskra/sprite_0206.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 196,
+      "image": "../assets/art/iskra/sprite_0207.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 197,
+      "image": "../assets/art/iskra/sprite_0208.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 198,
+      "image": "../assets/art/iskra/sprite_0209.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 199,
+      "image": "../assets/art/iskra/sprite_0210.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 200,
+      "image": "../assets/art/iskra/sprite_0211.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 201,
+      "image": "../assets/art/iskra/sprite_0212.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 202,
+      "image": "../assets/art/iskra/sprite_0213.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 203,
+      "image": "../assets/art/iskra/sprite_0214.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 204,
+      "image": "../assets/art/iskra/sprite_0215.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 205,
+      "image": "../assets/art/iskra/sprite_0216.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 206,
+      "image": "../assets/art/iskra/sprite_0217.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 207,
+      "image": "../assets/art/iskra/sprite_0218.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 208,
+      "image": "../assets/art/iskra/sprite_0219.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 209,
+      "image": "../assets/art/iskra/sprite_0220.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 210,
+      "image": "../assets/art/iskra/sprite_0221.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 211,
+      "image": "../assets/art/iskra/sprite_0222.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 212,
+      "image": "../assets/art/iskra/sprite_0223.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 213,
+      "image": "../assets/art/iskra/sprite_0224.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 214,
+      "image": "../assets/art/iskra/sprite_0225.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 215,
+      "image": "../assets/art/iskra/sprite_0226.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 216,
+      "image": "../assets/art/iskra/sprite_0227.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 217,
+      "image": "../assets/art/iskra/sprite_0228.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 218,
+      "image": "../assets/art/iskra/sprite_0229.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 219,
+      "image": "../assets/art/iskra/sprite_0230.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 220,
+      "image": "../assets/art/iskra/sprite_0231.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 221,
+      "image": "../assets/art/iskra/sprite_0232.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 222,
+      "image": "../assets/art/iskra/sprite_0233.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 223,
+      "image": "../assets/art/iskra/sprite_0234.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 224,
+      "image": "../assets/art/iskra/sprite_0235.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 225,
+      "image": "../assets/art/iskra/sprite_0236.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 226,
+      "image": "../assets/art/iskra/sprite_0237.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 227,
+      "image": "../assets/art/iskra/sprite_0238.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 228,
+      "image": "../assets/art/iskra/sprite_0239.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 229,
+      "image": "../assets/art/iskra/sprite_0240.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 230,
+      "image": "../assets/art/iskra/sprite_0241.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 231,
+      "image": "../assets/art/iskra/sprite_0242.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 232,
+      "image": "../assets/art/iskra/sprite_0243.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 233,
+      "image": "../assets/art/iskra/sprite_0244.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 234,
+      "image": "../assets/art/iskra/sprite_0245.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 235,
+      "image": "../assets/art/iskra/sprite_0246.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 236,
+      "image": "../assets/art/iskra/sprite_0247.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 237,
+      "image": "../assets/art/iskra/sprite_0248.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 238,
+      "image": "../assets/art/iskra/sprite_0249.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 239,
+      "image": "../assets/art/iskra/sprite_0250.png",
+      "imagewidth": 10,
+      "imageheight": 30
+    },
+    {
+      "id": 240,
+      "image": "../assets/art/iskra/sprite_0251.png",
+      "imagewidth": 330,
+      "imageheight": 982
+    },
+    {
+      "id": 241,
+      "image": "../assets/art/iskra/npcs/board_officer.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 242,
+      "image": "../assets/art/iskra/sprite_0254.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 243,
+      "image": "../assets/art/iskra/sprite_0257.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 244,
+      "image": "../assets/art/iskra/sprite_0260.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 245,
+      "image": "../assets/art/iskra/sprite_0261.png",
+      "imagewidth": 46,
+      "imageheight": 18
+    },
+    {
+      "id": 246,
+      "image": "../assets/art/iskra/sprite_0262.png",
+      "imagewidth": 60,
+      "imageheight": 18
+    },
+    {
+      "id": 247,
+      "image": "../assets/art/iskra/sprite_0266.png",
+      "imagewidth": 140,
+      "imageheight": 132
+    },
+    {
+      "id": 248,
+      "image": "../assets/art/iskra/sprite_0267.png",
+      "imagewidth": 120,
+      "imageheight": 30
+    },
+    {
+      "id": 249,
+      "image": "../assets/art/iskra/sprite_0268.png",
+      "imagewidth": 90,
+      "imageheight": 30
+    },
+    {
+      "id": 250,
+      "image": "../assets/art/iskra/sprite_0269.png",
+      "imagewidth": 100,
+      "imageheight": 30
+    },
+    {
+      "id": 251,
+      "image": "../assets/art/iskra/sprite_0270.png",
+      "imagewidth": 80,
+      "imageheight": 36
+    },
+    {
+      "id": 252,
+      "image": "../assets/art/iskra/sprite_0271.png",
+      "imagewidth": 14,
+      "imageheight": 20
+    },
+    {
+      "id": 253,
+      "image": "../assets/art/iskra/sprite_0272.png",
+      "imagewidth": 14,
+      "imageheight": 20
+    },
+    {
+      "id": 254,
+      "image": "../assets/art/iskra/sprite_0273.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 255,
+      "image": "../assets/art/iskra/sprite_0274.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 256,
+      "image": "../assets/art/iskra/sprite_0275.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 257,
+      "image": "../assets/art/iskra/sprite_0276.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 258,
+      "image": "../assets/art/iskra/npcs/park_artist.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 259,
+      "image": "../assets/art/iskra/npcs/police_clerk.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 260,
+      "image": "../assets/art/iskra/sprite_0344.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 261,
+      "image": "../assets/art/iskra/sprite_0345.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 262,
+      "image": "../assets/art/iskra/sprite_0346.png",
+      "imagewidth": 64,
+      "imageheight": 98
+    },
+    {
+      "id": 263,
+      "image": "../assets/art/iskra/sprite_0347.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 264,
+      "image": "../assets/art/iskra/sprite_0348.png",
+      "imagewidth": 64,
+      "imageheight": 50
+    },
+    {
+      "id": 265,
+      "image": "../assets/art/iskra/sprite_0349.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 266,
+      "image": "../assets/art/iskra/sprite_0350.png",
+      "imagewidth": 48,
+      "imageheight": 98
+    },
+    {
+      "id": 267,
+      "image": "../assets/art/iskra/sprite_0351.png",
+      "imagewidth": 58,
+      "imageheight": 74
+    },
+    {
+      "id": 268,
+      "image": "../assets/art/iskra/sprite_0352.png",
+      "imagewidth": 58,
+      "imageheight": 10
+    },
+    {
+      "id": 269,
+      "image": "../assets/art/iskra/sprite_0353.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 270,
+      "image": "../assets/art/iskra/sprite_0354.png",
+      "imagewidth": 72,
+      "imageheight": 66
+    },
+    {
+      "id": 271,
+      "image": "../assets/art/iskra/sprite_0355.png",
+      "imagewidth": 32,
+      "imageheight": 66
+    },
+    {
+      "id": 272,
+      "image": "../assets/art/iskra/sprite_0356.png",
+      "imagewidth": 64,
+      "imageheight": 66
+    },
+    {
+      "id": 273,
+      "image": "../assets/art/iskra/sprite_0357.png",
+      "imagewidth": 43,
+      "imageheight": 66
+    },
+    {
+      "id": 274,
+      "image": "../assets/art/iskra/sprite_0358.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 275,
+      "image": "../assets/art/iskra/sprite_0359.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 276,
+      "image": "../assets/art/iskra/sprite_0360.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 277,
+      "image": "../assets/art/iskra/sprite_0361.png",
+      "imagewidth": 60,
+      "imageheight": 74
+    },
+    {
+      "id": 278,
+      "image": "../assets/art/iskra/sprite_0362.png",
+      "imagewidth": 60,
+      "imageheight": 10
+    },
+    {
+      "id": 279,
+      "image": "../assets/art/iskra/sprite_0363.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 280,
+      "image": "../assets/art/iskra/sprite_0364.png",
+      "imagewidth": 42,
+      "imageheight": 10
+    },
+    {
+      "id": 281,
+      "image": "../assets/art/iskra/sprite_0365.png",
+      "imagewidth": 37,
+      "imageheight": 82
+    },
+    {
+      "id": 282,
+      "image": "../assets/art/iskra/sprite_0366.png",
+      "imagewidth": 37,
+      "imageheight": 10
+    },
+    {
+      "id": 283,
+      "image": "../assets/art/iskra/sprite_0367.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 284,
+      "image": "../assets/art/iskra/sprite_0368.png",
+      "imagewidth": 64,
+      "imageheight": 82
+    },
+    {
+      "id": 285,
+      "image": "../assets/art/iskra/sprite_0369.png",
+      "imagewidth": 64,
+      "imageheight": 50
+    },
+    {
+      "id": 286,
+      "image": "../assets/art/iskra/sprite_0370.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 287,
+      "image": "../assets/art/iskra/sprite_0371.png",
+      "imagewidth": 38,
+      "imageheight": 10
+    },
+    {
+      "id": 288,
+      "image": "../assets/art/iskra/sprite_0372.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 289,
+      "image": "../assets/art/iskra/sprite_0373.png",
+      "imagewidth": 73,
+      "imageheight": 98
+    },
+    {
+      "id": 290,
+      "image": "../assets/art/iskra/sprite_0374.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 291,
+      "image": "../assets/art/iskra/sprite_0375.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 292,
+      "image": "../assets/art/iskra/sprite_0376.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 293,
+      "image": "../assets/art/iskra/sprite_0377.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 294,
+      "image": "../assets/art/iskra/sprite_0378.png",
+      "imagewidth": 50,
+      "imageheight": 78
+    },
+    {
+      "id": 295,
+      "image": "../assets/art/iskra/sprite_0379.png",
+      "imagewidth": 50,
+      "imageheight": 10
+    },
+    {
+      "id": 296,
+      "image": "../assets/art/iskra/sprite_0380.png",
+      "imagewidth": 84,
+      "imageheight": 82
+    },
+    {
+      "id": 297,
+      "image": "../assets/art/iskra/sprite_0381.png",
+      "imagewidth": 76,
+      "imageheight": 66
+    },
+    {
+      "id": 298,
+      "image": "../assets/art/iskra/sprite_0382.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 299,
+      "image": "../assets/art/iskra/sprite_0383.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 300,
+      "image": "../assets/art/iskra/sprite_0384.png",
+      "imagewidth": 44,
+      "imageheight": 124
+    },
+    {
+      "id": 301,
+      "image": "../assets/art/iskra/sprite_0385.png",
+      "imagewidth": 50,
+      "imageheight": 78
+    },
+    {
+      "id": 302,
+      "image": "../assets/art/iskra/sprite_0386.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 303,
+      "image": "../assets/art/iskra/sprite_0387.png",
+      "imagewidth": 34,
+      "imageheight": 10
+    },
+    {
+      "id": 304,
+      "image": "../assets/art/iskra/sprite_0388.png",
+      "imagewidth": 31,
+      "imageheight": 50
+    },
+    {
+      "id": 305,
+      "image": "../assets/art/iskra/sprite_0389.png",
+      "imagewidth": 64,
+      "imageheight": 82
+    },
+    {
+      "id": 306,
+      "image": "../assets/art/iskra/sprite_0390.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 307,
+      "image": "../assets/art/iskra/sprite_0391.png",
+      "imagewidth": 40,
+      "imageheight": 82
+    },
+    {
+      "id": 308,
+      "image": "../assets/art/iskra/sprite_0392.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 309,
+      "image": "../assets/art/iskra/sprite_0393.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 310,
+      "image": "../assets/art/iskra/sprite_0394.png",
+      "imagewidth": 42,
+      "imageheight": 10
+    },
+    {
+      "id": 311,
+      "image": "../assets/art/iskra/sprite_0395.png",
+      "imagewidth": 48,
+      "imageheight": 82
+    },
+    {
+      "id": 312,
+      "image": "../assets/art/iskra/sprite_0396.png",
+      "imagewidth": 48,
+      "imageheight": 10
+    },
+    {
+      "id": 313,
+      "image": "../assets/art/iskra/sprite_0397.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 314,
+      "image": "../assets/art/iskra/sprite_0398.png",
+      "imagewidth": 40,
+      "imageheight": 98
+    },
+    {
+      "id": 315,
+      "image": "../assets/art/iskra/sprite_0399.png",
+      "imagewidth": 55,
+      "imageheight": 66
+    },
+    {
+      "id": 316,
+      "image": "../assets/art/iskra/sprite_0400.png",
+      "imagewidth": 58,
+      "imageheight": 74
+    },
+    {
+      "id": 317,
+      "image": "../assets/art/iskra/sprite_0401.png",
+      "imagewidth": 36,
+      "imageheight": 82
+    },
+    {
+      "id": 318,
+      "image": "../assets/art/iskra/sprite_0402.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 319,
+      "image": "../assets/art/iskra/sprite_0403.png",
+      "imagewidth": 40,
+      "imageheight": 10
+    },
+    {
+      "id": 320,
+      "image": "../assets/art/iskra/sprite_0404.png",
+      "imagewidth": 72,
+      "imageheight": 66
+    },
+    {
+      "id": 321,
+      "image": "../assets/art/iskra/sprite_0405.png",
+      "imagewidth": 60,
+      "imageheight": 104
+    },
+    {
+      "id": 322,
+      "image": "../assets/art/iskra/sprite_0406.png",
+      "imagewidth": 60,
+      "imageheight": 10
+    },
+    {
+      "id": 323,
+      "image": "../assets/art/iskra/sprite_0407.png",
+      "imagewidth": 33,
+      "imageheight": 66
+    },
+    {
+      "id": 324,
+      "image": "../assets/art/iskra/sprite_0408.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 325,
+      "image": "../assets/art/iskra/sprite_0409.png",
+      "imagewidth": 50,
+      "imageheight": 78
+    },
+    {
+      "id": 326,
+      "image": "../assets/art/iskra/sprite_0410.png",
+      "imagewidth": 60,
+      "imageheight": 98
+    },
+    {
+      "id": 327,
+      "image": "../assets/art/iskra/sprite_0411.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 328,
+      "image": "../assets/art/iskra/sprite_0412.png",
+      "imagewidth": 48,
+      "imageheight": 66
+    },
+    {
+      "id": 329,
+      "image": "../assets/art/iskra/sprite_0413.png",
+      "imagewidth": 64,
+      "imageheight": 66
+    },
+    {
+      "id": 330,
+      "image": "../assets/art/iskra/sprite_0414.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 331,
+      "image": "../assets/art/iskra/sprite_0415.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 332,
+      "image": "../assets/art/iskra/sprite_0416.png",
+      "imagewidth": 48,
+      "imageheight": 66
+    },
+    {
+      "id": 333,
+      "image": "../assets/art/iskra/sprite_0417.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 334,
+      "image": "../assets/art/iskra/sprite_0418.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 335,
+      "image": "../assets/art/iskra/sprite_0419.png",
+      "imagewidth": 61,
+      "imageheight": 98
+    },
+    {
+      "id": 336,
+      "image": "../assets/art/iskra/sprite_0420.png",
+      "imagewidth": 64,
+      "imageheight": 50
+    },
+    {
+      "id": 337,
+      "image": "../assets/art/iskra/sprite_0421.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 338,
+      "image": "../assets/art/iskra/sprite_0422.png",
+      "imagewidth": 40,
+      "imageheight": 82
+    },
+    {
+      "id": 339,
+      "image": "../assets/art/iskra/sprite_0423.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 340,
+      "image": "../assets/art/iskra/sprite_0424.png",
+      "imagewidth": 58,
+      "imageheight": 74
+    },
+    {
+      "id": 341,
+      "image": "../assets/art/iskra/sprite_0425.png",
+      "imagewidth": 53,
+      "imageheight": 66
+    },
+    {
+      "id": 342,
+      "image": "../assets/art/iskra/sprite_0426.png",
+      "imagewidth": 72,
+      "imageheight": 82
+    },
+    {
+      "id": 343,
+      "image": "../assets/art/iskra/sprite_0427.png",
+      "imagewidth": 54,
+      "imageheight": 50
+    },
+    {
+      "id": 344,
+      "image": "../assets/art/iskra/sprite_0428.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 345,
+      "image": "../assets/art/iskra/sprite_0429.png",
+      "imagewidth": 68,
+      "imageheight": 92
+    },
+    {
+      "id": 346,
+      "image": "../assets/art/iskra/sprite_0430.png",
+      "imagewidth": 40,
+      "imageheight": 98
+    },
+    {
+      "id": 347,
+      "image": "../assets/art/iskra/sprite_0431.png",
+      "imagewidth": 48,
+      "imageheight": 82
+    },
+    {
+      "id": 348,
+      "image": "../assets/art/iskra/sprite_0432.png",
+      "imagewidth": 48,
+      "imageheight": 10
+    },
+    {
+      "id": 349,
+      "image": "../assets/art/iskra/sprite_0433.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 350,
+      "image": "../assets/art/iskra/sprite_0434.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 351,
+      "image": "../assets/art/iskra/sprite_0435.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 352,
+      "image": "../assets/art/iskra/sprite_0436.png",
+      "imagewidth": 31,
+      "imageheight": 98
+    },
+    {
+      "id": 353,
+      "image": "../assets/art/iskra/sprite_0437.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 354,
+      "image": "../assets/art/iskra/sprite_0438.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 355,
+      "image": "../assets/art/iskra/sprite_0439.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 356,
+      "image": "../assets/art/iskra/sprite_0440.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 357,
+      "image": "../assets/art/iskra/sprite_0441.png",
+      "imagewidth": 79,
+      "imageheight": 50
+    },
+    {
+      "id": 358,
+      "image": "../assets/art/iskra/sprite_0442.png",
+      "imagewidth": 45,
+      "imageheight": 82
+    },
+    {
+      "id": 359,
+      "image": "../assets/art/iskra/sprite_0443.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 360,
+      "image": "../assets/art/iskra/sprite_0444.png",
+      "imagewidth": 48,
+      "imageheight": 98
+    },
+    {
+      "id": 361,
+      "image": "../assets/art/iskra/sprite_0445.png",
+      "imagewidth": 40,
+      "imageheight": 98
+    },
+    {
+      "id": 362,
+      "image": "../assets/art/iskra/sprite_0446.png",
+      "imagewidth": 34,
+      "imageheight": 66
+    },
+    {
+      "id": 363,
+      "image": "../assets/art/iskra/sprite_0447.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 364,
+      "image": "../assets/art/iskra/sprite_0448.png",
+      "imagewidth": 48,
+      "imageheight": 98
+    },
+    {
+      "id": 365,
+      "image": "../assets/art/iskra/sprite_0449.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 366,
+      "image": "../assets/art/iskra/sprite_0450.png",
+      "imagewidth": 64,
+      "imageheight": 50
+    },
+    {
+      "id": 367,
+      "image": "../assets/art/iskra/sprite_0451.png",
+      "imagewidth": 51,
+      "imageheight": 50
+    },
+    {
+      "id": 368,
+      "image": "../assets/art/iskra/sprite_0452.png",
+      "imagewidth": 72,
+      "imageheight": 66
+    },
+    {
+      "id": 369,
+      "image": "../assets/art/iskra/sprite_0453.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 370,
+      "image": "../assets/art/iskra/sprite_0454.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 371,
+      "image": "../assets/art/iskra/sprite_0455.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 372,
+      "image": "../assets/art/iskra/sprite_0456.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 373,
+      "image": "../assets/art/iskra/sprite_0457.png",
+      "imagewidth": 30,
+      "imageheight": 10
+    },
+    {
+      "id": 374,
+      "image": "../assets/art/iskra/sprite_0458.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 375,
+      "image": "../assets/art/iskra/sprite_0459.png",
+      "imagewidth": 34,
+      "imageheight": 10
+    },
+    {
+      "id": 376,
+      "image": "../assets/art/iskra/sprite_0460.png",
+      "imagewidth": 68,
+      "imageheight": 92
+    },
+    {
+      "id": 377,
+      "image": "../assets/art/iskra/sprite_0461.png",
+      "imagewidth": 68,
+      "imageheight": 10
+    },
+    {
+      "id": 378,
+      "image": "../assets/art/iskra/sprite_0462.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 379,
+      "image": "../assets/art/iskra/sprite_0463.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 380,
+      "image": "../assets/art/iskra/sprite_0464.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 381,
+      "image": "../assets/art/iskra/sprite_0465.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 382,
+      "image": "../assets/art/iskra/sprite_0466.png",
+      "imagewidth": 60,
+      "imageheight": 98
+    },
+    {
+      "id": 383,
+      "image": "../assets/art/iskra/sprite_0467.png",
+      "imagewidth": 61,
+      "imageheight": 50
+    },
+    {
+      "id": 384,
+      "image": "../assets/art/iskra/sprite_0468.png",
+      "imagewidth": 40,
+      "imageheight": 98
+    },
+    {
+      "id": 385,
+      "image": "../assets/art/iskra/sprite_0469.png",
+      "imagewidth": 60,
+      "imageheight": 104
+    },
+    {
+      "id": 386,
+      "image": "../assets/art/iskra/sprite_0470.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 387,
+      "image": "../assets/art/iskra/sprite_0471.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 388,
+      "image": "../assets/art/iskra/sprite_0472.png",
+      "imagewidth": 76,
+      "imageheight": 66
+    },
+    {
+      "id": 389,
+      "image": "../assets/art/iskra/sprite_0473.png",
+      "imagewidth": 76,
+      "imageheight": 10
+    },
+    {
+      "id": 390,
+      "image": "../assets/art/iskra/sprite_0474.png",
+      "imagewidth": 54,
+      "imageheight": 82
+    },
+    {
+      "id": 391,
+      "image": "../assets/art/iskra/sprite_0475.png",
+      "imagewidth": 54,
+      "imageheight": 10
+    },
+    {
+      "id": 392,
+      "image": "../assets/art/iskra/sprite_0476.png",
+      "imagewidth": 70,
+      "imageheight": 86
+    },
+    {
+      "id": 393,
+      "image": "../assets/art/iskra/sprite_0477.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 394,
+      "image": "../assets/art/iskra/sprite_0478.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 395,
+      "image": "../assets/art/iskra/sprite_0479.png",
+      "imagewidth": 45,
+      "imageheight": 50
+    },
+    {
+      "id": 396,
+      "image": "../assets/art/iskra/sprite_0480.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 397,
+      "image": "../assets/art/iskra/sprite_0481.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 398,
+      "image": "../assets/art/iskra/sprite_0482.png",
+      "imagewidth": 52,
+      "imageheight": 10
+    },
+    {
+      "id": 399,
+      "image": "../assets/art/iskra/sprite_0483.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 400,
+      "image": "../assets/art/iskra/sprite_0484.png",
+      "imagewidth": 40,
+      "imageheight": 98
+    },
+    {
+      "id": 401,
+      "image": "../assets/art/iskra/sprite_0485.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 402,
+      "image": "../assets/art/iskra/sprite_0486.png",
+      "imagewidth": 64,
+      "imageheight": 98
+    },
+    {
+      "id": 403,
+      "image": "../assets/art/iskra/sprite_0487.png",
+      "imagewidth": 56,
+      "imageheight": 50
+    },
+    {
+      "id": 404,
+      "image": "../assets/art/iskra/sprite_0488.png",
+      "imagewidth": 58,
+      "imageheight": 74
+    },
+    {
+      "id": 405,
+      "image": "../assets/art/iskra/sprite_0489.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 406,
+      "image": "../assets/art/iskra/sprite_0490.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 407,
+      "image": "../assets/art/iskra/sprite_0491.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 408,
+      "image": "../assets/art/iskra/sprite_0492.png",
+      "imagewidth": 76,
+      "imageheight": 66
+    },
+    {
+      "id": 409,
+      "image": "../assets/art/iskra/sprite_0493.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 410,
+      "image": "../assets/art/iskra/sprite_0494.png",
+      "imagewidth": 34,
+      "imageheight": 10
+    },
+    {
+      "id": 411,
+      "image": "../assets/art/iskra/sprite_0495.png",
+      "imagewidth": 50,
+      "imageheight": 78
+    },
+    {
+      "id": 412,
+      "image": "../assets/art/iskra/sprite_0496.png",
+      "imagewidth": 68,
+      "imageheight": 92
+    },
+    {
+      "id": 413,
+      "image": "../assets/art/iskra/sprite_0497.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 414,
+      "image": "../assets/art/iskra/sprite_0498.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 415,
+      "image": "../assets/art/iskra/sprite_0499.png",
+      "imagewidth": 72,
+      "imageheight": 50
+    },
+    {
+      "id": 416,
+      "image": "../assets/art/iskra/sprite_0500.png",
+      "imagewidth": 40,
+      "imageheight": 82
+    },
+    {
+      "id": 417,
+      "image": "../assets/art/iskra/sprite_0501.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 418,
+      "image": "../assets/art/iskra/sprite_0502.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 419,
+      "image": "../assets/art/iskra/sprite_0503.png",
+      "imagewidth": 66,
+      "imageheight": 62
+    },
+    {
+      "id": 420,
+      "image": "../assets/art/iskra/sprite_0504.png",
+      "imagewidth": 66,
+      "imageheight": 10
+    },
+    {
+      "id": 421,
+      "image": "../assets/art/iskra/sprite_0505.png",
+      "imagewidth": 43,
+      "imageheight": 98
+    },
+    {
+      "id": 422,
+      "image": "../assets/art/iskra/sprite_0506.png",
+      "imagewidth": 43,
+      "imageheight": 10
+    },
+    {
+      "id": 423,
+      "image": "../assets/art/iskra/sprite_0507.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 424,
+      "image": "../assets/art/iskra/sprite_0508.png",
+      "imagewidth": 45,
+      "imageheight": 98
+    },
+    {
+      "id": 425,
+      "image": "../assets/art/iskra/sprite_0509.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 426,
+      "image": "../assets/art/iskra/sprite_0510.png",
+      "imagewidth": 72,
+      "imageheight": 82
+    },
+    {
+      "id": 427,
+      "image": "../assets/art/iskra/sprite_0511.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 428,
+      "image": "../assets/art/iskra/sprite_0512.png",
+      "imagewidth": 56,
+      "imageheight": 114
+    },
+    {
+      "id": 429,
+      "image": "../assets/art/iskra/sprite_0513.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 430,
+      "image": "../assets/art/iskra/sprite_0514.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 431,
+      "image": "../assets/art/iskra/sprite_0515.png",
+      "imagewidth": 60,
+      "imageheight": 66
+    },
+    {
+      "id": 432,
+      "image": "../assets/art/iskra/sprite_0516.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 433,
+      "image": "../assets/art/iskra/sprite_0517.png",
+      "imagewidth": 38,
+      "imageheight": 70
+    },
+    {
+      "id": 434,
+      "image": "../assets/art/iskra/sprite_0518.png",
+      "imagewidth": 48,
+      "imageheight": 66
+    },
+    {
+      "id": 435,
+      "image": "../assets/art/iskra/sprite_0519.png",
+      "imagewidth": 48,
+      "imageheight": 66
+    },
+    {
+      "id": 436,
+      "image": "../assets/art/iskra/sprite_0520.png",
+      "imagewidth": 48,
+      "imageheight": 98
+    },
+    {
+      "id": 437,
+      "image": "../assets/art/iskra/sprite_0521.png",
+      "imagewidth": 48,
+      "imageheight": 10
+    },
+    {
+      "id": 438,
+      "image": "../assets/art/iskra/sprite_0522.png",
+      "imagewidth": 45,
+      "imageheight": 98
+    },
+    {
+      "id": 439,
+      "image": "../assets/art/iskra/sprite_0523.png",
+      "imagewidth": 45,
+      "imageheight": 10
+    },
+    {
+      "id": 440,
+      "image": "../assets/art/iskra/sprite_0524.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 441,
+      "image": "../assets/art/iskra/sprite_0525.png",
+      "imagewidth": 31,
+      "imageheight": 50
+    },
+    {
+      "id": 442,
+      "image": "../assets/art/iskra/sprite_0526.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 443,
+      "image": "../assets/art/iskra/sprite_0527.png",
+      "imagewidth": 50,
+      "imageheight": 78
+    },
+    {
+      "id": 444,
+      "image": "../assets/art/iskra/sprite_0528.png",
+      "imagewidth": 52,
+      "imageheight": 66
+    },
+    {
+      "id": 445,
+      "image": "../assets/art/iskra/sprite_0529.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 446,
+      "image": "../assets/art/iskra/sprite_0530.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 447,
+      "image": "../assets/art/iskra/sprite_0531.png",
+      "imagewidth": 30,
+      "imageheight": 10
+    },
+    {
+      "id": 448,
+      "image": "../assets/art/iskra/sprite_0532.png",
+      "imagewidth": 44,
+      "imageheight": 124
+    },
+    {
+      "id": 449,
+      "image": "../assets/art/iskra/sprite_0533.png",
+      "imagewidth": 76,
+      "imageheight": 66
+    },
+    {
+      "id": 450,
+      "image": "../assets/art/iskra/sprite_0534.png",
+      "imagewidth": 72,
+      "imageheight": 50
+    },
+    {
+      "id": 451,
+      "image": "../assets/art/iskra/sprite_0535.png",
+      "imagewidth": 68,
+      "imageheight": 92
+    },
+    {
+      "id": 452,
+      "image": "../assets/art/iskra/sprite_0536.png",
+      "imagewidth": 68,
+      "imageheight": 10
+    },
+    {
+      "id": 453,
+      "image": "../assets/art/iskra/sprite_0537.png",
+      "imagewidth": 48,
+      "imageheight": 98
+    },
+    {
+      "id": 454,
+      "image": "../assets/art/iskra/sprite_0538.png",
+      "imagewidth": 48,
+      "imageheight": 10
+    },
+    {
+      "id": 455,
+      "image": "../assets/art/iskra/sprite_0539.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 456,
+      "image": "../assets/art/iskra/sprite_0540.png",
+      "imagewidth": 64,
+      "imageheight": 50
+    },
+    {
+      "id": 457,
+      "image": "../assets/art/iskra/sprite_0541.png",
+      "imagewidth": 30,
+      "imageheight": 50
+    },
+    {
+      "id": 458,
+      "image": "../assets/art/iskra/sprite_0542.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 459,
+      "image": "../assets/art/iskra/sprite_0543.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 460,
+      "image": "../assets/art/iskra/sprite_0544.png",
+      "imagewidth": 40,
+      "imageheight": 66
+    },
+    {
+      "id": 461,
+      "image": "../assets/art/iskra/sprite_0545.png",
+      "imagewidth": 39,
+      "imageheight": 66
+    },
+    {
+      "id": 462,
+      "image": "../assets/art/iskra/sprite_0546.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 463,
+      "image": "../assets/art/iskra/sprite_0547.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 464,
+      "image": "../assets/art/iskra/sprite_0548.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 465,
+      "image": "../assets/art/iskra/sprite_0549.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 466,
+      "image": "../assets/art/iskra/sprite_0550.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 467,
+      "image": "../assets/art/iskra/sprite_0551.png",
+      "imagewidth": 42,
+      "imageheight": 86
+    },
+    {
+      "id": 468,
+      "image": "../assets/art/iskra/sprite_0552.png",
+      "imagewidth": 42,
+      "imageheight": 10
+    },
+    {
+      "id": 469,
+      "image": "../assets/art/iskra/sprite_0553.png",
+      "imagewidth": 51,
+      "imageheight": 82
+    },
+    {
+      "id": 470,
+      "image": "../assets/art/iskra/sprite_0554.png",
+      "imagewidth": 51,
+      "imageheight": 10
+    },
+    {
+      "id": 471,
+      "image": "../assets/art/iskra/sprite_0555.png",
+      "imagewidth": 60,
+      "imageheight": 104
+    },
+    {
+      "id": 472,
+      "image": "../assets/art/iskra/sprite_0556.png",
+      "imagewidth": 60,
+      "imageheight": 10
+    },
+    {
+      "id": 473,
+      "image": "../assets/art/iskra/sprite_0557.png",
+      "imagewidth": 48,
+      "imageheight": 82
+    },
+    {
+      "id": 474,
+      "image": "../assets/art/iskra/sprite_0558.png",
+      "imagewidth": 48,
+      "imageheight": 10
+    },
+    {
+      "id": 475,
+      "image": "../assets/art/iskra/sprite_0559.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 476,
+      "image": "../assets/art/iskra/sprite_0560.png",
+      "imagewidth": 34,
+      "imageheight": 10
+    },
+    {
+      "id": 477,
+      "image": "../assets/art/iskra/sprite_0561.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 478,
+      "image": "../assets/art/iskra/sprite_0562.png",
+      "imagewidth": 48,
+      "imageheight": 66
+    },
+    {
+      "id": 479,
+      "image": "../assets/art/iskra/sprite_0563.png",
+      "imagewidth": 60,
+      "imageheight": 58
+    },
+    {
+      "id": 480,
+      "image": "../assets/art/iskra/sprite_0564.png",
+      "imagewidth": 72,
+      "imageheight": 50
+    },
+    {
+      "id": 481,
+      "image": "../assets/art/iskra/sprite_0565.png",
+      "imagewidth": 63,
+      "imageheight": 66
+    },
+    {
+      "id": 482,
+      "image": "../assets/art/iskra/sprite_0566.png",
+      "imagewidth": 58,
+      "imageheight": 74
+    },
+    {
+      "id": 483,
+      "image": "../assets/art/iskra/sprite_0567.png",
+      "imagewidth": 58,
+      "imageheight": 10
+    },
+    {
+      "id": 484,
+      "image": "../assets/art/iskra/sprite_0568.png",
+      "imagewidth": 30,
+      "imageheight": 70
+    },
+    {
+      "id": 485,
+      "image": "../assets/art/iskra/sprite_0569.png",
+      "imagewidth": 30,
+      "imageheight": 10
+    },
+    {
+      "id": 486,
+      "image": "../assets/art/iskra/sprite_0570.png",
+      "imagewidth": 54,
+      "imageheight": 82
+    },
+    {
+      "id": 487,
+      "image": "../assets/art/iskra/sprite_0571.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 488,
+      "image": "../assets/art/iskra/sprite_0572.png",
+      "imagewidth": 31,
+      "imageheight": 82
+    },
+    {
+      "id": 489,
+      "image": "../assets/art/iskra/sprite_0573.png",
+      "imagewidth": 52,
+      "imageheight": 58
+    },
+    {
+      "id": 490,
+      "image": "../assets/art/iskra/sprite_0574.png",
+      "imagewidth": 52,
+      "imageheight": 10
+    },
+    {
+      "id": 491,
+      "image": "../assets/art/iskra/sprite_0575.png",
+      "imagewidth": 67,
+      "imageheight": 66
+    },
+    {
+      "id": 492,
+      "image": "../assets/art/iskra/sprite_0576.png",
+      "imagewidth": 67,
+      "imageheight": 10
+    },
+    {
+      "id": 493,
+      "image": "../assets/art/iskra/sprite_0577.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 494,
+      "image": "../assets/art/iskra/sprite_0578.png",
+      "imagewidth": 40,
+      "imageheight": 50
+    },
+    {
+      "id": 495,
+      "image": "../assets/art/iskra/sprite_0579.png",
+      "imagewidth": 40,
+      "imageheight": 10
+    },
+    {
+      "id": 496,
+      "image": "../assets/art/iskra/sprite_0580.png",
+      "imagewidth": 56,
+      "imageheight": 66
+    },
+    {
+      "id": 497,
+      "image": "../assets/art/iskra/sprite_0581.png",
+      "imagewidth": 34,
+      "imageheight": 70
+    },
+    {
+      "id": 498,
+      "image": "../assets/art/iskra/sprite_0582.png",
+      "imagewidth": 72,
+      "imageheight": 82
+    },
+    {
+      "id": 499,
+      "image": "../assets/art/iskra/sprite_0583.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 500,
+      "image": "../assets/art/iskra/sprite_0584.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 501,
+      "image": "../assets/art/iskra/sprite_0585.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 502,
+      "image": "../assets/art/iskra/sprite_0586.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 503,
+      "image": "../assets/art/iskra/sprite_0587.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 504,
+      "image": "../assets/art/iskra/sprite_0588.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 505,
+      "image": "../assets/art/iskra/sprite_0589.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 506,
+      "image": "../assets/art/iskra/sprite_0590.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 507,
+      "image": "../assets/art/iskra/sprite_0591.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 508,
+      "image": "../assets/art/iskra/sprite_0592.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 509,
+      "image": "../assets/art/iskra/sprite_0593.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 510,
+      "image": "../assets/art/iskra/sprite_0594.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 511,
+      "image": "../assets/art/iskra/sprite_0595.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 512,
+      "image": "../assets/art/iskra/sprite_0596.png",
+      "imagewidth": 32,
+      "imageheight": 48
+    },
+    {
+      "id": 513,
+      "image": "../assets/art/iskra/sprite_0597.png",
+      "imagewidth": 26,
+      "imageheight": 15
+    },
+    {
+      "id": 514,
+      "image": "../assets/art/iskra/sprite_0598.png",
+      "imagewidth": 26,
+      "imageheight": 15
+    },
+    {
+      "id": 515,
+      "image": "../assets/art/iskra/sprite_0599.png",
+      "imagewidth": 26,
+      "imageheight": 15
+    },
+    {
+      "id": 516,
+      "image": "../assets/art/iskra/sprite_0600.png",
+      "imagewidth": 26,
+      "imageheight": 15
+    },
+    {
+      "id": 517,
+      "image": "../assets/art/iskra/sprite_0601.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 518,
+      "image": "../assets/art/iskra/sprite_0602.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 519,
+      "image": "../assets/art/iskra/sprite_0603.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 520,
+      "image": "../assets/art/iskra/taxi_pad.png",
+      "imagewidth": 40,
+      "imageheight": 22
+    }
+  ]
+}
