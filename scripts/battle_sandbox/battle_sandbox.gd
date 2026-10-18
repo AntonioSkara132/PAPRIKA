@@ -1,7 +1,7 @@
 extends Node2D
 ## A standalone battle of two armies, separate from the rest of the game.
-## Each side fights in blocks: spearmen in the centre, swordsmen on both wings,
-## archers at the back and a small cavalry block on one wing. A block keeps its
+## Each side fights in blocks: three spear blocks in the centre, swordsmen on
+## both wings, three archer blocks at the back and a small cavalry block on one wing. A block keeps its
 ## shape the way "follow in formation" does in the sandbox: every soldier has an
 ## offset from the block's leader point, made by
 ## SandboxFormationPlanner.make_follow_offsets, and the whole block turns and
@@ -27,10 +27,14 @@ const KINDS := {
 ## of the block centre relative to the army's front centre. The cavalry's side is
 ## chosen by the general at the start of each battle.
 const ARMY := [
-	["spear", 80, 40, 0.0, 0.0],
-	["sword", 30, 10, -290.0, 10.0],
-	["sword", 30, 10, 290.0, 10.0],
-	["archer", 40, 20, 0.0, 90.0],
+	["spear", 27, 9, -165.0, 0.0],
+	["spear", 26, 9, 0.0, 0.0],
+	["spear", 27, 9, 165.0, 0.0],
+	["sword", 30, 10, -310.0, 10.0],
+	["sword", 30, 10, 310.0, 10.0],
+	["archer", 14, 7, -165.0, 90.0],
+	["archer", 12, 6, 0.0, 90.0],
+	["archer", 14, 7, 165.0, 90.0],
 	["horse", 20, 10, 430.0, 40.0],
 ]
 const FILE_SPACING := 11.0
@@ -157,9 +161,8 @@ func _spawn_block(team: int, entry: Array, front: Vector2, heading: Vector2, lat
 		units[first + i]["offset"] = offsets[ids[i]]
 	var sample: Dictionary = units[first]
 	var leader: Vector2 = sample["pos"] - lateral * sample["offset"].x + heading * sample["offset"].y
-	var wing := ""
-	if kind == "sword" or kind == "horse":
-		wing = "left" if lateral.dot(centre - front) < 0.0 else "right"
+	var side_offset := lateral.dot(centre - front)
+	var wing := "centre" if absf(side_offset) < 1.0 else ("left" if side_offset < 0.0 else "right")
 	blocks.append({
 		"team": team, "kind": kind, "wing": wing, "leader": leader, "heading": heading,
 		"members": range(first, first + count), "start": count, "morale": 100.0,
@@ -171,7 +174,7 @@ func block_name(b: int) -> String:
 	var block: Dictionary = blocks[b]
 	var short := "Blue" if block["team"] == 0 else "Red"
 	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "horse": "cavalry"}[block["kind"]]
-	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] == "sword" else "", kind]
+	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] != "horse" else "", kind]
 
 func _event(text: String, key: String = "", every: float = 0.0) -> void:
 	if key != "":
@@ -192,7 +195,7 @@ func _plan_battle(team: int) -> void:
 			continue
 		# the enemy army may not be spawned yet, so the first command picks the actual block
 		block["order"] = "flank"
-		block["goal_block"] = -2 if randf() < 0.7 else -3  # -2 archers, -3 the swords on our wing
+		block["goal_block"] = -2 if randf() < 0.7 else -3  # -2 archers, -3 swords; the ones nearer our riders
 	var swords: Array[int] = []
 	for b in blocks.size():
 		if blocks[b]["team"] == team and blocks[b]["kind"] == "sword":
@@ -212,10 +215,7 @@ func _resolve_cavalry_goal(b: int) -> void:
 		var target: Dictionary = blocks[other]
 		if target["team"] == block["team"]:
 			continue
-		if wanted == -2 and target["kind"] == "archer":
-			choice = other
-		elif wanted == -3 and target["kind"] == "sword":
-			# the enemy sword block nearer to our riders
+		if (wanted == -2 and target["kind"] == "archer") or (wanted == -3 and target["kind"] == "sword"):
 			if choice < 0 or _centre(other).distance_to(block["leader"]) < _centre(choice).distance_to(block["leader"]):
 				choice = other
 	block["goal_block"] = choice
@@ -237,13 +237,14 @@ func _resolve_cavalry_goal(b: int) -> void:
 	_event("%s rides around the %s flank toward %s" % [block_name(b), "southern" if side > 0 else "northern", block_name(choice)])
 
 func _command(team: int) -> void:
+	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
 	var line_engaged := false
 	for b in blocks.size():
 		var block: Dictionary = blocks[b]
 		if block["team"] == team and block["kind"] == "spear":
-			spear_morale = block["morale"] if not block["broken"] else 0.0
-			line_engaged = block["engaged"]
+			spear_morale = minf(spear_morale, block["morale"] if not block["broken"] else 0.0)
+			line_engaged = line_engaged or block["engaged"]
 	for b in blocks.size():
 		var block: Dictionary = blocks[b]
 		if block["team"] != team or block["broken"] or _living(b) == 0:
