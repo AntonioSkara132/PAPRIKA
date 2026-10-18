@@ -47,6 +47,7 @@ const WITHDRAW_MORALE := 45.0
 const RETURN_MORALE := 70.0
 const COMMAND_TIME := 2.0
 const CHARGE_REST := 3.0  # a rider who hasn't struck for this long hits as a charge
+const MORALE_BLOCK_SIZE := 40.0  # deaths in smaller blocks count as if the block had this many men
 
 var units: Array[Dictionary] = []
 var blocks: Array[Dictionary] = []
@@ -456,8 +457,9 @@ func _attack(i: int, target: int) -> void:
 	u["swing"] = 0.18
 	var damage: float = stats["damage"]
 	var shock := 0.0
-	# a rider who has been moving rather than fighting hits as a charge, except in mud and trees
-	if u["kind"] == "horse" and u["rest"] >= CHARGE_REST and ground_at(u["pos"]) not in ["marsh", "wood"]:
+	# a rider who has been moving rather than fighting hits as a charge, except in mud and
+	# trees; against other riders it is an ordinary fight
+	if u["kind"] == "horse" and units[target]["kind"] != "horse" and u["rest"] >= CHARGE_REST and ground_at(u["pos"]) not in ["marsh", "wood"]:
 		damage *= 2.5
 		shock = 3.0
 	# fighting downhill helps
@@ -475,6 +477,11 @@ func _hit(index: int, damage: float, from: Vector2, shock: float = 0.0) -> void:
 	var b: int = u["block"]
 	var block: Dictionary = blocks[b]
 	var morale_loss := shock
+	# riders attacked on their way around a flank give up the route and turn to fight
+	if block["order"] == "flank" and not block["waypoints"].is_empty():
+		block["waypoints"] = []
+		block["order"] = "advance"
+		_event("%s is caught on the move and turns to fight" % block_name(b))
 	if not block["broken"]:
 		var direction: Vector2 = (from - u["pos"]).normalized()
 		var front: float = direction.dot(block["heading"])
@@ -490,7 +497,7 @@ func _hit(index: int, damage: float, from: Vector2, shock: float = 0.0) -> void:
 	if u["hp"] <= 0:
 		u["alive"] = false
 		corpses.append({"pos": u["pos"], "team": u["team"], "kind": u["kind"]})
-		morale_loss += 120.0 / block["start"]
+		morale_loss += 120.0 / maxf(block["start"], MORALE_BLOCK_SIZE)
 	if morale_loss > 0.0:
 		_lose_morale(b, morale_loss)
 
