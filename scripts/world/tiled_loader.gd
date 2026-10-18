@@ -292,6 +292,7 @@ func _service_for_object(name: String) -> Dictionary:
 		"north_food_shop": return {"id": "north_food", "name": "Northern Food Shop"}
 		"skoljka_food": return {"id": "skoljka_food", "name": "Skoljka Food Stall"}
 		"skoljka_clothing": return {"id": "skoljka_clothing", "name": "Skoljka Clothier"}
+		"skoljka_apothecary": return {"id": "skoljka_apothecary", "name": "Skoljka Apothecary"}
 		"skoljka_library": return {"id": "skoljka_library", "name": "Skoljka Library"}
 		"forge": return {"id": "forge", "name": "Forge & Armor"}
 		"north_forge": return {"id": "north_forge", "name": "Northern Forge"}

@@ -111,7 +111,7 @@ const DAVOR_STRIKE_SECONDS := 0.6
 const DAVOR_SPEED := 100.0
 const DAVOR_SIGHT := 140.0
 const DAVOR_BOW_RANGE := 150.0
-const DAVOR_GET_UP_SECONDS := 10.0
+const DAVOR_GET_UP_SECONDS := 0.0
 
 var _chasing := false
 var _chase_time := 0.0
@@ -460,6 +460,7 @@ func _spawn_davor(position: Vector2) -> void:
 	label.add_theme_constant_override("shadow_offset_y", 1)
 	_davor.add_child(label)
 	actors_root.add_child(_davor)
+	GameState.apply_davor_health(_davor)
 
 func _refresh_davor_label() -> void:
 	var someone := davor()

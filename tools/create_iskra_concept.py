@@ -24,6 +24,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from scipy import ndimage
 
 from create_iskra_npc_sheet import npc
+from create_iskra_punks import npc as punk_npc
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "art/concepts/iskra_concept.png"
@@ -153,10 +154,11 @@ def soldier():
     return npc("tower_guard")
 
 
-def punk(rng):
+def punk(rng, index=0):
+    # Keep the city's random sequence unchanged when assigning the outfits.
     rng.choice([(40, 36, 52), (90, 30, 60), (30, 30, 30)])
     rng.choice(NEONS[:4])
-    return npc("park_artist")
+    return punk_npc(index)
 
 
 def shady():
@@ -1750,8 +1752,8 @@ def place_city(rng, L):
     put(fire_barrel(), 1520, 1090)
     for x, b in ((1250, 990), (1540, 1040), (1500, 1150), (1450, 980)):
         put(wire_tree(rng, NEONS), x, b)
-    for _ in range(14):
-        put(punk(rng), rng.randrange(1300, 1540), rng.randrange(1112, 1160))
+    for index in range(14):
+        put(punk(rng, index), rng.randrange(1300, 1540), rng.randrange(1112, 1160))
     put(person((40, 36, 52), hat=INK), 1410, 1116)  # doorman
     for i, col in enumerate(NEONS):
         park_pools.append((1350 + i * 28, 1124 + (i % 2) * 14, 64, col, 0.55))

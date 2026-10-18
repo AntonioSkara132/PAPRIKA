@@ -2800,7 +2800,7 @@
     "person": false
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_leather.png",
     "kind": "punk",
     "x": 1341,
     "bottom": 1218,
@@ -2808,10 +2808,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_leather"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_denim.png",
     "kind": "punk",
     "x": 1494,
     "bottom": 1178,
@@ -2819,10 +2819,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_denim"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_tartan.png",
     "kind": "punk",
     "x": 1300,
     "bottom": 1187,
@@ -2830,10 +2830,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_tartan"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_stripes.png",
     "kind": "punk",
     "x": 1307,
     "bottom": 1205,
@@ -2841,10 +2841,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_stripes"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_crust.png",
     "kind": "punk",
     "x": 1422,
     "bottom": 1197,
@@ -2852,10 +2852,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_crust"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_fishnet.png",
     "kind": "punk",
     "x": 1414,
     "bottom": 1209,
@@ -2863,10 +2863,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_fishnet"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_braces.png",
     "kind": "punk",
     "x": 1365,
     "bottom": 1208,
@@ -2874,10 +2874,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_braces"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_vest.png",
     "kind": "punk",
     "x": 1413,
     "bottom": 1198,
@@ -2885,10 +2885,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_vest"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_leather.png",
     "kind": "punk",
     "x": 1351,
     "bottom": 1219,
@@ -2896,10 +2896,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_leather"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_denim.png",
     "kind": "punk",
     "x": 1430,
     "bottom": 1172,
@@ -2907,10 +2907,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_denim"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_tartan.png",
     "kind": "punk",
     "x": 1366,
     "bottom": 1200,
@@ -2918,10 +2918,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_tartan"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_stripes.png",
     "kind": "punk",
     "x": 1395,
     "bottom": 1185,
@@ -2929,10 +2929,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_stripes"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_crust.png",
     "kind": "punk",
     "x": 1448,
     "bottom": 1195,
@@ -2940,10 +2940,10 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_crust"
   },
   {
-    "image": "npcs/park_artist.png",
+    "image": "npcs/punk_fishnet.png",
     "kind": "punk",
     "x": 1365,
     "bottom": 1194,
@@ -2951,7 +2951,7 @@
     "height": 24,
     "building": false,
     "person": true,
-    "npc_role": "park_artist"
+    "npc_role": "punk_fishnet"
   },
   {
     "image": "npcs/board_officer.png",

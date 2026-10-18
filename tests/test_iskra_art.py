@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import create_iskra_concept as art
 import create_iskra_npc_sheet as characters
+import create_veki_art
 
 
 class IskraArtTests(unittest.TestCase):
@@ -48,6 +49,24 @@ class IskraArtTests(unittest.TestCase):
                     x, y, w, h = entry["region"]
                     self.assertEqual(atlas.crop((x, y, x+w, y+h)).tobytes(), sprite.tobytes())
                     self.assertEqual(sprite.tobytes(), characters.npc(entry["id"]).tobytes())
+
+    def test_veki_keeps_original_npc_size_hands_and_silhouette(self):
+        sprite = create_veki_art.veki()
+        with Image.open(create_veki_art.SOURCE) as original:
+            self.assertEqual(sprite.size, (16, 24))
+            self.assertEqual(sprite.getchannel("A").tobytes(), original.getchannel("A").tobytes())
+            self.assertEqual(sprite.crop((0, 17, 16, 24)).tobytes(), original.crop((0, 17, 16, 24)).tobytes())
+            for y in range(24):
+                for x in range(16):
+                    if original.getpixel((x, y)) == characters.SKIN and (x, y) != (9, 6):
+                        self.assertEqual(sprite.getpixel((x, y)), characters.SKIN)
+
+    def test_veki_export_is_distinct_from_courier(self):
+        with Image.open(create_veki_art.OUT) as sprite:
+            self.assertEqual(sprite.tobytes(), create_veki_art.veki().tobytes())
+            self.assertNotEqual(sprite.tobytes(), characters.npc("sky_courier").tobytes())
+            self.assertEqual(sprite.getpixel((6, 3)), (*create_veki_art.LENS, 255))
+            self.assertEqual(sprite.getpixel((6, 11)), (*create_veki_art.SCARF, 255))
 
     def test_every_map_resident_uses_the_new_npc_assets(self):
         records = json.loads((ROOT / "assets/art/iskra/placement.json").read_text())

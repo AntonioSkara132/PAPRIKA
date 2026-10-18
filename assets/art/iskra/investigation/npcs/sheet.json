@@ -1,0 +1,200 @@
+[
+  {
+    "id": "police_attacker",
+    "image": "police_attacker.png",
+    "region": [
+      0,
+      0,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_1.png"
+  },
+  {
+    "id": "uniform_owner",
+    "image": "uniform_owner.png",
+    "region": [
+      16,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager6.png"
+  },
+  {
+    "id": "squirrel_boss",
+    "image": "squirrel_boss.png",
+    "region": [
+      32,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager4.png"
+  },
+  {
+    "id": "pelican_boss",
+    "image": "pelican_boss.png",
+    "region": [
+      0,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager5.png"
+  },
+  {
+    "id": "pelican_hacker",
+    "image": "pelican_hacker.png",
+    "region": [
+      16,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager1.png"
+  },
+  {
+    "id": "contract_handler",
+    "image": "contract_handler.png",
+    "region": [
+      32,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager2.png"
+  },
+  {
+    "id": "squirrel_guard",
+    "image": "squirrel_guard.png",
+    "region": [
+      0,
+      48,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "squirrel_tv_guard",
+    "image": "squirrel_tv_guard.png",
+    "region": [
+      16,
+      48,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_2.png"
+  },
+  {
+    "id": "pelican_guard",
+    "image": "pelican_guard.png",
+    "region": [
+      32,
+      48,
+      16,
+      24
+    ],
+    "source": "assets/art/space_military_base/station_soldier_1.png"
+  },
+  {
+    "id": "board_nation",
+    "image": "board_nation.png",
+    "region": [
+      0,
+      72,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager6.png"
+  },
+  {
+    "id": "board_technology",
+    "image": "board_technology.png",
+    "region": [
+      16,
+      72,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager1.png"
+  },
+  {
+    "id": "board_architecture",
+    "image": "board_architecture.png",
+    "region": [
+      32,
+      72,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager2.png"
+  },
+  {
+    "id": "board_navy",
+    "image": "board_navy.png",
+    "region": [
+      0,
+      96,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "board_demographics",
+    "image": "board_demographics.png",
+    "region": [
+      16,
+      96,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager4.png"
+  },
+  {
+    "id": "board_finance",
+    "image": "board_finance.png",
+    "region": [
+      32,
+      96,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager5.png"
+  },
+  {
+    "id": "board_defense",
+    "image": "board_defense.png",
+    "region": [
+      0,
+      120,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager1.png"
+  },
+  {
+    "id": "cauliflower_secretary",
+    "image": "cauliflower_secretary.png",
+    "region": [
+      16,
+      120,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager4.png"
+  },
+  {
+    "id": "diplomatic_secretary",
+    "image": "diplomatic_secretary.png",
+    "region": [
+      32,
+      120,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager2.png"
+  }
+]

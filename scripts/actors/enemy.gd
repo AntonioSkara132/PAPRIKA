@@ -264,34 +264,37 @@ func _start_phase(target: Node2D) -> void:
 		var candidate := target.global_position + Vector2.from_angle(angle) * radius
 		if candidate.distance_to(spawn_position) > PHASE_LEASH:
 			continue
-		var clear := true
-		for offset in [Vector2.ZERO, Vector2(-6, -5), Vector2(6, -5), Vector2(-6, 2), Vector2(6, 2)]:
-			if not navigation.is_walkable_position(candidate + offset):
-				clear = false
-				break
-		if not clear:
+		if not _phase_spot_clear(candidate, navigation, space):
 			continue
-		var query := PhysicsShapeQueryParameters2D.new()
-		query.shape = _collision.shape
-		query.transform = Transform2D(0.0, candidate + _collision.position)
-		query.collision_mask = 1 | 2 | 8 | 16 | 64
-		query.exclude = [get_rid()]
-		if not space.intersect_shape(query, 1).is_empty():
-			continue
-		_phase_destination = candidate
-		state = State.PHASE_WARNING
-		_state_time = PHASE_WARNING_SECONDS
-		velocity = Vector2.ZERO
-		_phase_warning = ColorRect.new()
-		_phase_warning.color = Color(1.0, 0.15, 0.65, 0.75)
-		_phase_warning.size = Vector2(16, 10)
-		_phase_warning.position = candidate - _phase_warning.size * 0.5
-		_phase_warning.z_index = 100 + int(candidate.y)
-		get_parent().add_child(_phase_warning)
-		var tween := create_tween()
-		tween.tween_property(_phase_warning, "modulate:a", 0.25, PHASE_WARNING_SECONDS * 0.5)
-		tween.tween_property(_phase_warning, "modulate:a", 1.0, PHASE_WARNING_SECONDS * 0.5)
+		_begin_phase_warning(candidate)
 		return
+
+## True when this enemy's body fits at `candidate` on walkable ground without overlapping anyone.
+func _phase_spot_clear(candidate: Vector2, navigation: TiledLoader, space: PhysicsDirectSpaceState2D) -> bool:
+	for offset in [Vector2.ZERO, Vector2(-6, -5), Vector2(6, -5), Vector2(-6, 2), Vector2(6, 2)]:
+		if not navigation.is_walkable_position(candidate + offset):
+			return false
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = _collision.shape
+	query.transform = Transform2D(0.0, candidate + _collision.position)
+	query.collision_mask = 1 | 2 | 8 | 16 | 64
+	query.exclude = [get_rid()]
+	return space.intersect_shape(query, 1).is_empty()
+
+func _begin_phase_warning(candidate: Vector2) -> void:
+	_phase_destination = candidate
+	state = State.PHASE_WARNING
+	_state_time = PHASE_WARNING_SECONDS
+	velocity = Vector2.ZERO
+	_phase_warning = ColorRect.new()
+	_phase_warning.color = Color(1.0, 0.15, 0.65, 0.75)
+	_phase_warning.size = Vector2(16, 10)
+	_phase_warning.position = candidate - _phase_warning.size * 0.5
+	_phase_warning.z_index = 100 + int(candidate.y)
+	get_parent().add_child(_phase_warning)
+	var tween := create_tween()
+	tween.tween_property(_phase_warning, "modulate:a", 0.25, PHASE_WARNING_SECONDS * 0.5)
+	tween.tween_property(_phase_warning, "modulate:a", 1.0, PHASE_WARNING_SECONDS * 0.5)
 
 func _finish_phase() -> void:
 	_clear_phase_warning()
@@ -406,7 +409,7 @@ func _move_toward(target: Vector2, movement_speed: float) -> void:
 		if _ground_path_index < _ground_path.size():
 			target = _ground_path[_ground_path_index]
 	if world != null:
-		movement_speed *= world.movement_factor(global_position)
+		movement_speed *= world.movement_factor(global_position, self)
 	velocity = (target - global_position).normalized() * movement_speed
 	move_and_slide()
 
@@ -437,7 +440,7 @@ func _river_navigation() -> TiledLoader:
 func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0:
 		return
-	var applied := maxi(1, amount - int(definition.get("armor", 0))) if amount > 0 else 0
+	var applied := GameData.armored_damage(amount, int(definition.get("armor", 0)))
 	health = maxi(0, health - applied)
 	_label.visible = true
 	_label.text = "%s  Lv.%d  %d/%d" % [_display_name(), int(definition.get("level", 1)), health, max_health]

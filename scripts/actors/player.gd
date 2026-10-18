@@ -110,7 +110,7 @@ func _physics_process(delta: float) -> void:
 		var sprinting := training_run and Input.is_action_pressed("station_sprint")
 		velocity = input_direction * (SPEED * 1.55 if sprinting else SPEED)
 		if world != null:
-			velocity *= world.movement_factor(global_position)
+			velocity *= world.movement_factor(global_position, self)
 		if input_direction.length_squared() > 0.01:
 			facing = _cardinal(input_direction)
 		move_and_slide()
@@ -147,7 +147,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			world.attack_as(active)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
-		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "kelp_broth", "shellfish_stew", "bandage"]:
+		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "kelp_broth", "shellfish_stew", "greenhouse_salad", "dock_dumplings", "copper_pot_roast", "bandage"]:
 			if active == self and GameState.use_food(food_id):
 				break
 			if active is Villager and GameState.heal_recruit(active.villager_id, food_id):
@@ -161,11 +161,11 @@ func _attack(preferred_target: Node2D = null) -> void:
 	if weapon.is_empty():
 		GameState.notify("Equip a weapon before attacking.")
 		return
-	var power := int(weapon.get("power", 1))
-	var attack_damage: int = {1: 4, 2: 10, 3: 24}.get(power, 4)
+	var attack_damage := GameData.weapon_damage(weapon)
 	var reach := float(weapon.get("reach", 24.0))
 	_attack_cooldown = float(weapon.get("cooldown", 0.5))
 	if bool(weapon.get("ranged", false)):
+		attack_damage = GameState.fire_arrow_damage()
 		var projectile := Projectile.new()
 		get_parent().add_child(projectile)
 		projectile.configure(global_position + facing * 10.0 + Vector2(0, -7), facing, attack_damage, 190.0, reach, true)
@@ -194,7 +194,7 @@ func _nearest_damageable(reach: float) -> Node2D:
 func _show_melee_swing(reach: float) -> void:
 	var line := Line2D.new()
 	line.width = 3.0
-	line.default_color = Color(1.0, 0.80, 0.30, 0.9)
+	line.default_color = Color("9ed6b5") if GameState.equipment.get("weapon", "") == "tvrdium_sword" else Color(1.0, 0.80, 0.30, 0.9)
 	line.points = PackedVector2Array([facing * 7.0 + Vector2(0, -7), facing * reach + Vector2(0, -7)])
 	line.z_index = 950
 	add_child(line)
@@ -216,13 +216,27 @@ func take_damage(raw_damage: int, _source_position: Vector2 = Vector2.ZERO, bypa
 	if GameState.health <= 0:
 		_respawn()
 
+func take_banishing_hit() -> void:
+	if GameState.health <= 0:
+		return
+	# A Banishing Arrow kills through a Life Potion as well.
+	GameState.lose_potion_health()
+	GameState.damage_player(GameState.health, true)
+	_invulnerability = 0.65
+	var previous_notice := respawn_notice
+	respawn_notice = "The Banishing Arrow hit you. You were defeated."
+	_respawn()
+	respawn_notice = previous_notice
+
 func _respawn() -> void:
 	GameState.set_controlled_member("player")
+	GameState.lose_potion_health()
 	global_position = respawn_position
 	GameState.player_position = global_position
 	GameState.restore_health()
 	respawned.emit()
 	GameState.notify(respawn_notice if not respawn_notice.is_empty() else "You were defeated and woke up safely in %s." % respawn_location_name)
+	GameState.player_defeated.emit()
 
 func _update_nearest_interactable() -> void:
 	var world := get_parent().get_parent() as GameWorld
@@ -230,7 +244,7 @@ func _update_nearest_interactable() -> void:
 	var origin := active.global_position
 	var best: Node2D
 	var best_distance := 46.0
-	var best_priority := 1
+	var best_priority := 2
 	for candidate in get_tree().get_nodes_in_group("interactable"):
 		if not candidate is Node2D or candidate == active or not is_instance_valid(candidate):
 			continue
@@ -243,6 +257,8 @@ func _update_nearest_interactable() -> void:
 		var distance := origin.distance_to(interaction_position)
 		var allowed_distance := 45.0 if node is Rabbit else INTERACTION_DISTANCE
 		var priority := 0 if node is WorldService else 1
+		if node is StationStaff and node.service_id == "iskra:inv_davor":
+			priority = 2
 		if distance <= allowed_distance and (priority < best_priority or (priority == best_priority and distance < best_distance)):
 			best = node
 			best_distance = distance

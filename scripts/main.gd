@@ -23,6 +23,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_input_actions()
 	GameState.start_new_game()
+	GameState.player_defeated.connect(_on_player_defeated)
 	if not _switch_world("paprika"):
 		return
 	var ui_script := load("res://scripts/ui/game_ui.gd")
@@ -41,6 +42,9 @@ func _ready() -> void:
 	GameState.notify("Welcome to Paprika. Visit the JOBS center to find work.")
 
 func _unhandled_input(event: InputEvent) -> void:
+	if game_ui != null and game_ui.has_method("text_prompt_open") and game_ui.call("text_prompt_open"):
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("pause"):
 		get_tree().paused = not get_tree().paused
 		GameState.notify("Paused" if get_tree().paused else "Resumed")
@@ -52,15 +56,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameState.save_game()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("quick_load") and not get_tree().paused:
-		if GameState.load_game():
-			_close_ui()
-			_cancel_scene()
-			if _world_planet != GameState.current_planet or _world_area != GameState.current_area:
-				_switch_world(GameState.current_planet, false, Vector2.ZERO, GameState.current_area)
-			elif world != null and world.has_method("apply_loaded_state"):
-				world.apply_loaded_state()
-			if game_ui != null:
-				game_ui.refresh_location()
+		_load_saved_game()
 		get_viewport().set_input_as_handled()
 	elif OS.is_debug_build() and event.is_action_pressed("debug_gold") and not get_tree().paused:
 		GameState.add_gold(DEBUG_GOLD_AMOUNT)
@@ -118,6 +114,25 @@ func _close_ui() -> void:
 	if game_ui != null and game_ui.has_method("close_modal"):
 		game_ui.call("close_modal")
 
+func _load_saved_game() -> bool:
+	if not GameState.load_game():
+		return false
+	_close_ui()
+	_cancel_scene()
+	if _world_planet != GameState.current_planet or _world_area != GameState.current_area:
+		_switch_world(GameState.current_planet, false, Vector2.ZERO, GameState.current_area)
+	elif world != null and world.has_method("apply_loaded_state"):
+		world.apply_loaded_state()
+	if game_ui != null:
+		game_ui.refresh_location()
+	return true
+
+# The MC has one life: defeat reloads the last save. Without a save the
+# player keeps the old wake-up-safely respawn.
+func _on_player_defeated() -> void:
+	if FileAccess.file_exists(GameState.SAVE_PATH) and _load_saved_game():
+		GameState.notify("You were defeated. The game was loaded from your last save.")
+
 func _switch_world(planet: String, traveling: bool = false, departure: Vector2 = Vector2.ZERO, area: String = "exterior", changing_area: bool = false, story: bool = false) -> bool:
 	var location := "station_barracks" if planet == "station" and area == "barracks" else planet
 	if not WORLD_SCRIPTS.has(location):
@@ -128,6 +143,9 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		GameState.notify("The %s world is unavailable." % location.replace("_", " ").capitalize())
 		return false
 	var saved_position := GameState.player_position
+	# A load keeps the saved value; travel carries Davor's current wounds along.
+	if traveling or story or changing_area:
+		GameState.capture_davor_health()
 	var next_world: Node = world_script.new()
 	next_world.name = {
 		"paprika": "PaprikaWorld",
@@ -200,6 +218,7 @@ func _ensure_input_actions() -> void:
 		"order_hold": [KEY_R],
 		"order_attack": [KEY_T],
 		"order_type": [KEY_ENTER, KEY_KP_ENTER],
+		"fire_banishing": [KEY_F],
 		"pause": [KEY_ESCAPE],
 		"quick_save": [KEY_F5],
 		"quick_load": [KEY_F9],

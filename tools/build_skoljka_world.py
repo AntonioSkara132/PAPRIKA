@@ -318,7 +318,7 @@ def main() -> None:
     put("shell_statue", "shell_statue", 70, 38)
     mark("plaza_centre", 70, 40)
     for i, (x, y) in enumerate(((61, 33), (78, 33), (79, 41))):
-        put(("skoljka_food", "skoljka_clothing", "market_stall")[i], f"market_stall_{i}", x, y)
+        put(("skoljka_food", "skoljka_clothing", "skoljka_apothecary")[i], f"market_stall_{i}", x, y)
     for x, y in ((64, 35), (76, 35), (61, 39), (80, 37), (65, 44), (75, 44)):
         put("fish_lamp", "fish_lamp", x, y)
     for x, y in ((63, 30), (77, 30), (59, 37)):

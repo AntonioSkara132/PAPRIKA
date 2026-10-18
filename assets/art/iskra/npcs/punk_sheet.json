@@ -1,0 +1,90 @@
+[
+  {
+    "id": "punk_leather",
+    "image": "punk_leather.png",
+    "region": [
+      0,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_denim",
+    "image": "punk_denim.png",
+    "region": [
+      16,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_tartan",
+    "image": "punk_tartan.png",
+    "region": [
+      32,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_stripes",
+    "image": "punk_stripes.png",
+    "region": [
+      48,
+      0,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_crust",
+    "image": "punk_crust.png",
+    "region": [
+      0,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_fishnet",
+    "image": "punk_fishnet.png",
+    "region": [
+      16,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_braces",
+    "image": "punk_braces.png",
+    "region": [
+      32,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  },
+  {
+    "id": "punk_vest",
+    "image": "punk_vest.png",
+    "region": [
+      48,
+      24,
+      16,
+      24
+    ],
+    "source": "art/concepts/source/villager3.png"
+  }
+]

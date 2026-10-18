@@ -264,7 +264,7 @@ func story_status_text() -> String:
 		status += "\nAIR %d%%" % roundi(air_fraction() * 100.0)
 	return status
 
-func movement_factor(_at: Vector2) -> float:
+func movement_factor(_at: Vector2, _mover: Node = null) -> float:
 	return SUIT_SPEED if _suit_on else 1.0
 
 func _physics_process(delta: float) -> void:
@@ -605,7 +605,7 @@ func _talk_citizen(id: String) -> void:
 		"citizen_2": "The garden lamps dimmed just before the pressure alarm. They don't usually run on the same line.",
 		"citizen_3": "I carry messages between the plaza and housing. Today everybody has asked about the lower works.",
 		"citizen_4": "The west housing pod has families in it. They need a dry way out, not another company notice.",
-		"citizen_5": "The market will be open at supper, even if the pumps take all day.",
+		"citizen_5": "The market will be open at supper, even if the pumps take all day. Try the apothecary's stall: the Secret to Long Life, made by Skoljka scientists. One bottle keeps you on your feet a good while longer.",
 		"citizen_6": "These valves usually fail one at a time. Four at once is hard to explain.",
 		"citizen_7": "The council has asked for repair records. The company says they are all at its depot.",
 	}
@@ -615,7 +615,7 @@ func _talk_citizen(id: String) -> void:
 		"citizen_2": "The garden lights are steady now. The children came back to see the fish.",
 		"citizen_3": "I've carried the news to housing: four people came out of the west airlock alive.",
 		"citizen_4": "The families in the housing pod helped the workers find dry clothes.",
-		"citizen_5": "The market stayed open. Someone has to keep the city fed.",
+		"citizen_5": "The market stayed open. Someone has to keep the city fed. The apothecary sold out of the Secret to Long Life twice during the flooding; Skoljka's scientists brewed more overnight.",
 		"citizen_6": "I won't sign off on those pumps until I see who changed the relay settings.",
 		"citizen_7": "The council is ready to hear what the company filed before the breakdown.",
 	}
@@ -1106,8 +1106,9 @@ func _spawn_davor(position: Vector2) -> void:
 	davor.follow_sight = 140.0
 	davor.bow_range = 150.0
 	davor.can_leap = true
-	davor.get_up_seconds = 10.0
+	davor.get_up_seconds = 0.0
 	actors_root.add_child(davor)
+	GameState.apply_davor_health(davor)
 
 func _sync_world_state() -> void:
 	if tiled_loader == null or not tiled_loader.map_loaded:

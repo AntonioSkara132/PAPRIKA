@@ -2,6 +2,9 @@ class_name IskraWorld
 extends GameWorld
 
 const ISKRA_MAP := "res://maps/iskra.tmj"
+const Chapter = preload("res://scripts/world/iskra_chapter.gd")
+const GangJobs = preload("res://scripts/world/iskra_gang_jobs.gd")
+const Investigation = preload("res://scripts/world/iskra_investigation.gd")
 const Citizen = preload("res://scripts/actors/iskra_citizen.gd")
 const RESIDENT_ROUTE_OFFSETS := [Vector2(80, 0), Vector2(0, 80), Vector2(-80, 0), Vector2(0, -80), Vector2(64, 48), Vector2(-64, 48), Vector2(-64, -48), Vector2(64, -48), Vector2(40, 0), Vector2(0, 40), Vector2(-40, 0), Vector2(0, -40)]
 const FLAGS := ["iskra_arrival", "iskra_registered", "iskra_tower_received"]
@@ -18,6 +21,9 @@ const RESIDENT_LINES := [
 	"The greenhouse towers grow food under lamps. The cargo boats bring everything else.",
 ]
 
+var gang_jobs: RefCounted
+var chapter: RefCounted
+var investigation: RefCounted
 var markers: Dictionary = {}
 var davor: RaidSoldier
 var story_people: Dictionary = {}
@@ -50,7 +56,13 @@ func _ready() -> void:
 	player.respawn_location_name = "Iskra passenger dock"
 	_spawn_davor()
 	_spawn_interactions()
+	chapter = Chapter.new(self)
+	chapter.setup()
 	_configure_residents()
+	gang_jobs = GangJobs.new(self)
+	gang_jobs.setup()
+	investigation = Investigation.new(self)
+	investigation.setup()
 	_spawn_traffic()
 	apply_loaded_state()
 
@@ -58,7 +70,26 @@ func marker(id: String) -> Vector2:
 	return Vector2(markers.get(id, GameState.ISKRA_ARRIVAL))
 
 func location_title() -> String:
-	return "ISKRA"
+	if investigation != null and not investigation.room().is_empty():
+		return investigation.location_title()
+	if gang_jobs != null and not gang_jobs.room().is_empty():
+		return "ISKRA — " + str(gang_jobs.room()).to_upper()
+	if chapter != null and chapter.in_room():
+		return "KINOVA · ROOM 12"
+	if chapter != null and chapter.in_lobby():
+		return "KINOVA · LOBBY"
+	if investigation != null and not investigation.location_title().is_empty():
+		return investigation.location_title()
+	return "ISKRA — MORNING" if chapter != null and chapter.has_flag("morning") else "ISKRA — NIGHT"
+
+## Roko's tar slows the MC, Davor and allies; enemies walk through it at full speed.
+func movement_factor(at: Vector2, mover: Node = null) -> float:
+	if mover is Enemy:
+		return 1.0
+	for trail in get_tree().get_nodes_in_group("tar_trail"):
+		if trail.covers(at):
+			return IskraTarTrail.SLOW_FACTOR
+	return 1.0
 
 func story_step() -> int:
 	for index in FLAGS.size():
@@ -67,12 +98,21 @@ func story_step() -> int:
 	return FLAGS.size()
 
 func story_status_text() -> String:
-	return ["Speak to the officer at the passenger dock.", "Register at the police post west of the Tower of Engineering.", "Report to the clerk at the Tower of Engineering.", "The Board has received your request. Explore Iskra while you wait."][story_step()]
+	var text: String = chapter.status() if chapter != null else "Speak to the officer at the passenger dock."
+	if investigation != null and not investigation.status().is_empty():
+		text += "\n" + investigation.status()
+	if gang_jobs != null and not gang_jobs.status().is_empty():
+		text += "\n" + gang_jobs.status()
+	return text
 
 func _safe_loaded_position(saved: Vector2) -> Vector2:
 	return saved if saved.is_finite() and tiled_loader.is_walkable_position(saved) else marker("arrival")
 
 func capture_player_position() -> void:
+	if gang_jobs != null:
+		gang_jobs.capture_state()
+	if investigation != null:
+		investigation.capture_state()
 	GameState.remember_player_position(_taxi_departure if taxi_active else player.global_position)
 
 func apply_loaded_state() -> void:
@@ -80,32 +120,75 @@ func apply_loaded_state() -> void:
 	player.global_position = _safe_loaded_position(GameState.player_position)
 	GameState.player_position = player.global_position
 	_move_davor()
+	if gang_jobs != null:
+		gang_jobs.apply_loaded_state()
+	if chapter != null:
+		chapter.refresh_location()
+	if gang_jobs != null:
+		gang_jobs.refresh_camera()
+	if investigation != null:
+		investigation.apply_loaded_state()
 
 func _on_player_respawned() -> void:
 	_cancel_taxi()
 	super._on_player_respawned()
 	_move_davor()
+	if gang_jobs != null:
+		gang_jobs.on_respawn()
+	if chapter != null:
+		chapter.refresh_location()
+	if investigation != null:
+		investigation.on_respawn()
 
 func _move_davor() -> void:
+	if investigation != null:
+		investigation.place_veki()
+	if investigation != null and investigation.position_davor():
+		return
+	if gang_jobs != null and gang_jobs.pressure != null and gang_jobs.pressure.position_davor():
+		return
 	davor.global_position = tiled_loader.nearest_walkable_position(player.global_position + Vector2(-24, 16))
 	davor.velocity = Vector2.ZERO
 	davor.set_order("follow")
 
+func _unhandled_input(event: InputEvent) -> void:
+	if davor != null and player != null and not get_tree().paused and not player.ui_is_open():
+		for order in ["follow", "hold", "attack"]:
+			if event.is_action_pressed("order_" + order):
+				_order_davor(order)
+				get_viewport().set_input_as_handled()
+				return
+		if event.is_action_pressed("fire_banishing"):
+			investigation.encounters.fire_player_arrow()
+			get_viewport().set_input_as_handled()
+			return
+	super._unhandled_input(event)
+
+## Q follows, R holds the current spot, T attacks enemies in sight.
+func _order_davor(order: String) -> void:
+	if davor.down:
+		GameState.notify("Davor is down and cannot take orders.")
+		return
+	davor.set_order(order)
+	GameState.notify({"follow": "Davor: following you.", "hold": "Davor: holding this position.", "attack": "Davor: attacking nearby enemies."}[order])
+
 func _spawn_davor() -> void:
 	davor = RaidSoldier.new()
 	davor.name = "Davor"
+	davor.add_to_group("iskra_davor")
 	davor.configure("davor", "Davor", "res://assets/art/engineeria/davor.png", GameState.ISKRA_ARRIVAL, "sword", 0, self)
 	davor.max_health = 260
 	davor.health = 260
 	davor.armor = 0
 	davor.speed = 100.0
-	davor.strike_damage = 45
+	davor.strike_damage = 30
 	davor.strike_cooldown = 0.6
 	davor.follow_sight = 140.0
 	davor.bow_range = 150.0
 	davor.can_leap = true
-	davor.get_up_seconds = 10.0
+	davor.get_up_seconds = 0.0
 	actors_root.add_child(davor)
+	GameState.apply_davor_health(davor)
 
 func _on_actor_spawn_requested(kind: String, position: Vector2, texture: String, id: String) -> void:
 	if kind != "story":
@@ -169,14 +252,16 @@ func _resident_path_fits(start: Vector2, destination: Vector2, home: Vector2) ->
 	return length <= 240.0
 
 func _spawn_interactions() -> void:
-	var entries := {"dock_officer": "Dock Officer", "police": "Police Clerk", "tower": "Tower Clerk", "food": "Food Hall", "forge": "Forge & Armor", "library": "Iskra Library", "farm": "Automated Farms", "park": "Punk Park", "nature_park": "Nature Park", "cruiser": "Navy Cruiser"}
+	var entries := {"dock_officer": "Dock Officer", "police": "Police Clerk", "police_records": "Police Quartermaster", "tower": "Tower Guard", "food": "Food Hall", "forge": "Forge & Armor", "library": "Iskra Library", "farm": "Automated Farms", "park": "Punk Park", "nature_park": "Nature Park", "cruiser": "Navy Cruiser"}
 	for id: String in TAXI_PADS:
 		entries["taxi_" + id] = "%s air taxi" % TAXI_PADS[id]
 	for id: String in entries:
 		var staff := StationStaff.new()
-		var roles := {"dock_officer": "board_officer", "police": "police_clerk", "tower": "civic_engineer", "food": "market_keeper", "forge": "dock_mechanic", "library": "library_archivist", "farm": "greenhouse_worker", "park": "park_artist", "nature_park": "greenhouse_worker", "cruiser": "tower_guard"}
+		var roles := {"dock_officer": "board_officer", "police": "police_clerk", "police_records": "police_clerk", "tower": "civic_engineer", "food": "market_keeper", "forge": "dock_mechanic", "library": "library_archivist", "farm": "greenhouse_worker", "park": "park_artist", "nature_park": "greenhouse_worker", "cruiser": "tower_guard"}
 		var image: String = roles.get(id, "sky_courier")
 		staff.configure("iskra:" + id, entries[id], "res://assets/art/iskra/npcs/%s.png" % image, marker(id))
+		if id == "police_records":
+			staff.interaction_text = "Ask the quartermaster for the issue register"
 		if id in ["library", "farm", "park", "nature_park", "cruiser"]:
 			staff.interaction_text = "Read about %s" % entries[id]
 		if id.begins_with("taxi_"):
@@ -195,27 +280,17 @@ func _on_service_requested(id: String, title: String) -> void:
 	if key.begins_with("resident_"):
 		_tell(title, RESIDENT_LINES[int(key.trim_prefix("resident_")) % RESIDENT_LINES.size()])
 		return
+	if investigation != null and investigation.handle(key):
+		return
+	if gang_jobs != null and gang_jobs.handle(key):
+		return
+	if chapter != null and chapter.handle(key):
+		return
 	match key:
-		"dock_officer":
-			_set_flag(FLAGS[0])
-			_tell(title, "Welcome to Iskra. Register at the police post west of the Tower of Engineering, then take your request to the Tower clerk. The marked pads offer air taxis for five gold.")
-		"police":
-			if story_step() < 1:
-				_tell(title, "First speak to the officer at the passenger dock.")
-			else:
-				_set_flag(FLAGS[1])
-				_tell(title, "Two arrivals from Skoljka: you and Davor. You are registered. Take your account of the company to the Tower of Engineering.")
-		"tower":
-			if story_step() < 2:
-				_tell(title, "Please register with the police before requesting an audience.")
-			else:
-				_set_flag(FLAGS[2])
-				_tell(title, "Your request is recorded. The Engineering Board will hear your account of Skoljka later. You and Davor may visit the city while you wait.")
-		"food", "forge":
+		"food", "forge", "library":
 			var ui := get_tree().get_first_node_in_group("game_ui")
 			if ui != null:
 				ui.open_service("iskra_" + key, title)
-		"library": _tell("Iskra Library", "Engineeria's engineers built Iskra as an artificial planet. It became the nation's capital and most populous member. The Engineering Board meets in the Tower of Engineering; each elected department head serves a short term.")
 		"farm": _tell("Automated Farms", "Greenhouse towers grow vegetables under lamps. Water and nutrients circulate through the trays; the maintenance crews check every pump each morning.")
 		"park": _tell("Punk Park", "Music, painted walls and colored lamps fill this corner of Iskra. Keep the footpaths clear and leave room beside the landing pad.")
 		"nature_park": _tell("Nature Park", "Real soil, grass and trees, carried here from Engineeria's other planets. The gardeners tend the roots beneath the paths. Sit a while; the warm lamps stay on after the shops close.")
@@ -246,8 +321,16 @@ func ride_taxi(origin: String, destination: String) -> bool:
 		return false
 	if player.global_position.distance_to(marker("taxi_" + origin)) > 96.0:
 		return false
+	if gang_jobs != null and gang_jobs.busy_travel():
+		GameState.notify("Use Veki's ship while carrying cargo or escorting people.")
+		return false
 	if not GameState.spend_gold(TAXI_FARE):
 		GameState.notify("You need %d gold for the air taxi." % TAXI_FARE)
+		return false
+	return start_flight(marker("taxi_" + destination), TAXI_PADS[destination])
+
+func start_flight(destination: Vector2, title: String, landed: Callable = Callable()) -> bool:
+	if taxi_active:
 		return false
 	taxi_active = true
 	_taxi_departure = player.global_position
@@ -256,25 +339,29 @@ func ride_taxi(origin: String, destination: String) -> bool:
 	player.visible = false
 	davor.visible = false
 	davor.set_physics_process(false)
+	if investigation != null:
+		investigation.sync()
 	_taxi_ship = Sprite2D.new()
 	_taxi_ship.texture = load("res://assets/art/iskra/ship_2.png")
 	_taxi_ship.scale = Vector2(2, 2)
 	_taxi_ship.z_index = 4000
-	_taxi_ship.position = marker("taxi_" + origin)
+	_taxi_ship.position = _taxi_departure
 	add_child(_taxi_ship)
 	var camera := Camera2D.new()
 	camera.zoom = _camera.zoom
 	_taxi_ship.add_child(camera)
 	camera.make_current()
-	GameState.notify("Flying to %s with Davor." % TAXI_PADS[destination])
+	GameState.notify("Flying to %s with Davor." % title)
 	_taxi_tween = create_tween()
-	_taxi_tween.tween_property(_taxi_ship, "position", marker("taxi_" + destination), 3.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_taxi_tween.tween_property(_taxi_ship, "position", destination, 3.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_taxi_tween.tween_callback(func() -> void:
-		player.global_position = marker("taxi_" + destination)
+		player.global_position = destination
 		_cancel_taxi()
 		_move_davor()
+		if landed.is_valid():
+			landed.call()
 		GameState.remember_player_position(player.global_position)
-		GameState.notify("Arrived at %s." % TAXI_PADS[destination]))
+		GameState.notify("Arrived at %s." % title))
 	return true
 
 func _cancel_taxi() -> void:
@@ -291,6 +378,8 @@ func _cancel_taxi() -> void:
 	if davor != null:
 		davor.visible = true
 		davor.set_physics_process(true)
+	if investigation != null:
+		investigation.sync()
 
 func _spawn_traffic() -> void:
 	var routes := [PackedVector2Array([Vector2(0, 520), Vector2(300, 500), Vector2(620, 466), Vector2(910, 474), Vector2(1220, 486), Vector2(1800, 496)]), PackedVector2Array([Vector2(0, 912), Vector2(330, 930), Vector2(620, 896), Vector2(928, 900), Vector2(1240, 918), Vector2(1800, 908)]), PackedVector2Array([Vector2(910, 474), Vector2(890, 700), Vector2(928, 900), Vector2(910, 1250)])]
@@ -312,6 +401,10 @@ func _spawn_traffic() -> void:
 		traffic.append({"sprite": ship, "curve": curve, "distance": curve.get_baked_length() * float(i) / 24.0, "speed": 50.0 + i % 5 * 8})
 
 func _process(delta: float) -> void:
+	if gang_jobs != null:
+		gang_jobs.step(delta)
+	if investigation != null:
+		investigation.step(delta)
 	for craft in traffic:
 		var curve: Curve2D = craft["curve"]
 		craft["distance"] = fmod(float(craft["distance"]) + delta * float(craft["speed"]), curve.get_baked_length())

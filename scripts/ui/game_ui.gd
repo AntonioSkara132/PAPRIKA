@@ -3,6 +3,7 @@ extends CanvasLayer
 
 const NpcEncyclopedia = preload("res://scripts/data/npc_encyclopedia.gd")
 const PlanetMap = preload("res://scripts/ui/planet_map.gd")
+const InventoryViewScript = preload("res://scripts/ui/inventory_view.gd")
 
 signal travel_requested(destination: String)
 signal station_area_requested(area: String)
@@ -29,6 +30,8 @@ const UI_PIXEL_SCALE := 2.0
 var health_bar: ProgressBar
 var status_label: Label
 var location_label: Label
+## Status, location and objective panels along the top; a story scene can hide them to show the whole room.
+var _top_panels: Array[Control] = []
 var equipment_label: Label
 var job_label: Label
 var squad_label: Label
@@ -39,6 +42,7 @@ var prompt_label: Label
 var modal_overlay: ColorRect
 var modal_panel: PanelContainer
 var modal_content: VBoxContainer
+var inventory_panel: InventoryView
 var planet_map: Control
 ## Text box for typed squad orders; Enter opens it when the world accepts them.
 var order_bar: PanelContainer
@@ -56,7 +60,7 @@ var _notification_timer: Timer
 var scene_panel: PanelContainer
 var scene_speaker_label: Label
 var scene_text_label: Label
-var scene_buttons: HBoxContainer
+var scene_buttons: HFlowContainer
 var _scene_lines: Array = []
 var _scene_index := -1
 var _scene_finished := Callable()
@@ -65,6 +69,14 @@ var _active_service_id := ""
 var _active_service_name := ""
 var _recruit_page := 0
 var _squad_refresh_elapsed := 0.0
+var _text_prompt_active := false
+var _text_prompt_input: LineEdit
+var _text_prompt_feedback: Label
+var _text_prompt_submit := Callable()
+var _text_prompt_hint := Callable()
+var _text_prompt_was_paused := false
+var _text_prompt_old_focus: WeakRef
+var _text_prompt_token := 0
 
 func _process(delta: float) -> void:
 	if not GameState.squad_deployed:
@@ -86,14 +98,28 @@ func _ready() -> void:
 	_fit_to_window()
 
 func _input(event: InputEvent) -> void:
+	if _text_prompt_active:
+		if event.is_action_pressed("pause"):
+			close_modal()
+			get_viewport().set_input_as_handled()
+		elif event is InputEventAction or event.is_action_pressed("quick_save") or event.is_action_pressed("quick_load") or event.is_action_pressed("debug_gold"):
+			get_viewport().set_input_as_handled()
+		# Printable keys and navigation belong to LineEdit, not the HUD shortcuts.
+		return
 	if scene_panel.visible:
-		# E, Space and Enter show the next line. The last line of a scene with
-		# choices waits for a button instead.
+		# E advances narration, then selects only an explicit no-action exit.
+		# Space and Enter never select a contract or other consequential choice.
 		if event.is_action_pressed("interact") or event.is_action_pressed("attack") or event.is_action_pressed("order_type"):
 			if _scene_choices.is_empty() or _scene_index < _scene_lines.size() - 1:
 				advance_scene()
+			elif event.is_action_pressed("interact") and _scene_has_exit():
+				_end_scene(Callable())
 			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("inventory") or event.is_action_pressed("jobs") or event.is_action_pressed("encyclopedia") or event.is_action_pressed("planet_map") or event.is_action_pressed("pause"):
+		elif event.is_action_pressed("pause"):
+			if _scene_index == _scene_lines.size() - 1 and _scene_has_exit():
+				_end_scene(Callable())
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("inventory") or event.is_action_pressed("jobs") or event.is_action_pressed("encyclopedia") or event.is_action_pressed("planet_map"):
 			get_viewport().set_input_as_handled()
 		return
 	if order_bar.visible:
@@ -138,7 +164,7 @@ func _input(event: InputEvent) -> void:
 
 func set_interaction_prompt(text: String) -> void:
 	prompt_label.text = "[E] %s" % text if not text.is_empty() else ""
-	prompt_panel.visible = not text.is_empty()
+	prompt_panel.visible = not text.is_empty() and not scene_playing() and not modal_overlay.visible
 
 func open_service(service_id: String, display_name: String) -> void:
 	if service_id != _active_service_id:
@@ -153,6 +179,7 @@ func open_service(service_id: String, display_name: String) -> void:
 	match service_id:
 		"food", "north_food": _build_food_shop(service_id == "north_food")
 		"skoljka_food": _build_skoljka_food_shop()
+		"skoljka_apothecary": _build_skoljka_apothecary()
 		"iskra_food": _build_iskra_food_shop()
 		"iskra_forge": _build_gear_shop(service_id)
 		"forge", "north_forge", "river_forge", "clothing", "north_clothing", "skoljka_clothing": _build_gear_shop(service_id)
@@ -161,6 +188,7 @@ func open_service(service_id: String, display_name: String) -> void:
 		"travel": _build_travel_agency()
 		"river_library": _build_river_library()
 		"skoljka_library": _build_skoljka_library()
+		"iskra_library": _build_iskra_library()
 		"river_town_hall": _build_river_town_hall()
 		"military_hq": _build_military_hq()
 		"station_ship": _build_station_ship()
@@ -192,6 +220,7 @@ func open_planet_map() -> void:
 	_active_service_name = "Planet Map"
 	modal_overlay.visible = true
 	modal_panel.visible = false
+	inventory_panel.visible = false
 	planet_map.show_map(GameState.current_planet)
 
 func open_encyclopedia() -> void:
@@ -209,13 +238,26 @@ func _show_encyclopedia_categories() -> void:
 	_add_close_button()
 
 func _show_encyclopedia_list(category: String) -> void:
+	var subgroups := NpcEncyclopedia.subgroups(category)
+	if subgroups.size() == 1:
+		_show_encyclopedia_subgroup(category, subgroups[0])
+		return
 	_active_service_id = "encyclopedia_list"
 	_open_modal(category)
-	var entries := NpcEncyclopedia.entries()
-	for entry in entries:
-		if entry["category"] == category:
+	for subgroup in subgroups:
+		_add_action_button(subgroup, func() -> void: _show_encyclopedia_subgroup(category, subgroup))
+	_add_action_button("← All groups", _show_encyclopedia_categories)
+	_add_close_button()
+
+func _show_encyclopedia_subgroup(category: String, subgroup: String) -> void:
+	_active_service_id = "encyclopedia_list"
+	_open_modal("%s — %s" % [category, subgroup] if category != subgroup else category)
+	for entry in NpcEncyclopedia.entries():
+		if entry["category"] == category and entry["subgroup"] == subgroup:
 			var selected: Dictionary = entry
 			_add_action_button("%s  —  %s" % [entry["name"], entry["location"]], func() -> void: _show_encyclopedia_entry(selected))
+	if NpcEncyclopedia.subgroups(category).size() > 1:
+		_add_action_button("← %s" % category, func() -> void: _show_encyclopedia_list(category))
 	_add_action_button("← All groups", _show_encyclopedia_categories)
 	_add_close_button()
 
@@ -237,7 +279,8 @@ func _show_encyclopedia_entry(entry: Dictionary) -> void:
 	_add_heading("At a glance")
 	_add_body(NpcEncyclopedia.stats(entry))
 	var category: String = entry["category"]
-	_add_action_button("← %s" % category, func() -> void: _show_encyclopedia_list(category))
+	var subgroup: String = entry["subgroup"]
+	_add_action_button("← %s" % subgroup, func() -> void: _show_encyclopedia_subgroup(category, subgroup))
 	_add_close_button()
 
 func open_inventory() -> void:
@@ -246,50 +289,10 @@ func open_inventory() -> void:
 		return
 	_active_service_id = "inventory"
 	_active_service_name = "Inventory & Equipment"
-	_open_modal(_active_service_name)
-	_add_body("Gold: %d    Health: %d/%d" % [GameState.gold, GameState.health, GameState.max_health])
-	if not String(GameState.equipment.get("armor", "")).is_empty():
-		_add_action_button("Unequip armor — keep it in your pack", func() -> void: GameState.unequip_armor(); _refresh_inventory_panel())
-	var item_ids := GameState.inventory.keys()
-	item_ids.sort()
-	if item_ids.is_empty():
-		_add_body("Your pack is empty.")
-	for item_id_value in item_ids:
-		var item_id := String(item_id_value)
-		var amount := int(GameState.inventory[item_id])
-		var definition := GameData.item(item_id)
-		var kind := String(definition.get("kind", ""))
-		var suffix := ""
-		if GameState.equipment.values().has(item_id) or (item_id == "practice_mine" and GameState.military_trap_equipped):
-			suffix = "  [equipped]"
-		var assigned := GameState.reserved_item_count(item_id) - (1 if GameState.equipment.values().has(item_id) else 0)
-		if assigned > 0:
-			suffix += "  [squad x%d]" % assigned
-		var button_text := "%s x%d%s" % [definition.get("name", item_id), amount, suffix]
-		if item_id == "practice_mine":
-			var action_text := "Unequip" if GameState.military_trap_equipped else "Equip"
-			var mine_button := _add_action_button("%s — %s" % [button_text, action_text], func() -> void:
-				if not GameState.military_equip_practice_mine(not GameState.military_trap_equipped):
-					GameState.notify("The practice mine can only be equipped during an active trap drill.")
-				_refresh_inventory_panel()
-			)
-			mine_button.disabled = GameState.current_planet != "station" or GameState.military_stage != "trap" or not GameState.military_trap_round_active
-		elif item_id == "field_mine":
-			var world := get_tree().get_first_node_in_group("game_world")
-			var holding: bool = world != null and world.get("player") != null and world.player.has_method("is_holding_field_mine") and world.player.is_holding_field_mine()
-			var field_button := _add_action_button("%s — %s" % [button_text, "Put away" if holding else "Ready"], func() -> void:
-				if world != null and world.has_method("set_field_mine_ready"):
-					world.set_field_mine_ready(not holding)
-				_refresh_inventory_panel()
-			)
-			field_button.disabled = world == null or not world.has_method("set_field_mine_ready")
-		elif kind in ["weapon", "armor", "clothing"]:
-			_add_action_button(button_text, func() -> void: GameState.equip_item(item_id); _refresh_inventory_panel())
-		elif kind == "food":
-			_add_action_button(button_text + " — use", func() -> void: GameState.use_food(item_id); _refresh_inventory_panel())
-		else:
-			_add_body(button_text)
-	_add_close_button()
+	planet_map.visible = false
+	modal_panel.visible = false
+	modal_overlay.visible = true
+	inventory_panel.open()
 
 func open_jobs() -> void:
 	if modal_overlay.visible and _active_service_id == "jobs_detail":
@@ -332,11 +335,99 @@ func open_jobs() -> void:
 	_add_close_button()
 
 func close_modal() -> void:
+	_end_text_prompt()
 	modal_overlay.visible = false
 	planet_map.visible = false
+	inventory_panel.visible = false
 	modal_panel.visible = true
 	_active_service_id = ""
 	_active_service_name = ""
+
+func text_prompt_open() -> bool:
+	return _text_prompt_active
+
+func open_text_prompt(title: String, body: String, submit: Callable, hint: Callable = Callable(), placeholder: String = "") -> void:
+	_end_text_prompt()
+	cancel_scene()
+	if order_bar.visible:
+		close_order_bar()
+	var old_focus := get_viewport().gui_get_focus_owner()
+	_open_modal(title)
+	_active_service_id = "text_prompt"
+	_text_prompt_active = true
+	_text_prompt_token += 1
+	_text_prompt_submit = submit
+	_text_prompt_hint = hint
+	_text_prompt_was_paused = get_tree().paused
+	_text_prompt_old_focus = weakref(old_focus) if old_focus != null else null
+	get_tree().paused = true
+	_add_body(body)
+	_text_prompt_input = LineEdit.new()
+	_text_prompt_input.name = "NameAnswer"
+	_text_prompt_input.placeholder_text = placeholder
+	_text_prompt_input.max_length = 64
+	_text_prompt_input.keep_editing_on_text_submit = true
+	_text_prompt_input.custom_minimum_size = Vector2(380, 30)
+	_text_prompt_input.add_theme_font_size_override("font_size", 14)
+	_text_prompt_input.add_theme_color_override("font_color", CREAM)
+	_text_prompt_input.text_submitted.connect(_submit_text_prompt)
+	modal_content.add_child(_text_prompt_input)
+	_text_prompt_feedback = _label("", 10, CREAM)
+	_text_prompt_feedback.name = "AnswerFeedback"
+	_text_prompt_feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_text_prompt_feedback.custom_minimum_size = Vector2(380, 20)
+	modal_content.add_child(_text_prompt_feedback)
+	_add_action_button("Submit  [Enter]", func() -> void: _submit_text_prompt(_text_prompt_input.text))
+	if hint.is_valid():
+		_add_action_button("Ask Davor for a hint", _show_text_prompt_hint)
+	_add_action_button("Keep thinking  [Esc]", close_modal)
+	set_interaction_prompt("")
+	_focus_text_prompt.call_deferred()
+
+func _focus_text_prompt() -> void:
+	if _text_prompt_active and is_instance_valid(_text_prompt_input):
+		_text_prompt_input.grab_focus()
+
+func _submit_text_prompt(answer: String) -> void:
+	if not _text_prompt_active or not _text_prompt_submit.is_valid():
+		return
+	var token := _text_prompt_token
+	var response: Variant = _text_prompt_submit.call(answer.left(64))
+	if not _text_prompt_active or token != _text_prompt_token:
+		return
+	if response is Dictionary and response.get("accepted", false) == true:
+		close_modal()
+	else:
+		_text_prompt_feedback.text = str(response.get("message", "Try another name, or ask for a hint.")) if response is Dictionary else "Try another name, or ask for a hint."
+		_focus_text_prompt()
+
+func _show_text_prompt_hint() -> void:
+	if _text_prompt_active and _text_prompt_hint.is_valid():
+		_text_prompt_feedback.text = str(_text_prompt_hint.call())
+		_focus_text_prompt()
+
+func _end_text_prompt() -> void:
+	if not _text_prompt_active:
+		return
+	_text_prompt_active = false
+	_text_prompt_token += 1
+	get_tree().paused = _text_prompt_was_paused
+	_text_prompt_submit = Callable()
+	_text_prompt_hint = Callable()
+	if is_instance_valid(_text_prompt_input):
+		_text_prompt_input.release_focus()
+	_text_prompt_input = null
+	_text_prompt_feedback = null
+	var old_focus := _text_prompt_old_focus
+	_text_prompt_old_focus = null
+	_restore_prompt_focus.call_deferred(old_focus)
+
+func _restore_prompt_focus(reference: WeakRef) -> void:
+	if _text_prompt_active or reference == null:
+		return
+	var previous: Control = reference.get_ref() as Control
+	if is_instance_valid(previous) and not previous.is_queued_for_deletion() and previous.is_visible_in_tree():
+		previous.grab_focus()
 
 func _build_hud() -> void:
 	var root := Control.new()
@@ -369,6 +460,7 @@ func _build_hud() -> void:
 
 	var job_panel := _panel_at(Vector2(404, 7), Vector2(228, 62))
 	root.add_child(job_panel)
+	_top_panels = [status_panel, title_panel, job_panel]
 	job_label = _label("", 9, CREAM)
 	job_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	job_panel.add_child(job_label)
@@ -455,6 +547,9 @@ func _build_modal() -> void:
 	modal_content.custom_minimum_size = Vector2(390, 0)
 	modal_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(modal_content)
+	inventory_panel = InventoryViewScript.new()
+	inventory_panel.setup(self)
+	modal_overlay.add_child(inventory_panel)
 	planet_map = PlanetMap.new()
 	planet_map.name = "PlanetMap"
 	planet_map.position = Vector2(10, 10)
@@ -480,6 +575,13 @@ func _refresh_all() -> void:
 	_refresh_job()
 	_refresh_squad()
 
+func set_top_panels_visible(shown: bool) -> void:
+	for panel in _top_panels:
+		panel.visible = shown
+
+func top_panels_visible() -> bool:
+	return _top_panels.is_empty() or _top_panels[0].visible
+
 func refresh_location() -> void:
 	var titled_world := get_tree().get_first_node_in_group("game_world")
 	if titled_world != null and titled_world.has_method("location_title"):
@@ -501,7 +603,7 @@ func _in_council_chamber() -> bool:
 func _refresh_status() -> void:
 	health_bar.max_value = GameState.max_health
 	health_bar.value = GameState.health
-	status_label.text = "YOU HP %d/%d    GOLD %d" % [GameState.health, GameState.max_health, GameState.gold]
+	status_label.text = "YOU HP %d/%d%s    GOLD %d" % [GameState.health, GameState.max_health, " +%d potion" % GameState.potion_health if GameState.potion_health > 0 else "", GameState.gold]
 	var weapon_id := String(GameState.equipment.get("weapon", ""))
 	var weapon: String = GameData.item(weapon_id).get("name", "Unarmed") if not weapon_id.is_empty() else "Unarmed"
 	var armor_id := String(GameState.equipment.get("armor", ""))
@@ -572,9 +674,11 @@ func _build_scene_panel(root: Control) -> void:
 	scene_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	scene_text_label.custom_minimum_size = Vector2(508, 40)
 	box.add_child(scene_text_label)
-	scene_buttons = HBoxContainer.new()
-	scene_buttons.alignment = BoxContainer.ALIGNMENT_END
-	scene_buttons.add_theme_constant_override("separation", 6)
+	scene_buttons = HFlowContainer.new()
+	scene_buttons.alignment = FlowContainer.ALIGNMENT_END
+	scene_buttons.add_theme_constant_override("h_separation", 6)
+	scene_buttons.add_theme_constant_override("v_separation", 4)
+	scene_panel.resized.connect(_position_scene_panel)
 	box.add_child(scene_buttons)
 	scene_panel.visible = false
 
@@ -625,9 +729,29 @@ func advance_scene() -> void:
 	if last and not _scene_choices.is_empty():
 		for choice: Dictionary in _scene_choices:
 			var action: Callable = choice.get("action", Callable())
-			scene_buttons.add_child(_scene_button(String(choice["label"]), func() -> void: _end_scene(action)))
+			var caption := String(choice["label"])
+			if not action.is_valid():
+				caption += "  [E / Esc]"
+			scene_buttons.add_child(_scene_button(caption, func() -> void: _end_scene(action)))
 	else:
 		scene_buttons.add_child(_scene_button("Continue  [E]" if not last else "Close  [E]", advance_scene))
+	_resize_scene_panel.call_deferred()
+
+func _scene_has_exit() -> bool:
+	for choice: Dictionary in _scene_choices:
+		var action: Callable = choice.get("action", Callable())
+		if not action.is_valid():
+			return true
+	return false
+
+func _resize_scene_panel() -> void:
+	# Container minimum sizes include wrapped text and every row of choices.
+	scene_panel.size = Vector2(528, 96)
+	_position_scene_panel()
+
+func _position_scene_panel() -> void:
+	var screen := BASE_SIZE / scale.x
+	scene_panel.position = Vector2((screen.x - scene_panel.size.x) * 0.5, screen.y - 12.0 - scene_panel.size.y)
 
 ## Ends a scene without running its actions, for when the world it belongs to
 ## is replaced by a load or a journey.
@@ -674,7 +798,9 @@ func _mark_speaker(node: Variant) -> void:
 		world.mark_speaker(node if node is Node2D and is_instance_valid(node) else null)
 
 func _open_modal(title: String) -> void:
+	_end_text_prompt()
 	planet_map.visible = false
+	inventory_panel.visible = false
 	modal_panel.visible = true
 	for child in modal_content.get_children():
 		child.queue_free()
@@ -692,14 +818,23 @@ func _build_food_shop(northern: bool = false) -> void:
 		_add_food_sell_buttons(item_id)
 
 func _build_iskra_food_shop() -> void:
-	_add_body("Bread from the food works and hot meals for the dock crews. Food restores health.")
+	_add_body("Bread from the food works, salad from the automated greenhouse towers, and hot meals for the dock crews. Food restores health.")
 	_add_heading("Buy")
-	for item_id in ["bread", "stew", "smoked_fish"]:
+	for item_id in ["bread", "greenhouse_salad", "stew", "smoked_fish", "dock_dumplings", "copper_pot_roast"]:
 		var definition := GameData.item(item_id)
-		_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
+		_add_action_button("%s — %d gold (restores %d)" % [definition["name"], definition["buy"], definition["heal"]], func() -> void: GameState.buy_item(item_id); _reopen_service())
 	_add_heading("Sell food")
-	for item_id in ["bread", "stew", "smoked_fish"]:
+	for item_id in ["bread", "greenhouse_salad", "stew", "smoked_fish", "dock_dumplings", "copper_pot_roast"]:
 		_add_food_sell_buttons(item_id)
+
+func _build_skoljka_apothecary() -> void:
+	_add_body("\"The Secret to Long Life,\" reads the painted board, \"made by the scientists of Skoljka.\" The apothecary brews it in the research labs below the plaza from deep-water kelp and medicine the city keeps to itself.")
+	_add_body("One Life Potion gives %d extra health on top of your own. Wounds use it up first and food cannot restore it. Its strength is lost if you are defeated, but unopened bottles keep. One dose works at a time." % GameData.LIFE_POTION_HEALTH)
+	_add_heading("Buy")
+	var definition := GameData.item("life_potion")
+	_add_action_button("%s — %d gold" % [definition["name"], definition["buy"]], func() -> void: GameState.buy_item("life_potion"); _reopen_service())
+	_add_heading("Sell")
+	_add_food_sell_buttons("life_potion")
 
 func _build_skoljka_food_shop() -> void:
 	_add_body("Tala serves hot kelp broth and shellfish stew at the plaza. Food restores health. The company ordered meals for a night repair shift before anyone reported a leak.")
@@ -758,6 +893,11 @@ func _build_gear_shop(service_id: String) -> void:
 			var equip_button := _add_action_button(equip_text, func() -> void: GameState.equip_item(item_id); _reopen_service())
 			equip_button.disabled = equipped or available <= 0
 			_add_action_button("Buy another %s — %d gold" % [definition["name"], int(definition["buy"])], func() -> void: GameState.buy_item(item_id); _reopen_service())
+	if service_id in ["north_forge", "river_forge", "pomidor_forge", "iskra_forge"]:
+		var arrow_id := "bronze_arrow" if service_id == "north_forge" else "iron_arrow"
+		var arrows := GameData.item(arrow_id)
+		_add_heading("Arrows")
+		_add_action_button("Buy %d %s — %d gold" % [int(arrows["bundle_count"]), arrows["name"], int(arrows["bundle_price"])], func() -> void: GameState.buy_arrow_bundle(arrow_id); _reopen_service())
 	if service_id in ["north_clothing", "pomidor_clothing", "skoljka_clothing"]:
 		_add_heading("Cloth trading")
 		var cloth_id := "purple_cloth" if service_id == "north_clothing" else ("orange_cloth" if service_id == "pomidor_clothing" else "sea_glass_cloth")
@@ -828,6 +968,31 @@ func _build_skoljka_library() -> void:
 	_add_body("With more immigrants arriving, the engineers used their national resources to build Iskra, a man-made planet in space. It became Engineeria's fourth planet, soon surpassed the others in population, and became the capital. Rudnik joined later, bringing Engineeria to five planets.")
 	_add_heading("How Engineeria is governed")
 	_add_body("The Engineering Board elects short-term Heads of Technology, Architecture, Navy, Demographics, Finance and Defense. The Head of Nation coordinates their work.")
+	_add_body("The current Heads are Zvonimir Dom (Nation), Nikola Struja (Technology), Vedrana Luk (Architecture), Kresimir Sidro (Navy), Ljerka Popis (Demographics), Dubravka Riznic (Finance) and Branko Stit (Defense). They meet in the Board chamber at the top of the Tower of Engineering in Iskra.")
+
+func _build_iskra_library() -> void:
+	_add_heading("YellowSand Engineering")
+	_add_body("YellowSand Engineering lets engineers transmit electrical current and energy over a distance, so a machine needs no wire running back to the person controlling it. In Iskra it powers whole neighborhoods, from the lamps above a footpath to the pumps of the automated farms.")
+	_add_heading("Iskra: the automated city")
+	_add_body("Iskra is a fully automated city. The main City Computer coordinates transport, lighting, communications and other city services. Engineers still maintain the machinery: automation does not repair a worn pump or inspect a damaged device.")
+	_add_heading("HMS Schotsky")
+	_add_body("The cruiser HMS Schotsky is a marvel of Engineeria technology. Almost the entire ship is controlled by computer, so a small crew can run it. It lies along the eastern docks, closed to visitors while the crew prepares for patrol.")
+	_add_heading("Landmarks: the Tower of Engineering")
+	_add_body("The Tower of Engineering stands in the north of Iskra. It houses both the Engineering Board, which governs Engineeria, and the City Computer. Visitors seeking an official audience report to the Tower staff.")
+	_add_heading("Landmarks: the Automated Farms")
+	_add_body("The greenhouse towers grow vegetables under artificial light, with water and nutrients circulating through the growing trays. Automated carts take the harvest to the markets. The farms feed a crowded city that has no fields around it.")
+	_add_heading("Landmarks: Nature Park")
+	_add_body("West of the central canal, Nature Park has real soil, grass and trees brought from Engineeria's other planets. Gardeners tend the paths and benches between the planted ground.")
+	_add_heading("Landmarks: Punk Park")
+	_add_body("Punk Park lies in the southeast. Its music, painted walls and colored lamps stand out from the copper buildings elsewhere in the city. Its landing pad makes it a common meeting place for hired pilots.")
+	_add_heading("Landmarks: the docks and ship canals")
+	_add_body("Visitors arrive at the passenger dock, and cargo moves through the freight piers. Ship canals separate the neighborhoods, with bridges for people on foot.")
+	_add_heading("Landmarks: the Tvrdium factory")
+	_add_body("Iskra's Tvrdium factory makes the city's strongest metalwork, including Tvrdium armor. The navy has reserved this month's production, so forges rarely have a suit for sale.")
+	_add_heading("Landmarks: markets, workshops and Hotel Kinova")
+	_add_body("The Food Works and Textiles buildings stand in the manufacturing districts, beside the workshops that keep the city's machines running. Hotel Kinova, west of Punk Park, offers rooms and meals to visitors. Air taxis connect the passenger dock, the Tower, the market, Punk Park and the cruiser gangway.")
+	_add_heading("History of Engineeria")
+	_build_skoljka_library()
 
 func _build_river_town_hall() -> void:
 	_add_body("Welcome to Brudet's river city. The market sells food and fishing rods; the nearby library has local advice and Craft history.")
@@ -1429,14 +1594,13 @@ func _equip_recruit(villager_id: String, slot: String, item_id: String) -> void:
 	_reopen_service()
 
 func _reopen_service() -> void:
-	if _active_service_id in ["iskra_food", "iskra_forge", "food", "north_food", "skoljka_food", "skoljka_clothing", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel", "pomidor_forge", "pomidor_clothing", "pomidor_market", "beer_hall", "pomidor_library"]:
+	if _active_service_id in ["iskra_food", "iskra_forge", "food", "north_food", "skoljka_food", "skoljka_apothecary", "skoljka_clothing", "forge", "north_forge", "river_forge", "clothing", "north_clothing", "work_office", "mercenary", "north_mercenary", "military_hq", "river_market", "river_library", "river_town_hall", "travel", "pomidor_forge", "pomidor_clothing", "pomidor_market", "beer_hall", "pomidor_library"]:
 		open_service(_active_service_id, _active_service_name)
 	elif _active_service_id == "inventory":
 		_refresh_inventory_panel()
 
 func _refresh_inventory_panel() -> void:
-	_active_service_id = ""
-	open_inventory()
+	inventory_panel.refresh()
 
 func _refresh_jobs_panel() -> void:
 	_active_service_id = ""
@@ -1509,6 +1673,9 @@ func apply_ui_scale(ui_scale: float) -> void:
 				_place_box(box, screen)
 
 func _place_box(box: Control, screen: Vector2) -> void:
+	if box == scene_panel:
+		_resize_scene_panel()
+		return
 	if box == planet_map:
 		box.size = PlanetMap.VIEW_SIZE
 		box.position = (screen - box.size) * 0.5

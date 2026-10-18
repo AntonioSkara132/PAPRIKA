@@ -1,5 +1,7 @@
 extends Node
 
+const IskraInvestigationData = preload("res://scripts/world/iskra_investigation_data.gd")
+
 signal health_changed(current: int, maximum: int)
 signal gold_changed(amount: int)
 signal inventory_changed
@@ -9,6 +11,7 @@ signal squad_changed
 signal notification_requested(message: String)
 signal save_finished(success: bool)
 signal military_changed
+signal player_defeated
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
@@ -85,12 +88,19 @@ const BRUDET_TEAM_IDS := {
 }
 const SQUAD_ORDERS := ["follow", "hold", "attack"]
 const RECOVERY_SECONDS := 30.0
+const BASIC_ARROW := "basic_arrow"
+const ARROWS := [BASIC_ARROW, "bronze_arrow", "iron_arrow"]
 
 var max_health: int = GameData.STARTING_MAX_HEALTH
 var health: int = GameData.STARTING_MAX_HEALTH
+## Extra health from a Life Potion, on top of `health`. Damage uses it up first, food cannot refill it and it is lost on defeat.
+var potion_health := 0
+# Davor's health between saves and planets; -1 means unhurt.
+var davor_health := -1
 var gold: int = 0
 var inventory: Dictionary = {"stick": 1, "bread": 1}
 var equipment: Dictionary = {"weapon": "stick", "armor": "", "clothing": ""}
+var selected_arrows := BASIC_ARROW
 var active_jobs: Dictionary = {}
 var tracked_job_id: String = ""
 var completed_unique_jobs: Array[String] = []
@@ -102,6 +112,9 @@ var current_area := "exterior"
 var military_barracks_position := [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 var military_stage := "none"
 var military_storage: Dictionary = {}
+var iskra_storage: Dictionary = {}
+var iskra_gang_state: Dictionary = {}
+var iskra_investigation_state: Dictionary = {}
 var military_stored_equipment: Dictionary = {"weapon": "", "armor": "", "clothing": ""}
 var military_meal_credits := 0
 var military_cannon_hits: Array[String] = []
@@ -167,9 +180,11 @@ func _process(delta: float) -> void:
 func start_new_game() -> void:
 	max_health = GameData.STARTING_MAX_HEALTH
 	health = max_health
+	potion_health = 0
 	gold = 0
 	inventory = {"stick": 1, "bread": 1}
 	equipment = {"weapon": "stick", "armor": "", "clothing": ""}
+	selected_arrows = BASIC_ARROW
 	active_jobs.clear()
 	tracked_job_id = ""
 	completed_unique_jobs.clear()
@@ -181,6 +196,10 @@ func start_new_game() -> void:
 	military_barracks_position = [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 	military_stage = "none"
 	military_storage.clear()
+	iskra_storage.clear()
+	iskra_gang_state.clear()
+	iskra_investigation_state.clear()
+	davor_health = -1
 	military_stored_equipment = {"weapon": "", "armor": "", "clothing": ""}
 	military_meal_credits = 0
 	military_cannon_hits.clear()
@@ -345,6 +364,9 @@ func remove_item(item_id: String, amount: int = 1) -> bool:
 	owned -= amount
 	if owned == 0:
 		inventory.erase(item_id)
+		if selected_arrows == item_id:
+			selected_arrows = BASIC_ARROW
+			equipment_changed.emit()
 	else:
 		inventory[item_id] = owned
 	inventory_changed.emit()
@@ -364,6 +386,52 @@ func buy_item(item_id: String) -> bool:
 	gold_changed.emit(gold)
 	inventory_changed.emit()
 	notify("Bought %s." % definition["name"])
+	return true
+
+func buy_arrow_bundle(item_id: String) -> bool:
+	if item_id not in ["bronze_arrow", "iron_arrow"]:
+		return false
+	var definition := GameData.item(item_id)
+	var price := int(definition.get("bundle_price", 0))
+	var count := int(definition.get("bundle_count", 0))
+	if price <= 0 or count <= 0 or not spend_gold(price):
+		return false
+	add_item(item_id, count)
+	notify("Bought %d %s." % [count, definition["name"]])
+	return true
+
+func select_arrows(item_id: String) -> bool:
+	if not ARROWS.has(item_id) or (item_id != BASIC_ARROW and int(inventory.get(item_id, 0)) <= 0):
+		return false
+	selected_arrows = item_id
+	equipment_changed.emit()
+	return true
+
+func fire_arrow_damage() -> int:
+	if selected_arrows != BASIC_ARROW and int(inventory.get(selected_arrows, 0)) > 0:
+		var item_id := selected_arrows
+		if remove_item(item_id):
+			return int(GameData.item(item_id).get("damage", 4))
+	selected_arrows = BASIC_ARROW
+	return 4
+
+func free_item_count(item_id: String) -> int:
+	return maxi(0, int(inventory.get(item_id, 0)) - reserved_item_count(item_id))
+
+func can_discard_item(item_id: String) -> bool:
+	var definition := GameData.item(item_id)
+	if definition.is_empty() or definition.get("kind", "") == "key" or bool(definition.get("station_only", false)) or item_id == "military_uniform" or free_item_count(item_id) <= 0:
+		return false
+	if item_id == "field_mine":
+		var world := get_tree().get_first_node_in_group("game_world")
+		if world != null and world.get("player") != null and world.player.has_method("is_holding_field_mine") and world.player.is_holding_field_mine():
+			return false
+	return true
+
+func discard_item(item_id: String, amount: int = 1) -> bool:
+	if not can_discard_item(item_id) or amount <= 0 or amount > free_item_count(item_id) or not remove_item(item_id, amount):
+		return false
+	notify("Discarded %d %s permanently." % [amount, GameData.item(item_id).get("name", item_id)])
 	return true
 
 func sell_item(item_id: String) -> bool:
@@ -417,6 +485,24 @@ func unequip_armor() -> bool:
 	notify("Armor removed and kept in your inventory.")
 	return true
 
+## Drinks a Life Potion for LIFE_POTION_HEALTH extra health. Only one dose works at a time.
+func drink_life_potion() -> bool:
+	if potion_health > 0:
+		notify("A Life Potion is already working. Another dose would be wasted.")
+		return false
+	if not remove_item("life_potion"):
+		return false
+	potion_health = GameData.LIFE_POTION_HEALTH
+	health_changed.emit(health, max_health)
+	notify("Drank a Life Potion: %d extra health until it is used up or you are defeated." % potion_health)
+	return true
+
+func lose_potion_health() -> void:
+	if potion_health == 0:
+		return
+	potion_health = 0
+	health_changed.emit(health, max_health)
+
 func use_food(item_id: String) -> bool:
 	var definition := GameData.item(item_id)
 	if definition.get("kind", "") != "food" or health >= max_health:
@@ -426,6 +512,49 @@ func use_food(item_id: String) -> bool:
 	health = mini(max_health, health + int(definition.get("heal", 0)))
 	health_changed.emit(health, max_health)
 	notify("Bandaged your wounds." if item_id == "bandage" else "Ate %s." % definition["name"])
+	return true
+
+func davor_node() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.get_first_node_in_group("davor") if tree != null else null
+
+func capture_davor_health() -> int:
+	var davor := davor_node()
+	if davor != null:
+		davor_health = int(davor.health)
+	return davor_health
+
+# Called after a world spawns Davor at full health.
+func apply_davor_health(davor: Node) -> void:
+	davor.add_to_group("davor")
+	var world: Node = davor.get("_world")
+	if world != null and world.get("player") != null:
+		davor.return_point = world.player.respawn_position
+	if davor_health > 0:
+		davor.health = mini(davor_health, int(davor.max_health))
+		davor._refresh_health_bar()
+	elif davor_health == 0:
+		davor.knock_down()
+
+func davor_wounded() -> bool:
+	var davor := davor_node()
+	return davor != null and (bool(davor.down) or int(davor.health) < int(davor.max_health))
+
+func feed_davor(item_id: String) -> bool:
+	var definition := GameData.item(item_id)
+	var davor := davor_node()
+	if definition.get("kind", "") != "food" or not davor_wounded() or not remove_item(item_id):
+		return false
+	var heal := int(definition.get("heal", 0))
+	if bool(davor.down):
+		davor.revive(int(davor.max_health) / 4 + heal)
+		davor_health = int(davor.health)
+		notify("Davor is back on his feet.")
+		return true
+	davor.health = mini(int(davor.max_health), int(davor.health) + heal)
+	davor._refresh_health_bar()
+	davor_health = int(davor.health)
+	notify("Davor %s. Health %d/%d." % ["is bandaged" if item_id == "bandage" else "ate " + String(definition["name"]), davor.health, davor.max_health])
 	return true
 
 func military_claim_uniform() -> bool:
@@ -460,6 +589,7 @@ func military_store_gear() -> bool:
 	military_stored_equipment["armor"] = equipment.get("armor", "")
 	inventory = {"military_uniform": 1}
 	equipment = {"weapon": "", "armor": "", "clothing": "military_uniform"}
+	selected_arrows = BASIC_ARROW
 	military_stage = "run"
 	inventory_changed.emit()
 	equipment_changed.emit()
@@ -709,11 +839,15 @@ func armor_protection() -> int:
 
 func damage_player(raw_damage: int, bypass_armor: bool = false) -> int:
 	var protection := 0 if bypass_armor else armor_protection()
-	var applied := maxi(0, raw_damage - protection)
+	var applied := GameData.armored_damage(raw_damage, protection)
 	if applied == 0:
 		notify("Your armor blocked the hit.")
 		return 0
-	health = maxi(0, health - applied)
+	var absorbed := mini(potion_health, applied)
+	potion_health -= absorbed
+	if absorbed > 0 and potion_health == 0:
+		notify("The Life Potion's strength is used up.")
+	health = maxi(0, health - (applied - absorbed))
 	health_changed.emit(health, max_health)
 	return applied
 
@@ -806,7 +940,7 @@ func damage_recruit(villager_id: String, raw_damage: int) -> bool:
 		return false
 	var member: Dictionary = squad_members[villager_id]
 	var protection := int(GameData.item(String(member.get("armor", ""))).get("protection", 0))
-	var applied := maxi(0, raw_damage - protection)
+	var applied := GameData.armored_damage(raw_damage, protection)
 	if applied == 0:
 		return false
 	member["health"] = maxi(0, int(member["health"]) - applied)
@@ -1077,20 +1211,26 @@ func save_game() -> bool:
 		"military_barracks_position": military_barracks_position,
 		"military_stage": military_stage,
 		"military_storage": military_storage,
+		"iskra_storage": iskra_storage,
+		"iskra_gang_state": iskra_gang_state,
+		"iskra_investigation_state": iskra_investigation_state,
 		"military_stored_equipment": military_stored_equipment,
 		"military_meal_credits": military_meal_credits,
 		"military_cannon_hits": military_cannon_hits,
 		"military_trap_progress": military_trap_progress,
 		"military_cannon_round_active": military_cannon_round_active,
+		"davor_health": capture_davor_health(),
 		"military_cannon_phase": military_cannon_phase,
 		"military_trap_round_active": military_trap_round_active,
 		"military_trap_equipped": military_trap_equipped,
 		"military_trap_mine_position": military_trap_mine_position,
 		"health": health,
 		"max_health": max_health,
+		"potion_health": potion_health,
 		"gold": gold,
 		"inventory": inventory,
 		"equipment": equipment,
+		"selected_arrows": selected_arrows,
 		"active_jobs": active_jobs,
 		"tracked_job_id": tracked_job_id,
 		"completed_unique_jobs": completed_unique_jobs,
@@ -1199,11 +1339,13 @@ func load_game() -> bool:
 	elif MILITARY_STAGES.find(saved_military_stage) >= MILITARY_STAGES.find("range"):
 		max_health = maxi(max_health, SQUAD_BOUT_MAX_HEALTH)
 	health = clampi(int(data.get("health", max_health)), 0, max_health)
+	potion_health = clampi(int(data.get("potion_health", 0)), 0, GameData.LIFE_POTION_HEALTH)
 	gold = maxi(0, int(data.get("gold", 0)))
 	inventory = data.get("inventory", {"stick": 1}).duplicate(true)
 	for item_id in inventory:
 		inventory[item_id] = int(inventory[item_id])
 	equipment = data.get("equipment", {"weapon": "stick", "armor": "", "clothing": ""}).duplicate(true)
+	selected_arrows = String(data.get("selected_arrows", BASIC_ARROW))
 	active_jobs.clear()
 	if int(data.get("schema", -1)) == 1:
 		var legacy_job := String(data.get("active_job_id", ""))
@@ -1240,6 +1382,15 @@ func load_game() -> bool:
 	military_storage = data.get("military_storage", {}).duplicate(true)
 	for item_id in military_storage:
 		military_storage[item_id] = int(military_storage[item_id])
+	iskra_gang_state = data.get("iskra_gang_state", {}).duplicate(true)
+	iskra_investigation_state = data.get("iskra_investigation_state", {}).duplicate(true)
+	davor_health = int(data.get("davor_health", -1))
+	var loaded_davor := davor_node()
+	if loaded_davor != null:
+		apply_davor_health(loaded_davor)
+	iskra_storage = data.get("iskra_storage", {}).duplicate(true)
+	for item_id in iskra_storage:
+		iskra_storage[item_id] = int(iskra_storage[item_id])
 	military_stored_equipment = data.get("military_stored_equipment", {"weapon": "", "armor": "", "clothing": ""}).duplicate(true)
 	military_meal_credits = int(data.get("military_meal_credits", 0))
 	military_cannon_hits.clear()
@@ -1333,11 +1484,16 @@ func _valid_save(data: Variant) -> bool:
 			return false
 	if float(data["max_health"]) < 1.0 or float(data["health"]) > float(data["max_health"]):
 		return false
+	if data.has("potion_health") and (not _is_number(data["potion_health"]) or float(data["potion_health"]) < 0.0 or float(data["potion_health"]) > GameData.LIFE_POTION_HEALTH):
+		return false
 	for item_id in item_counts:
 		if not GameData.ITEMS.has(item_id) or not _is_number(item_counts[item_id]) or float(item_counts[item_id]) < 0.0:
 			return false
 		if schema >= STATION_SAVE_SCHEMA and float(item_counts[item_id]) != float(int(item_counts[item_id])):
 			return false
+	var saved_arrows = data.get("selected_arrows", BASIC_ARROW)
+	if not saved_arrows is String or not ARROWS.has(saved_arrows) or (saved_arrows != BASIC_ARROW and int(item_counts.get(saved_arrows, 0)) <= 0):
+		return false
 	for slot in ["weapon", "armor", "clothing"]:
 		var equipped = gear.get(slot, null)
 		if not equipped is String or (not equipped.is_empty() and (not GameData.ITEMS.has(equipped) or int(item_counts.get(equipped, 0)) < 1)):
@@ -1391,6 +1547,27 @@ func _valid_save(data: Variant) -> bool:
 			return false
 	for enemy_id in defeated:
 		if not enemy_id is String:
+			return false
+	if not IskraInvestigationData.valid_state(data.get("iskra_investigation_state", {})):
+		return false
+	var gang_state = data.get("iskra_gang_state", {})
+	if not gang_state is Dictionary:
+		return false
+	for key in gang_state:
+		if key not in ["pressure_version", "shipment_seconds", "rescue_seconds", "prisoner_a_x", "prisoner_a_y", "prisoner_b_x", "prisoner_b_y", "search_version", "search_stage", "search_wait", "search_rival_x", "search_rival_y", "search_miro_x", "search_miro_y", "search_miro_stop", "search_miro_wait", "search_fighter_health"]:
+			return false
+		if not _is_number(gang_state[key]) or not is_finite(float(gang_state[key])) or float(gang_state[key]) < 0.0 or float(gang_state[key]) > (75.0 if String(key).ends_with("_seconds") else 10000.0):
+			return false
+	var hotel_storage = data.get("iskra_storage", {})
+	if not hotel_storage is Dictionary:
+		return false
+	if not hotel_storage.is_empty() and not defeated.has("iskra_room_rented"):
+		return false
+	for item_id in hotel_storage:
+		var count = hotel_storage[item_id]
+		if not GameData.ITEMS.has(item_id) or GameData.item(item_id).get("kind", "") == "key" or not _is_number(count):
+			return false
+		if float(count) <= 0.0 or float(count) != float(int(count)):
 			return false
 	if schema >= SQUAD_SAVE_SCHEMA and not _valid_squad_save(data, jobs, item_counts, gear):
 		return false

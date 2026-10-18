@@ -554,7 +554,8 @@ func _service_routine_stop(services: Dictionary, service_id: String, offset: Vec
 	return {"kind": kind, "position": Vector2(services[service_id]) + offset, "wait": wait}
 
 ## Multiplies walking speed at a position; worlds with slowing ground override it.
-func movement_factor(_at: Vector2) -> float:
+## Speed multiplier for `mover` standing at `_at`; worlds slow walkers on wire, tar or in suits.
+func movement_factor(_at: Vector2, _mover: Node = null) -> float:
 	return 1.0
 
 func _on_player_respawned() -> void:

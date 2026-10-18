@@ -1,6 +1,8 @@
 class_name GameData
 extends RefCounted
 
+## Extra health one Life Potion gives.
+const LIFE_POTION_HEALTH := 16
 const STARTING_MAX_HEALTH := 20
 const FIELD_REGROWTH_SECONDS := 120.0
 const TRAVEL_FARE := 1000
@@ -27,9 +29,16 @@ const ITEMS := {
 	"orange_cloth": {"name": "Orange Cloth", "kind": "trade", "buy": 16, "sell": 7},
 	"kelp_broth": {"name": "Kelp Broth", "kind": "food", "buy": 12, "sell": 5, "heal": 13},
 	"shellfish_stew": {"name": "Shellfish Stew", "kind": "food", "buy": 22, "sell": 9, "heal": 23},
+	"greenhouse_salad": {"name": "Greenhouse Salad", "kind": "food", "buy": 8, "sell": 3, "heal": 9},
+	"dock_dumplings": {"name": "Dock Crew Dumplings", "kind": "food", "buy": 15, "sell": 6, "heal": 16},
+	"copper_pot_roast": {"name": "Copper-Pot Roast", "kind": "food", "buy": 24, "sell": 10, "heal": 26},
+	"life_potion": {"name": "Life Potion", "kind": "potion", "buy": 120, "sell": 40},
 	"sea_glass_cloth": {"name": "Sea-Glass Cloth", "kind": "trade", "buy": 17, "sell": 7},
 	"fishing_rod": {"name": "Fishing Rod", "kind": "tool", "buy": 65, "sell": 30},
 	# Iva Most's letters to the Engineeria government, taken from the wreck. No shop lists key items.
+	"banishing_arrow": {"name": "Banishing Arrow", "kind": "key", "buy": 0, "sell": 0},
+	"martin_letter": {"name": "Martin's Letter", "kind": "key", "buy": 0, "sell": 0},
+	"board_credentials": {"name": "Engineering Board Credentials", "kind": "key", "buy": 0, "sell": 0},
 	"embassy_letters": {"name": "Sealed Embassy Letters", "kind": "key", "buy": 0, "sell": 0},
 	# The spare gear for the Rudnik mine lift's winch, carried from the maintenance shed.
 	"winch_gear": {"name": "Winch Gear", "kind": "key", "buy": 0, "sell": 0},
@@ -42,16 +51,20 @@ const ITEMS := {
 	"training_bow": {"name": "Practice Bow", "kind": "weapon", "buy": 0, "sell": 0, "station_only": true, "power": 1, "reach": 150.0, "cooldown": 0.72, "ranged": true},
 	"wood_sword": {"name": "Wooden Sword", "kind": "weapon", "buy": 20, "power": 1, "reach": 27.0, "cooldown": 0.40},
 	"bronze_sword": {"name": "Bronze Sword", "kind": "weapon", "buy": 85, "power": 2, "reach": 29.0, "cooldown": 0.36},
-	"iron_sword": {"name": "Iron Sword", "kind": "weapon", "buy": 250, "power": 3, "reach": 31.0, "cooldown": 0.32},
+	"iron_sword": {"name": "Iron Sword", "kind": "weapon", "buy": 250, "power": 3, "damage": 15, "reach": 31.0, "cooldown": 0.32},
+	"tvrdium_sword": {"name": "Tvrdium Sword", "kind": "weapon", "buy": 0, "sell": 240, "power": 4, "damage": 20, "reach": 34.0, "cooldown": 0.32},
 	"wood_spear": {"name": "Wooden Spear", "kind": "weapon", "buy": 32, "power": 1, "reach": 42.0, "cooldown": 0.65},
 	"bronze_spear": {"name": "Bronze Spear", "kind": "weapon", "buy": 110, "power": 2, "reach": 46.0, "cooldown": 0.60},
-	"iron_spear": {"name": "Iron Spear", "kind": "weapon", "buy": 300, "power": 3, "reach": 50.0, "cooldown": 0.54},
+	"iron_spear": {"name": "Iron Spear", "kind": "weapon", "buy": 300, "power": 3, "damage": 15, "reach": 50.0, "cooldown": 0.54},
 	"wood_bow": {"name": "Wooden Bow", "kind": "weapon", "buy": 45, "power": 1, "reach": 150.0, "cooldown": 0.72, "ranged": true},
 	"bronze_bow": {"name": "Bronze Bow", "kind": "weapon", "buy": 135, "power": 2, "reach": 170.0, "cooldown": 0.66, "ranged": true},
 	"iron_bow": {"name": "Iron Bow", "kind": "weapon", "buy": 340, "power": 3, "reach": 190.0, "cooldown": 0.58, "ranged": true},
+	"bronze_arrow": {"name": "Bronze Arrows", "kind": "ammo", "buy": 0, "damage": 10, "bundle_count": 10, "bundle_price": 45},
+	"iron_arrow": {"name": "Iron Arrows", "kind": "ammo", "buy": 0, "damage": 15, "bundle_count": 10, "bundle_price": 90},
 	"wood_armor": {"name": "Wooden Armor", "kind": "armor", "buy": 30, "protection": 1},
 	"bronze_armor": {"name": "Bronze Armor", "kind": "armor", "buy": 120, "protection": 2},
 	"iron_armor": {"name": "Iron Armor", "kind": "armor", "buy": 360, "protection": 3},
+	"tvrdium_armor": {"name": "Tvrdium Armor", "kind": "armor", "buy": 0, "sell": 300, "protection": 5},
 	"red_tunic": {"name": "Red Villager Tunic", "kind": "clothing", "buy": 18, "color": "red"},
 	"blue_tunic": {"name": "Blue Villager Tunic", "kind": "clothing", "buy": 18, "color": "blue"},
 	"green_tunic": {"name": "Green Villager Tunic", "kind": "clothing", "buy": 18, "color": "green"},
@@ -239,6 +252,26 @@ const CROP_BY_TILE_ID := {
 
 static func item(item_id: String) -> Dictionary:
 	return ITEMS.get(item_id, {})
+
+# Armor stops most of a weak hit and little of a strong one. It only works on
+# the first ARMOR_REACH × armor points of a hit (at most ARMOR_REACH_MAX), so
+# Wooden 5, Bronze 10, Iron 15, Tvrdium 20; the rest of a big hit passes
+# through in full. Within that part: part × part ÷ (part + ARMOR_WEIGHT × armor).
+const ARMOR_WEIGHT := 4.0
+const ARMOR_REACH := 5
+const ARMOR_REACH_MAX := 20
+
+static func armored_damage(damage: int, armor: int) -> int:
+	if damage <= 0:
+		return 0
+	if armor <= 0:
+		return damage
+	var covered := mini(damage, mini(ARMOR_REACH * armor, ARMOR_REACH_MAX))
+	var through := float(covered * covered) / (covered + ARMOR_WEIGHT * armor)
+	return maxi(1, roundi(through) + damage - covered)
+
+static func weapon_damage(definition: Dictionary) -> int:
+	return int(definition.get("damage", {1: 4, 2: 10, 3: 24}.get(int(definition.get("power", 1)), 4)))
 
 static func job(job_id: String) -> Dictionary:
 	return JOBS.get(job_id, {})

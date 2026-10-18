@@ -734,7 +734,8 @@ func _scene_choice_labels() -> Array:
 	var labels := []
 	for child in ui.scene_buttons.get_children():
 		if child is Button and not child.is_queued_for_deletion():
-			labels.append(child.text)
+			# The safe exit choice carries a key hint; compare the choice text itself.
+			labels.append(child.text.trim_suffix("  [E / Esc]"))
 	return labels
 
 func _choose(label: String) -> void:

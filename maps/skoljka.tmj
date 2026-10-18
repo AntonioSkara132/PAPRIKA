@@ -330568,7 +330568,7 @@
         },
         {
           "id": 39,
-          "name": "market_stall",
+          "name": "skoljka_apothecary",
           "type": "skoljka_object",
           "gid": 108,
           "x": 1252,

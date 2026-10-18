@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/iskra_banishing_arrow_smoke.gd" id="1"]
+
+[node name="IskraBanishingArrowSmoke" type="Node"]
+script = ExtResource("1")

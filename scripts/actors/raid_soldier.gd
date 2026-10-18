@@ -62,6 +62,10 @@ var bow_damage := 12
 var can_leap := false
 ## Seconds after being downed until the soldier gets up with full health; 0 stays down.
 var get_up_seconds := 0.0
+## Where a downed soldier with no get-up timer reappears once the player
+## leaves them behind. INF keeps them lying where they fell.
+var return_point := Vector2.INF
+const LEFT_BEHIND_DISTANCE := 480.0
 var _get_up_left := 0.0
 var _leap_from := Vector2.ZERO
 var _leap_to := Vector2.INF
@@ -190,7 +194,7 @@ func return_to(point: Vector2) -> void:
 func take_damage(amount: int, _source_position: Vector2 = Vector2.ZERO) -> void:
 	if down or returning or amount <= 0:
 		return
-	health = maxi(0, health - maxi(1, amount - armor))
+	health = maxi(0, health - GameData.armored_damage(amount, armor))
 	_refresh_health_bar()
 	if health == 0:
 		_end_leap(false)
@@ -213,6 +217,10 @@ func _physics_process(delta: float) -> void:
 		_get_up_left -= delta
 		if _get_up_left <= 0.0:
 			get_up()
+	elif down and return_point.is_finite() and _world != null and _world.player != null and global_position.distance_to(_world.player.global_position) > LEFT_BEHIND_DISTANCE:
+		global_position = return_point
+		revive(max_health / 4)
+		GameState.notify("%s was carried back to the arrival point." % soldier_name)
 	if down or _world == null or _world.player == null:
 		velocity = Vector2.ZERO
 		return
@@ -324,6 +332,17 @@ func _loose_arrow(target: Node2D, damage: int) -> void:
 	var reach := bow_range if bow_range > 0.0 else _reach()
 	projectile.configure(origin, (target.global_position + Vector2(0, -4) - origin).normalized(), damage, 200.0, reach + 20.0, true)
 
+## Stands up with the given health instead of full health.
+func revive(new_health: int) -> void:
+	get_up()
+	health = clampi(new_health, 1, max_health)
+	_refresh_health_bar()
+
+## Puts the soldier down without a hit, as when a save stored them downed.
+func knock_down() -> void:
+	health = 1
+	take_damage(1 + armor)
+
 ## Stands up again with full health after being downed.
 func get_up() -> void:
 	if not down:
@@ -368,7 +387,7 @@ func _walk_to(goal: Vector2, walk_speed: float) -> void:
 			_start_leap(_leap_to)
 			return
 		facing = (takeoff - global_position).normalized()
-		velocity = facing * walk_speed * _world.movement_factor(global_position)
+		velocity = facing * walk_speed * _world.movement_factor(global_position, self)
 		var before := global_position
 		move_and_slide()
 		# Something blocks the straight run, such as a tree: jump from here.
@@ -382,7 +401,7 @@ func _walk_to(goal: Vector2, walk_speed: float) -> void:
 		return
 	var direction := _path[_path_index] - global_position
 	facing = direction.normalized()
-	velocity = facing * walk_speed * _world.movement_factor(global_position)
+	velocity = facing * walk_speed * _world.movement_factor(global_position, self)
 	move_and_slide()
 
 # ---- leaping ----

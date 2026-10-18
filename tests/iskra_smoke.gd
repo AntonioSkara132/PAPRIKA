@@ -1,5 +1,7 @@
 extends Node
 
+const InvestigationData = preload("res://scripts/world/iskra_investigation_data.gd")
+
 var game: Node
 var ui: GameUI
 var world: IskraWorld
@@ -41,11 +43,20 @@ func _run() -> void:
 	_check(world.tiled_loader.map_loaded, "Iskra's Tiled map loads")
 	_check(world.player.global_position == GameState.ISKRA_ARRIVAL, "arrival agrees with map and save defaults")
 	_check(world.davor != null and world.davor.global_position.distance_to(world.player.global_position) < 64, "Davor arrives beside the player")
-	_check(ui.location_label.text == "ISKRA", "UI names Iskra")
+	_check(ui.location_label.text == "ISKRA — NIGHT", "UI names Iskra at night")
 	for name: String in world.markers:
 		var target: Vector2 = world.marker(name)
 		_check(world.tiled_loader.is_walkable_position(target), "%s is walkable" % name)
-		_check(not world.tiled_loader.get_walk_path(GameState.ISKRA_ARRIVAL, target).is_empty(), "%s is connected to the dock" % name)
+		var start := world.marker("hotel_room_arrival") if name.begins_with("hotel_room_") else GameState.ISKRA_ARRIVAL
+		if name.begins_with("hotel_lobby_") or name == "hotel" or name == "hotel_stairs":
+			start = world.marker("hotel_lobby_arrival")
+		for site in ["freight", "holding"]:
+			if name.begins_with("gang_" + site + "_"):
+				start = world.marker("gang_" + site + "_arrival")
+		for site: String in InvestigationData.ROOMS:
+			if name.begins_with("inv_" + site + "_") and InvestigationData.ROOMS[site].has_point(target):
+				start = world.marker("inv_" + site + "_arrival")
+		_check(not world.tiled_loader.get_walk_path(start, target).is_empty(), "%s is connected within its area" % name)
 	_check(not world.tiled_loader.is_walkable_position(Vector2(1000, 1080)), "the ship canal blocks walking")
 	_check(not world.tiled_loader.is_walkable_position(Vector2(4080, 1300)), "the cruiser deck cannot be boarded")
 	_check(not world.tiled_loader.is_walkable_position(Vector2(16, 16)), "space beyond the city rim blocks walking")
@@ -91,11 +102,30 @@ func _run() -> void:
 		_check(GameState.load_game(), "%s progress loads" % id)
 		world.apply_loaded_state()
 		_check(world.story_step() == step, "%s progress survives reload" % id)
-	_check(world.story_step() == 3, "the arrival errand ends at the Tower")
+	_check(world.story_step() == 2 and world.chapter.has_flag("tower_closed_seen"), "the night Tower visit postpones the audience until morning")
 	await _capture("tower")
 	await _check_green_park()
 	await _check_moving_residents()
-	for id in ["library", "farm", "park", "nature_park", "cruiser"]:
+	world.story_people["library"].interact(world.player)
+	_check(ui._active_service_id == "iskra_library" and ui.modal_panel.visible, "Iskra library opens the shared scrollable library panel")
+	var library_text := ""
+	for label in ui.modal_panel.find_children("*", "Label", true, false):
+		library_text += label.text + "\n"
+	for entry in ["YellowSand Engineering", "electrical current and energy over a distance", "fully automated city", "main City Computer", "Tower of Engineering", "transport, lighting, communications", "HMS Schotsky", "Almost the entire ship is controlled by computer", "History of Engineeria", "Otpornik", "Elektrika", "Rudnik", "Engineering Board", "Zvonimir Dom (Nation)", "Nikola Struja (Technology)", "Vedrana Luk (Architecture)", "Kresimir Sidro (Navy)", "Ljerka Popis (Demographics)", "Dubravka Riznic (Finance)", "Branko Stit (Defense)", "Landmarks: the Automated Farms", "Landmarks: Nature Park", "Landmarks: Punk Park", "Landmarks: the docks and ship canals", "Landmarks: the Tvrdium factory", "Food Works", "Hotel Kinova"]:
+		_check(library_text.contains(entry), "Iskra library includes " + entry)
+	await _capture("library")
+	var library_scroll := ui.modal_panel.find_children("*", "ScrollContainer", true, false)[0] as ScrollContainer
+	# The scroll range is only known after the panel has been laid out; _capture waits for that only when taking screenshots.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	library_scroll.scroll_vertical = int(library_scroll.get_v_scroll_bar().max_value / 2)
+	await _capture("library_landmarks")
+	library_scroll.scroll_vertical = int(library_scroll.get_v_scroll_bar().max_value)
+	await _capture("library_history")
+	_check(library_scroll.scroll_vertical > 0, "Iskra library entries scroll through to the history section")
+	ui.close_modal()
+	_check(not ui.modal_overlay.visible and world.story_step() == 2, "Iskra library closes without advancing the story")
+	for id in ["farm", "park", "nature_park", "cruiser"]:
 		world.story_people[id].interact(world.player)
 		_check(ui.scene_playing(), "%s can be read" % id)
 		_end_scene()
@@ -166,10 +196,21 @@ func _check_green_park() -> void:
 	var roles: Dictionary = {}
 	for id: String in world.story_people:
 		var sprite := world.story_people[id].get_child(0) as Sprite2D
+		if id == "inv_davor":
+			_check(sprite != null and not sprite.visible, "Davor discussion point does not draw a second companion")
+			continue
+		if id == "inv_hall_evidence":
+			_check(sprite != null and sprite.texture.resource_path == "res://assets/art/iskra/investigation/uniform_evidence.png", "police coat interaction draws evidence instead of an NPC")
+			continue
 		_check(sprite != null and sprite.texture.get_size() == Vector2(16, 24), "%s uses Paprika-sized NPC art" % id)
-		_check(sprite.texture.resource_path.begins_with("res://assets/art/iskra/npcs/"), "%s uses the new NPC sheet's sprites" % id)
-		roles[sprite.texture.resource_path] = true
-	_check(roles.size() == 12, "all twelve NPC designs appear in the city")
+		if sprite == null or sprite.texture == null:
+			continue
+		if id.begins_with("inv_"):
+			_check(not sprite.visible or sprite.texture.resource_path.begins_with("res://assets/art/iskra/investigation/npcs/"), "%s uses investigation NPC art or a hidden interaction point" % id)
+		else:
+			_check(sprite.texture.resource_path.begins_with("res://assets/art/iskra/npcs/"), "%s uses the new NPC sheet's sprites" % id)
+			roles[sprite.texture.resource_path] = true
+	_check(roles.size() == 21 and roles.has("res://assets/art/iskra/npcs/veki.png"), "all twelve shared NPC designs, Veki and eight punk outfits appear in the city")
 	var records: Array = JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/iskra/placement.json"))
 	var trees := 0
 	for record: Dictionary in records:
@@ -202,7 +243,7 @@ func _check_moving_residents() -> void:
 	var services: Dictionary = {}
 	for id: String in world.story_people:
 		var person: Node2D = world.story_people[id]
-		if person is IskraCitizen:
+		if person is IskraCitizen and id.begins_with("resident_"):
 			resident_count += 1
 			var resident := person as IskraCitizen
 			_check(resident.citizen_id == id and resident.service_id == "iskra:" + id, "%s keeps its original spawn and conversation IDs" % id)
@@ -216,7 +257,7 @@ func _check_moving_residents() -> void:
 					route_ok = route_ok and world.tiled_loader.is_walkable_position(point)
 					route_ok = route_ok and world._resident_path_fits(point, resident._stops[(index+1) % resident._stops.size()], resident.home_position)
 				_check(route_ok, "%s has a connected local walking circuit" % id)
-		else:
+		elif id != "inv_davor":
 			services[id] = person.global_position
 	_check(walkers.size() == resident_count and resident_count >= 85, "all ordinary residents across Iskra have walking routines")
 	world.player.global_position = world.marker("nature_park")
@@ -247,6 +288,7 @@ func _check_moving_residents() -> void:
 	for id: String in services:
 		services_still = services_still and world.story_people[id].global_position == services[id]
 	_check(services_still, "shop staff, taxi pilots and story clerks keep their posts")
+	_check(world.story_people["inv_davor"].global_position.distance_to(world.davor.global_position + Vector2(0, 8)) < 2.0, "investigation discussion point follows Davor")
 	if walkers.is_empty():
 		return
 	var speaker: IskraCitizen = walkers[0]

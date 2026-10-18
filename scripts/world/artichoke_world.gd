@@ -459,7 +459,7 @@ func _build_wire() -> void:
 			for x in range(floori(rect.position.x / 16.0), floori(rect.end.x / 16.0) + 1):
 				tiled_loader.set_walk_cost(Vector2(x * 16 + 8, y * 16 + 8), 3.0)
 
-func movement_factor(at: Vector2) -> float:
+func movement_factor(at: Vector2, _mover: Node = null) -> float:
 	for rect in _wire_rects:
 		if rect.has_point(at):
 			return WIRE_FACTOR

@@ -10,6 +10,7 @@ from PIL import Image
 
 import create_iskra_concept as art
 import create_iskra_npc_sheet as characters
+import create_iskra_punks as punks
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets/art/iskra"
@@ -26,6 +27,7 @@ TAGGED = PEOPLE | BUILDINGS | {"cruiser", "tower_crane", "crates", "small_ship",
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     characters.main()
+    punks.main()
     originals = {name: getattr(art, name) for name in TAGGED}
     def tagged(name, fn):
         def draw(*args, **kwargs):
