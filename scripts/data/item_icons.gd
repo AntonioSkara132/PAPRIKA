@@ -1,6 +1,7 @@
 class_name ItemIcons
 extends RefCounted
 
+const UNKNOWN_ICON_PATH := "res://assets/art/items/unknown.png"
 const ICON_PATHS := {
 	"potato": "res://assets/art/items/potato.png",
 	"carrot": "res://assets/art/items/carrot.png",
@@ -74,4 +75,4 @@ const ICON_PATHS := {
 
 
 static func icon_path(item_id: String) -> String:
-	return ICON_PATHS.get(item_id, "")
+	return ICON_PATHS.get(item_id, UNKNOWN_ICON_PATH)

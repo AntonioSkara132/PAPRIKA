@@ -104,6 +104,7 @@ For offline HTTP integration testing, run `python3 tools/sandbox_order_service.p
 | Shift | Sprint during the station's timed running drill |
 | E | Interact, harvest, speak, or **catch** a rabbit |
 | Space | Attack with the equipped weapon; during the trap drill, place an equipped practice mine; on Artichoke, plant a readied field mine |
+| V | Cycle through your available weapons without opening inventory; skips copies assigned to recruits and keeps the current attack cooldown |
 | I | Open inventory, use food, change equipment, or unequip armor to see your tunic |
 | J | View active jobs, choose one to track, or abandon a job |
 | M | Open or close the planet map; click a world for its description |

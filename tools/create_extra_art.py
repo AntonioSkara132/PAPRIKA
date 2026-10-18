@@ -279,14 +279,29 @@ def field_rock():
     return image
 
 
-def player_outfit(color, shade, trim):
+def player_plain():
     image = Image.open(PLAYER_SOURCE).convert("RGBA")
+    for y in range(9, 19):
+        for x in range(12, 16):
+            image.putpixel((x, y), (0, 0, 0, 0))
+    for y in range(10, 16):
+        image.putpixel((12, y), (220, 167, 120, 255))
+    image.putpixel((12, 16), (174, 121, 85, 255))
+    return image
+
+
+def player_outfit(color, shade, trim):
+    image = player_plain()
     old_shirt = (78, 131, 207, 255)
     for y in range(10, 17):
         for x in range(image.width):
             if image.getpixel((x, y)) == old_shirt:
                 image.putpixel((x, y), (*color, 255))
     d = ImageDraw.Draw(image)
+    d.rectangle((3, 10, 4, 13), fill=color)
+    d.line((3, 14, 4, 14), fill=shade)
+    d.rectangle((11, 10, 12, 13), fill=color)
+    d.line((11, 14, 12, 14), fill=shade)
     d.line((6, 10, 9, 10), fill=trim)
     d.point((8, 11), fill=trim)
     d.line((8, 12, 8, 15), fill=shade)
@@ -354,6 +369,7 @@ SPRITES = {
     "hacker": hacker,
     "forest_bush": forest_bush,
     "field_rock": field_rock,
+    "player_plain": player_plain,
     "player_red": player_red,
     "player_blue": player_blue,
     "player_green": player_green,

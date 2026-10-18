@@ -516,7 +516,7 @@ func _build_hud() -> void:
 	order_row.add_child(order_input)
 	order_bar.visible = false
 
-	var controls := _label("WASD move   E interact   SPACE attack / mine   I pack   J jobs   N people   M planets   H eat   1/2/3 switch   Q/R/T orders   F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
+	var controls := _label("WASD move  E interact  SPACE attack/mine  V weapon  I pack  J jobs  N people  M planets  H eat  1/2/3 party  Q/R/T orders  F5/F9 save/load", 6, Color(0.92, 0.88, 0.78, 0.92))
 	controls.position = Vector2(8, 349)
 	controls.size = Vector2(624, 10)
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -609,6 +609,9 @@ func _refresh_status() -> void:
 	var armor_id := String(GameState.equipment.get("armor", ""))
 	var armor: String = GameData.item(armor_id).get("name", "No armor") if not armor_id.is_empty() else "No armor"
 	equipment_label.text = "YOUR GEAR: %s | %s" % [weapon, armor]
+	if bool(GameData.item(weapon_id).get("ranged", false)):
+		var arrows := GameState.selected_arrows
+		equipment_label.text += " | %s" % ("Basic ∞" if arrows == GameState.BASIC_ARROW else "%s ×%d" % ["Bronze" if arrows == "bronze_arrow" else "Iron", int(GameState.inventory.get(arrows, 0))])
 
 func _refresh_job() -> void:
 	_refresh_squad()

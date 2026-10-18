@@ -176,6 +176,11 @@ def draw_icon(item_id):
         d.line((2, 14, 7, 3, 12, 1), fill="#9d744e", width=2)
         d.line((12, 1, 13, 9), fill=LIGHT)
         d.arc((9, 8, 14, 13), 0, 180, fill="#a6bbc1")
+    elif item_id == "unknown":
+        d.arc((4, 1, 11, 8), 180, 360, fill=INK, width=2)
+        d.polygon([(3, 5), (12, 5), (14, 8), (13, 14), (2, 14), (1, 8)], fill="#716486", outline=INK)
+        d.line((5, 7, 6, 6, 9, 6, 10, 7, 10, 8, 8, 10), fill="#f2d47c", width=2)
+        d.point((8, 12), fill="#f2d47c")
     else:
         raise ValueError(f"No drawing for {item_id}")
     return image
@@ -203,7 +208,7 @@ ITEM_IDS = (
 
 def main():
     DEST.mkdir(parents=True, exist_ok=True)
-    for item_id in ITEM_IDS:
+    for item_id in (*ITEM_IDS, "unknown"):
         if item_id not in EXISTING:
             draw_icon(item_id).save(DEST / f"{item_id}.png", optimize=False)
 

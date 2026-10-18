@@ -146,6 +146,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif world != null:
 			world.attack_as(active)
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("switch_weapon"):
+		if active == self and GameState.cycle_weapon():
+			if _holding_field_mine:
+				hold_field_mine(false)
+			if GameState.military_trap_equipped:
+				GameState.military_equip_practice_mine(false)
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("use_food"):
 		for food_id in ["bread", "stew", "rye_bread", "berry_pie", "smoked_fish", "olive_bread", "fish_stew", "citrus", "kelp_broth", "shellfish_stew", "greenhouse_salad", "dock_dumplings", "copper_pot_roast", "bandage"]:
 			if active == self and GameState.use_food(food_id):
@@ -288,7 +295,7 @@ func _refresh_appearance() -> void:
 	if (not color_name.is_empty() or outfit == "military_uniform") and ResourceLoader.exists(texture_path):
 		_sprite.texture = load(texture_path) as Texture2D
 	else:
-		_sprite.texture = load("res://art/concepts/source/player.png") as Texture2D
+		_sprite.texture = load("res://assets/art/player_plain.png") as Texture2D
 	if _held_mine_icon != null:
 		_held_mine_icon.visible = GameState.military_trap_equipped or _holding_field_mine
 	var armor_id := String(GameState.equipment.get("armor", ""))

@@ -5,6 +5,7 @@ signal actor_spawn_requested(kind: String, position: Vector2, variant: String, p
 signal service_requested(service_id: String, display_name: String)
 
 const FLIP_MASK := 0x0FFFFFFF
+const GROUND_OBJECTS := ["stone_bridge", "training_ground", "barbed_wire", "trap_marker", "station_track", "station_spar", "station_squad_spar", "station_trap_pad"]
 
 var map_size := Vector2.ZERO
 var _navigation: AStarGrid2D
@@ -227,7 +228,7 @@ func _create_object_layer(layer: Dictionary) -> void:
 			service_node.name = name
 			service_node.set_meta("object_name", name)
 			service_node.position = top_left
-			service_node.z_index = 10 + int(object.get("y", 0))
+			service_node.z_index = _object_depth(name, int(object.get("y", 0)))
 			_object_root.add_child(service_node)
 			service_node.configure(texture, size, String(service["id"]), String(service["name"]), float(service.get("door_ratio", 0.5)))
 			if name.begins_with("station_") and name not in ["station_depot", "station_barracks", "station_canteen"] or name in ["player_bed", "player_chest", "recruit_bed", "recruit_chest", "barracks_exit", "artichoke_ship", "pomidor_ship", "chamber_exit", "chvarak_ship", "diplomatic_ship", "rudnik_ore_ship"]:
@@ -247,12 +248,20 @@ func _create_object_layer(layer: Dictionary) -> void:
 		else:
 			_create_static_object(name, texture, top_left, size, int(object.get("y", 0)))
 
+func _object_depth(object_name: String, bottom_y: int) -> int:
+	if object_name == "ground_backdrop":
+		return -10
+	if object_name in GROUND_OBJECTS or object_name.begins_with("landing_pad"):
+		return 50
+	# Actors use 100 + feet Y; upright scenery must use the same depth offset.
+	return 100 + bottom_y
+
 func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, size: Vector2, bottom_y: int) -> void:
 	var holder := Node2D.new()
 	holder.name = name
 	holder.set_meta("object_name", name)
 	holder.position = top_left
-	holder.z_index = -10 if name == "ground_backdrop" else 10 + bottom_y
+	holder.z_index = _object_depth(name, bottom_y)
 	_object_root.add_child(holder)
 	var sprite := Sprite2D.new()
 	sprite.texture = texture

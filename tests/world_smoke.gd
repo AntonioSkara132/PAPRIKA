@@ -333,8 +333,8 @@ func _run() -> void:
 		state.add_item("wood_armor")
 		state.equip_item("wood_armor")
 		ui.open_inventory()
-		var unequip_button := _find_button(ui.modal_content, "Unequip armor")
-		_check(unequip_button != null, "inventory offers a button to remove armor")
+		var unequip_button := _find_button(ui.inventory_panel, "Unequip armor")
+		_check(unequip_button != null and ui.inventory_panel.find_child("PlayerArmorPreview", true, false) != null, "inventory shows worn armor and offers its removal")
 		if unequip_button != null:
 			unequip_button.pressed.emit()
 			_check(String(state.equipment["armor"]).is_empty() and int(state.inventory.get("wood_armor", 0)) >= 1 and not world.player._armor_overlay.visible, "removing armor keeps it and reveals clothing")

@@ -34,6 +34,7 @@ func _ready() -> void:
 	GameState.equipment_changed.connect(_on_inventory_changed)
 
 func open() -> void:
+	_dismiss_drop()
 	visible = true
 	refresh()
 
@@ -178,12 +179,16 @@ func _build_loadout() -> void:
 	var arrow_id := GameState.selected_arrows
 	var ammo_label := "Basic Arrows ∞" if arrow_id == GameState.BASIC_ARROW else "%s ×%d" % [GameData.item(arrow_id).get("name", arrow_id), int(GameState.inventory.get(arrow_id, 0))]
 	_add_slot("Arrows", arrow_id, ammo_label)
+	var previous_unequip := _root.get_node_or_null("UnequipArmor")
+	if previous_unequip != null:
+		_root.remove_child(previous_unequip)
+		previous_unequip.queue_free()
 	var unequip := _button("Unequip armor", Vector2(9, 274), Vector2(163, 18), func() -> void: GameState.unequip_armor(); refresh(), _root)
 	unequip.name = "UnequipArmor"
 	unequip.disabled = String(GameState.equipment.get("armor", "")).is_empty()
 
 func _add_slot(slot: String, item_id: String, title: String) -> void:
-	var row := _button("", Vector2.ZERO, Vector2(163, 24), func() -> void: _select(item_id if not item_id.is_empty() else GameState.BASIC_ARROW), _slots)
+	var row := _button("", Vector2.ZERO, Vector2(163, 24), func() -> void: _select(GameState.BASIC_ARROW if slot == "Arrows" or item_id.is_empty() else item_id), _slots)
 	row.name = "Equipped%s" % slot
 	row.tooltip_text = "%s: %s" % [slot, title]
 	if not item_id.is_empty():
@@ -279,17 +284,27 @@ func _confirm_drop(amount: int) -> void:
 	var question := _label("Drop %d %s permanently?" % [amount, name], Vector2(8, 5), Vector2(357, 25), 12, GOLD, content)
 	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_label("This item will not appear on the ground or be recoverable.", Vector2(8, 33), Vector2(358, 27), 9, CREAM, content).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var cancel := _button("Keep item", Vector2(12, 66), Vector2(125, 20), func() -> void: _confirm_layer.visible = false, content)
+	var cancel := _button("Keep item", Vector2(12, 66), Vector2(125, 20), _dismiss_drop, content)
 	cancel.name = "CancelDrop"
 	var accept := _button("Drop permanently", Vector2(195, 66), Vector2(173, 20), func() -> void:
 		if not GameState.discard_item(item_id, amount):
 			GameState.notify("That item cannot be dropped now.")
-		_confirm_layer.visible = false
+		_dismiss_drop()
 		refresh()
 	, content)
 	accept.name = "ConfirmDrop"
 	_confirm_layer.visible = true
+	for button in _root.find_children("*", "Button", true, false):
+		if not _confirm_layer.is_ancestor_of(button):
+			(button as Button).focus_mode = Control.FOCUS_NONE
 	cancel.grab_focus()
+
+func _dismiss_drop() -> void:
+	if _confirm_layer == null:
+		return
+	_confirm_layer.visible = false
+	for button in _root.find_children("*", "Button", true, false):
+		(button as Button).focus_mode = Control.FOCUS_ALL
 
 func _icon(item_id: String, pos: Vector2, dimensions: Vector2, parent: Control) -> TextureRect:
 	var path := ItemIcons.icon_path(item_id)

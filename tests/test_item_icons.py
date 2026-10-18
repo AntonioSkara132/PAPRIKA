@@ -30,6 +30,21 @@ class ItemIconTests(unittest.TestCase):
         self.assertIn('static func icon_path(item_id: String) -> String:',
                       (ROOT / "scripts/data/item_icons.gd").read_text())
 
+    def test_unknown_items_use_a_visible_fallback(self):
+        lookup = (ROOT / "scripts/data/item_icons.gd").read_text()
+        fallback = "res://assets/art/items/unknown.png"
+        self.assertIn(f'const UNKNOWN_ICON_PATH := "{fallback}"', lookup)
+        self.assertIn('return ICON_PATHS.get(item_id, UNKNOWN_ICON_PATH)', lookup)
+        self.assertNotIn("unknown", self.paths)
+        with Image.open(ROOT / fallback.removeprefix("res://")) as icon:
+            self.assertEqual(icon.size, (16, 16))
+            self.assertEqual(icon.mode, "RGBA")
+            alpha = list(icon.getchannel("A").getdata())
+            self.assertIn(0, alpha)
+            self.assertGreater(sum(a > 0 for a in alpha), 12)
+            self.assertLess(sum(a > 0 for a in alpha), 220)
+            self.assertEqual(icon.tobytes(), art.draw_icon("unknown").tobytes())
+
     def test_icons_are_transparent_16_pixel_images(self):
         for item_id, path in self.paths.items():
             with self.subTest(item=item_id):

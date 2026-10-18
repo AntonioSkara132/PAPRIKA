@@ -147,6 +147,8 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 	if traveling or story or changing_area:
 		GameState.capture_davor_health()
 	var next_world: Node = world_script.new()
+	# The main node handles Escape while paused; its world must stop processing.
+	next_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	next_world.name = {
 		"paprika": "PaprikaWorld",
 		"brudet": "BrudetWorld",
@@ -206,6 +208,7 @@ func _ensure_input_actions() -> void:
 		"station_sprint": [KEY_SHIFT],
 		"interact": [KEY_E],
 		"attack": [KEY_SPACE],
+		"switch_weapon": [KEY_V],
 		"inventory": [KEY_I],
 		"jobs": [KEY_J],
 		"encyclopedia": [KEY_N],

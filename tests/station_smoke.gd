@@ -509,7 +509,8 @@ func _check_trap(game: Node, ui: GameUI, station: StationWorld) -> void:
 		var lane_side := Vector2(-lane_direction.y, lane_direction.x)
 		if marker == 0:
 			_press_ui_key(ui, KEY_I)
-			var equip_button := _find_button(ui.modal_content, "Equip")
+			ui.inventory_panel._select("practice_mine")
+			var equip_button := _find_button(ui.inventory_panel, "Equip")
 			_check(ui.modal_overlay.visible and ui._active_service_id == "inventory" and equip_button != null and not equip_button.disabled, "I shows an enabled Equip button for the practice mine")
 			var dummy_before_modal := dummy.global_position
 			for tick in 8:
@@ -578,13 +579,15 @@ func _check_trap(game: Node, ui: GameUI, station: StationWorld) -> void:
 				lane_direction = -lane_direction
 			lane_midpoint = (lane_start + lane_end) * 0.5
 			_press_ui_key(ui, KEY_I)
-			equip_button = _find_button(ui.modal_content, "Equip")
+			ui.inventory_panel._select("practice_mine")
+			equip_button = _find_button(ui.inventory_panel, "Equip")
 			if equip_button != null:
 				equip_button.pressed.emit()
 			ui.close_modal()
 		else:
 			_press_ui_key(ui, KEY_I)
-			var next_equip_button := _find_button(ui.modal_content, "Equip")
+			ui.inventory_panel._select("practice_mine")
+			var next_equip_button := _find_button(ui.inventory_panel, "Equip")
 			_check(next_equip_button != null and not next_equip_button.disabled, "I offers Equip for trap marker %d" % (marker + 1))
 			if next_equip_button != null:
 				next_equip_button.pressed.emit()

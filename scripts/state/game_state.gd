@@ -477,6 +477,19 @@ func equip_item(item_id: String) -> bool:
 	notify("Equipped %s." % definition["name"])
 	return true
 
+## Cycle through owned weapon types, excluding copies assigned to companions.
+func cycle_weapon() -> bool:
+	var current := String(equipment.get("weapon", ""))
+	var available: Array[String] = []
+	for item_id: String in inventory:
+		if GameData.item(item_id).get("kind", "") == "weapon" and (item_id == current or free_item_count(item_id) > 0):
+			available.append(item_id)
+	available.sort()
+	if available.is_empty() or (available.size() == 1 and available[0] == current):
+		notify("No other weapon available.")
+		return false
+	return equip_item(available[(available.find(current) + 1) % available.size()])
+
 func unequip_armor() -> bool:
 	if String(equipment.get("armor", "")).is_empty():
 		return false
