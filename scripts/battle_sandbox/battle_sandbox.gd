@@ -356,6 +356,7 @@ func _steer_block(b: int, dt: float) -> void:
 	# a block whose soldiers fall behind their places waits for them
 	if advance > 0.0 and _spread(b) > (25.0 if block["kind"] == "horse" else 10.0):
 		advance *= 0.3
+	block["moving"] = advance != 0.0
 	block["leader"] += block["heading"] * advance * stats["speed"] * 0.8 * _ground_speed(centre, block["kind"]) * dt
 
 func _spread(b: int) -> float:
@@ -431,7 +432,9 @@ func _step_unit(i: int, dt: float) -> void:
 		var reach: float = stats["reach"] + (40.0 if u["kind"] == "archer" and ground_at(u["pos"]) == "hill" else 0.0)
 		if u["kind"] != "archer" and distance > reach * 0.85:
 			goal = units[target]["pos"]
-		if distance <= reach and u["cooldown"] <= 0.0:
+		# archers shoot only once their block has halted and they stand in their places
+		var steady: bool = u["kind"] != "archer" or (not block.get("moving", false) and u["pos"].distance_to(_slot(u)) < 4.0)
+		if distance <= reach and u["cooldown"] <= 0.0 and steady:
 			_attack(i, target)
 	else:
 		u["facing"] = signf(block["heading"].x) if absf(block["heading"].x) > 0.1 else u["facing"]
