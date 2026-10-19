@@ -71,6 +71,7 @@ const HILL_ARMIES := [
 const HILL_MOUTH := HILL_CENTRE - Vector2(HILL_RADIUS + 90.0, 0.0)  # the side the river leaves open
 ## Red's reserve cavalry rides in behind Blue once Blue sends its last line forward.
 const HILL_REINFORCEMENT := ["horse", 20, 5, 0.0, 0.0]
+const HILL_NECK_ROWS := [150.0, 205.0, 245.0]  # x offsets from the hill centre of the fallback rows
 const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
 const LINE_SWAP_MORALE := 55.0
 const DISARRAY_TIME := 0.25
@@ -101,6 +102,7 @@ var speed := 1.0
 var scenario := "field"  # "field", "swamp" or "hill"
 var _disarray_timer := 0.0
 var _reinforced := false
+var _fell_back := [false, false]
 var paused := false
 var winner := -1
 var clock := 0.0
@@ -135,6 +137,7 @@ func _spawn() -> void:
 	winner = -1
 	clock = 0.0
 	_reinforced = false
+	_fell_back = [false, false]
 	_command_timer = 0.0
 	if scenario == "swamp":
 		_spawn_swamp()
@@ -203,7 +206,7 @@ func _spawn_hill() -> void:
 			block["home_leader"] = block["leader"]
 			block["home_heading"] = block["heading"]
 			# the swordsmen wait behind the line to fill any hole in it
-			block["plugs_holes"] = block["kind"] == "sword"
+			block["plugs_holes"] = block["kind"] in ["sword", "ranger"]
 	_event("Red holds the hill; Blue sends its cavalry first")
 
 func _place_terrain() -> void:
@@ -351,6 +354,7 @@ func _resolve_cavalry_goal(b: int) -> void:
 
 func _command(team: int) -> void:
 	_fill_holes(team)
+	_fall_back_to_neck(team)
 	_keep_a_line_in_front(team)
 	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
@@ -455,6 +459,69 @@ func _keep_a_line_in_front(team: int) -> void:
 				_event("%s is called to the front" % block_name(b))
 				break
 
+## Once two spear blocks and a sword block that filled a gap are lost, the
+## hill's defender gives up the wide front
+## and forms a shorter line where the river's arms come closest together.
+func _fall_back_to_neck(team: int) -> void:
+	if scenario != "hill" or _fell_back[team]:
+		return
+	var lost := 0
+	var swords_worn := 0
+	var line: Array[int] = []
+	var bows: Array[int] = []
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] != team or not block.has("home_leader"):
+			continue
+		var worn: bool = block["broken"] or _living(b) * 2 < block["start"]
+		if block["kind"] == "spear" and worn:
+			lost += 1
+		if block["kind"] == "sword" and worn:
+			swords_worn += 1
+		# the swordsmen fill holes first; only when none are left waiting does the line give way
+		if block["kind"] == "sword" and block.get("plugs_holes", false) and not block["broken"] and _living(b) > 0:
+			return
+		if block["broken"] or _living(b) == 0:
+			continue
+		if block["kind"] == "longbow":
+			bows.append(b)
+		else:
+			line.append(b)
+	# the swordsmen who closed the gaps must have been worn down too
+	if lost < 2 or swords_worn < 1:
+		return
+	_fell_back[team] = true
+	var heading := Vector2.LEFT
+	line.sort_custom(func(a, b): return _centre(a).y < _centre(b).y)
+	bows.sort_custom(func(a, b): return _centre(a).y < _centre(b).y)
+	# the river's arms close in toward the back of the hill, so each row further
+	# back is narrower; melee blocks fill the front rows, longbows stand last
+	var rows: Array = [[], [], []]
+	for k in line.size():
+		rows[mini(k / 4, 1)].append(line[k])
+	rows[2].append_array(bows)
+	for r in rows.size():
+		var members: Array = rows[r]
+		var x: float = HILL_NECK_ROWS[r]
+		var half := _neck_half_width(x)
+		var gap := minf(95.0, 2.0 * half / maxf(1.0, members.size() - 1))
+		for k in members.size():
+			var block: Dictionary = blocks[members[k]]
+			var spot := Vector2(HILL_CENTRE.x + x, HILL_CENTRE.y + (k - (members.size() - 1) * 0.5) * gap)
+			block["home_leader"] = spot + heading * 40.0
+			block["home_heading"] = heading
+			block["order"] = "hold"
+			block["waypoints"] = []
+			block["retiring"] = true
+			block["plugs_holes"] = false
+	_event("%s falls back to the narrow ground between the river's arms" % TEAM_NAMES[team])
+
+## Half the dry width between the river's arms at x offset `x` from the hill
+## centre, keeping blocks clear of the water.
+func _neck_half_width(x: float) -> float:
+	var t := clampf(x / (HILL_RADIUS + 70.0), -1.0, 1.0)
+	return maxf(0.0, (HILL_RADIUS + 90.0) * sqrt(1.0 - t * t) - 55.0 - 45.0)
+
 ## A reserve sword block takes the place of a spear block that broke or is
 ## worn down: it marches to that block's home and holds there.
 func _fill_holes(team: int) -> void:
@@ -469,7 +536,10 @@ func _fill_holes(team: int) -> void:
 		for r in blocks.size():
 			var reserve: Dictionary = blocks[r]
 			if reserve["team"] == team and reserve.get("plugs_holes", false) and not reserve["broken"] and _living(r) > 0:
-				if best < 0 or _centre(r).distance_to(spear["home_leader"]) < _centre(best).distance_to(spear["home_leader"]):
+				# swordsmen first; rangers, who can also fight hand to hand, once the swords are used
+				var better: bool = best < 0 or (reserve["kind"] == "sword" and blocks[best]["kind"] != "sword")
+				var same_kind: bool = best >= 0 and reserve["kind"] == blocks[best]["kind"]
+				if better or (same_kind and _centre(r).distance_to(spear["home_leader"]) < _centre(best).distance_to(spear["home_leader"])):
 					best = r
 		if best < 0:
 			return
@@ -555,10 +625,12 @@ func _steer_block(b: int, dt: float) -> void:
 		# a relieved line goes back far enough to rest behind the line that replaced it
 		advance = -0.7 if distance < (260.0 if block.get("line", false) else 170.0) else 0.0
 	elif block["order"] == "hold":
-		if block.has("home_leader") and distance > 90.0:
+		if block.has("home_leader") and (distance > 90.0 or block.get("retiring", false)):
 			# no enemy close: march back to the block's place in the line and face the front again
 			var home: Vector2 = block["home_leader"]
 			var to_home: Vector2 = home - block["leader"]
+			if to_home.length() < 8.0:
+				block["retiring"] = false
 			var step := minf(to_home.length(), stats["speed"] * 0.8 * dt)
 			if step > 0.5:
 				block["leader"] += to_home.normalized() * step
@@ -599,9 +671,17 @@ func _last_line_sent() -> bool:
 			return true
 	return false
 
+## Whether a point lies inside the river's curve, on the hill side.
+func _inside_river(p: Vector2) -> bool:
+	var d := p - HILL_CENTRE
+	return pow(d.x / (HILL_RADIUS + 70.0), 2) + pow(d.y / (HILL_RADIUS + 90.0), 2) < 1.0
+
 ## Where a block heads for to reach a point: straight there, or toward the open
 ## side of the hill when the river is in the way.
 func _detour(from: Vector2, to: Vector2) -> Vector2:
+	# a path that only grazes the river from the same side needs no detour
+	if _inside_river(from) == _inside_river(to):
+		return to
 	for feature in terrain:
 		if feature["kind"] == "river":
 			var closest := Geometry2D.get_closest_point_to_segment(feature["centre"], from, to)
@@ -648,11 +728,26 @@ func _step_unit(i: int, dt: float) -> void:
 	u["cooldown"] = maxf(0.0, u["cooldown"] - dt)
 	u["swing"] = maxf(0.0, u["swing"] - dt)
 	u["rest"] += dt
+	# a man pushed into the river and left standing there gives up and swims away
+	var wet := false
+	for feature in terrain:
+		if feature["kind"] == "river" and u["pos"].distance_to(feature["centre"]) < feature["radius"]:
+			wet = true
+	u["wet"] = u.get("wet", 0.0) + dt if wet else 0.0
+	if u["wet"] > 4.0:
+		u["alive"] = false
+		u["fled"] = true
+		return
 	if block["broken"]:
 		var home := Vector2.LEFT if u["team"] == 0 else Vector2.RIGHT
 		u["pos"] += (home + Vector2(0, randf_range(-0.3, 0.3))) * stats["speed"] * 1.3 * ground * dt
 		u["facing"] = home.x
-		if u["pos"].x < -10.0 or u["pos"].x > FIELD.x + 10.0:
+		var escaped: bool = u["pos"].x < -10.0 or u["pos"].x > FIELD.x + 10.0
+		# routed men who reach the river swim across it and are gone
+		for feature in terrain:
+			if feature["kind"] == "river" and u["pos"].distance_to(feature["centre"]) < feature["radius"] + 12.0:
+				escaped = true
+		if escaped:
 			u["alive"] = false
 			u["fled"] = true
 		return
