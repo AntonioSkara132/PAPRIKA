@@ -19,7 +19,7 @@ const TEAM_COLORS := [Color("4f83cf"), Color("cf4f55")]
 const TEAM_NAMES := ["Confederation", "Republic"]
 const KINDS := {
 	"spear": {"hp": 34, "damage": 10, "reach": 22.0, "cooldown": 1.0, "speed": 30.0, "armor": 2, "engage": 30.0, "leash": 10.0, "turn": 0.35},
-	"sword": {"hp": 30, "damage": 9, "reach": 13.0, "cooldown": 0.75, "speed": 40.0, "armor": 3, "engage": 45.0, "leash": 40.0, "turn": 0.45},
+	"sword": {"hp": 30, "damage": 9, "reach": 13.0, "cooldown": 0.75, "speed": 52.0, "armor": 3, "engage": 45.0, "leash": 40.0, "turn": 0.7},
 	"archer": {"hp": 20, "damage": 7, "reach": 200.0, "cooldown": 1.7, "speed": 34.0, "armor": 0, "engage": 200.0, "leash": 0.0, "turn": 0.5},
 	"horse": {"hp": 44, "damage": 11, "reach": 15.0, "cooldown": 0.9, "speed": 75.0, "armor": 2, "engage": 50.0, "leash": 60.0, "turn": 1.2},
 }
@@ -47,6 +47,8 @@ const WITHDRAW_MORALE := 45.0
 const RETURN_MORALE := 70.0
 const COMMAND_TIME := 2.0
 const CHARGE_REST := 3.0  # a rider who hasn't struck for this long hits as a charge
+const SHIELD_BLOCK := 0.5  # share of frontal arrows a shield stops
+const SHIELDED := ["spear", "sword"]
 const MORALE_BLOCK_SIZE := 40.0  # deaths in smaller blocks count as if the block had this many men
 
 var units: Array[Dictionary] = []
@@ -252,6 +254,9 @@ func _command(team: int) -> void:
 			continue
 		if block["kind"] == "horse" and block["order"] == "flank" and block["goal_block"] < 0:
 			_resolve_cavalry_goal(b)
+		# once the lines have met, a sword wing goes around the end of the enemy line
+		if block["kind"] == "sword" and block["order"] == "advance" and line_engaged and not block.get("flanked", false):
+			_send_swords_around(b)
 		if block.get("reserve", false) and block["order"] == "hold":
 			if spear_morale < 70.0 or clock > 35.0 or (line_engaged and clock > 20.0):
 				block["order"] = "advance"
@@ -265,6 +270,29 @@ func _command(team: int) -> void:
 			block["withdrawn_once"] = true
 			block["waypoints"] = []
 			_event("%s pulls back to recover" % block_name(b))
+
+func _send_swords_around(b: int) -> void:
+	var block: Dictionary = blocks[b]
+	block["flanked"] = true
+	var centre := _centre(b)
+	var choice := -1
+	for other in blocks.size():
+		var target: Dictionary = blocks[other]
+		if target["team"] != block["team"] and target["kind"] == "spear" and not target["broken"] and _living(other) > 0:
+			if choice < 0 or _centre(other).distance_to(centre) < _centre(choice).distance_to(centre):
+				choice = other
+	if choice < 0:
+		return
+	var goal := _centre(choice)
+	var enemy_heading: Vector2 = blocks[choice]["heading"]
+	var side := signf(centre.y - goal.y)
+	if side == 0.0:
+		side = 1.0
+	var outside := clampf(goal.y + side * 90.0, 40.0, FIELD.y - 40.0)
+	block["order"] = "flank"
+	block["goal_block"] = choice
+	block["waypoints"] = [Vector2(goal.x, outside), Vector2(goal.x - enemy_heading.x * 50.0, goal.y + side * 30.0)]
+	_event("%s swings around %s" % [block_name(b), block_name(choice)])
 
 # --- blocks ---------------------------------------------------------------
 
@@ -559,6 +587,11 @@ func _fly_arrows(dt: float) -> void:
 		for j in units.size():
 			var u: Dictionary = units[j]
 			if u["alive"] and u["team"] != arrow["team"] and u["pos"].distance_to(arrow["to"]) < 8.0:
+				# a shield turns aside arrows that come from the front
+				if u["kind"] in SHIELDED and not blocks[u["block"]]["broken"] \
+						and (arrow["from"] - u["pos"]).normalized().dot(blocks[u["block"]]["heading"]) > 0.3 \
+						and randf() < SHIELD_BLOCK:
+					break
 				_hit(j, arrow["damage"], arrow["from"])
 				break
 
@@ -742,6 +775,10 @@ func _draw_unit(u: Dictionary) -> void:
 		"archer":
 			var start := -PI * 0.5 if facing > 0 else PI * 0.5
 			draw_arc(hand + Vector2(2 * facing, 0), 6.0, start, start + PI, 8, Color("8a6a40"), 1.0)
+	if u["kind"] in SHIELDED:
+		var shield := body + Vector2(4 * facing - (3 if facing < 0 else 0), -14)
+		draw_rect(Rect2(shield, Vector2(3, 8)), team_color.lightened(0.25))
+		draw_rect(Rect2(shield + Vector2(1, 3), Vector2(1, 2)), Color("d7c27a"))
 	var hp_ratio := float(u["hp"]) / float(KINDS[u["kind"]]["hp"])
 	if hp_ratio < 1.0:
 		draw_rect(Rect2(body + Vector2(-6, -27), Vector2(12, 2)), Color(0, 0, 0, 0.6))
