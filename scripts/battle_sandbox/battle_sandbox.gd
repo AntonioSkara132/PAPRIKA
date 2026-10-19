@@ -1,7 +1,7 @@
 extends Node2D
 ## A standalone battle of two armies, separate from the rest of the game.
 ## Each side fights in blocks: three spear blocks in the centre, swordsmen on
-## both wings, three archer blocks at the back and a small cavalry block on one wing. A block keeps its
+## both wings, longbowmen, archers and rangers at the back and a small cavalry block on one wing. A block keeps its
 ## shape the way "follow in formation" does in the sandbox: every soldier has an
 ## offset from the block's leader point, made by
 ## SandboxFormationPlanner.make_follow_offsets, and the whole block turns and
@@ -24,6 +24,10 @@ const KINDS := {
 	"spear": {"hp": 34, "damage": 10, "reach": 22.0, "cooldown": 1.0, "speed": 30.0, "armor": 2, "engage": 30.0, "leash": 10.0, "turn": 0.35},
 	"sword": {"hp": 30, "damage": 9, "reach": 13.0, "cooldown": 0.75, "speed": 52.0, "armor": 3, "engage": 45.0, "leash": 40.0, "turn": 0.7},
 	"archer": {"hp": 20, "damage": 9, "reach": 200.0, "cooldown": 1.7, "speed": 34.0, "armor": 0, "engage": 200.0, "leash": 0.0, "turn": 0.5},
+	"longbow": {"hp": 18, "damage": 11, "reach": 320.0, "cooldown": 3.0, "speed": 32.0, "armor": 0, "engage": 320.0, "leash": 0.0, "turn": 0.5},
+	# rangers shoot like archers but draw a short sword when an enemy comes close
+	"ranger": {"hp": 26, "damage": 9, "reach": 180.0, "cooldown": 2.0, "speed": 45.0, "armor": 1, "engage": 180.0, "leash": 0.0, "turn": 0.6,
+		"melee_range": 25.0, "melee_reach": 13.0, "melee_damage": 7, "melee_cooldown": 0.8},
 	"horse": {"hp": 44, "damage": 11, "reach": 15.0, "cooldown": 0.9, "speed": 75.0, "armor": 2, "engage": 50.0, "leash": 60.0, "turn": 1.2},
 }
 ## Blocks per side: kind, soldiers, files (soldiers per rank), lateral and rear position
@@ -35,9 +39,9 @@ const ARMY := [
 	["spear", 27, 9, 165.0, 0.0],
 	["sword", 30, 10, -310.0, 10.0],
 	["sword", 30, 10, 310.0, 10.0],
-	["archer", 14, 7, -165.0, 90.0],
+	["longbow", 14, 7, -165.0, 90.0],
 	["archer", 12, 6, 0.0, 90.0],
-	["archer", 14, 7, 165.0, 90.0],
+	["ranger", 14, 7, 165.0, 90.0],
 	["horse", 20, 10, 430.0, 40.0],
 ]
 ## The swamp crossing: Blue swordsmen wade through a marsh across the whole
@@ -56,12 +60,19 @@ const HILL_CENTRE := Vector2(980, 500)
 const HILL_RADIUS := 270.0
 const HILL_ARMIES := [
 	[["horse", 10, 5, -240.0, 0.0, 0.0], ["horse", 10, 5, -80.0, 0.0, 0.0], ["horse", 10, 5, 80.0, 0.0, 0.0], ["horse", 10, 5, 240.0, 0.0, 0.0],
-	 ["sword", 95, 40, 0.0, 90.0, 6.0], ["spear", 95, 40, 0.0, 145.0, 8.0], ["sword", 95, 40, 0.0, 200.0, 10.0], ["spear", 95, 40, 0.0, 255.0, 12.0]],
+	 ["sword", 32, 13, -150.0, 90.0, 6.0], ["sword", 31, 13, 0.0, 90.0, 6.0], ["sword", 32, 13, 150.0, 90.0, 6.0],
+	 ["spear", 32, 13, -150.0, 145.0, 8.0], ["spear", 31, 13, 0.0, 145.0, 8.0], ["spear", 32, 13, 150.0, 145.0, 8.0],
+	 ["sword", 32, 13, -150.0, 200.0, 10.0], ["sword", 31, 13, 0.0, 200.0, 10.0], ["sword", 32, 13, 150.0, 200.0, 10.0],
+	 ["spear", 32, 13, -150.0, 255.0, 12.0], ["spear", 31, 13, 0.0, 255.0, 12.0], ["spear", 32, 13, 150.0, 255.0, 12.0]],
 	[["spear", 25, 9, -232.0, 0.0], ["spear", 25, 9, -116.0, 0.0], ["spear", 25, 9, 0.0, 0.0], ["spear", 25, 9, 116.0, 0.0], ["spear", 25, 9, 232.0, 0.0],
-	 ["archer", 18, 9, -165.0, 55.0], ["archer", 18, 9, -55.0, 55.0], ["archer", 18, 9, 55.0, 55.0], ["archer", 18, 9, 165.0, 55.0],
+	 ["longbow", 18, 9, -165.0, 55.0], ["ranger", 18, 9, -55.0, 55.0], ["longbow", 18, 9, 55.0, 55.0], ["ranger", 18, 9, 165.0, 55.0],
 	 ["sword", 20, 9, -90.0, 110.0], ["sword", 20, 9, 90.0, 110.0]],
 ]
+const HILL_MOUTH := HILL_CENTRE - Vector2(HILL_RADIUS + 90.0, 0.0)  # the side the river leaves open
+## Red's reserve cavalry rides in behind Blue once Blue sends its last line forward.
+const HILL_REINFORCEMENT := ["horse", 20, 5, 0.0, 0.0]
 const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
+const LINE_SWAP_MORALE := 55.0
 const DISARRAY_TIME := 0.25
 const FILE_SPACING := 11.0
 const RANK_SPACING := 12.0
@@ -73,6 +84,7 @@ const WITHDRAW_MORALE := 45.0
 const RETURN_MORALE := 70.0
 const COMMAND_TIME := 2.0
 const CHARGE_REST := 3.0  # a rider who hasn't struck for this long hits as a charge
+const SHOOTERS := ["archer", "longbow", "ranger"]
 const SHIELD_BLOCK := 0.5  # share of frontal arrows a shield stops
 const SHIELDED := ["spear", "sword"]
 const MORALE_BLOCK_SIZE := 40.0  # deaths in smaller blocks count as if the block had this many men
@@ -88,6 +100,7 @@ var label: Label
 var speed := 1.0
 var scenario := "field"  # "field", "swamp" or "hill"
 var _disarray_timer := 0.0
+var _reinforced := false
 var paused := false
 var winner := -1
 var clock := 0.0
@@ -121,6 +134,7 @@ func _spawn() -> void:
 	_event_times.clear()
 	winner = -1
 	clock = 0.0
+	_reinforced = false
 	_command_timer = 0.0
 	if scenario == "swamp":
 		_spawn_swamp()
@@ -173,6 +187,16 @@ func _spawn_hill() -> void:
 			_spawn_block(team, entry, front, heading, heading.orthogonal(), 1.0)
 			if entry.size() > 5:
 				blocks[-1]["start_after"] = entry[5]
+				# Blue's infantry lines take turns at the front; the rear ones wait to be called
+				if entry[0] != "horse":
+					var column: String = blocks[-1]["wing"]
+					var number := 0
+					for other in blocks:
+						number += int(other.get("line", false) and other["wing"] == column)
+					blocks[-1]["line"] = true
+					blocks[-1]["line_name"] = "%s line %s" % [["first", "second", "third", "fourth", "fifth"][number], column]
+					if number > 0:
+						blocks[-1]["order"] = "hold"
 	for block in blocks:
 		if block["team"] == 1:
 			block["order"] = "hold"
@@ -258,7 +282,11 @@ func _spawn_block(team: int, entry: Array, front: Vector2, heading: Vector2, lat
 func block_name(b: int) -> String:
 	var block: Dictionary = blocks[b]
 	var short := "Blue" if block["team"] == 0 else "Red"
-	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "horse": "cavalry"}[block["kind"]]
+	if block.has("title"):
+		return "%s %s" % [short, block["title"]]
+	if block.has("line_name"):
+		return "%s %s (%s)" % [short, block["line_name"], block["kind"] + "s"]
+	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}[block["kind"]]
 	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] != "horse" or scenario == "hill" else "", kind]
 
 func _event(text: String, key: String = "", every: float = 0.0) -> void:
@@ -300,7 +328,7 @@ func _resolve_cavalry_goal(b: int) -> void:
 		var target: Dictionary = blocks[other]
 		if target["team"] == block["team"]:
 			continue
-		if (wanted == -2 and target["kind"] == "archer") or (wanted == -3 and target["kind"] == "sword"):
+		if (wanted == -2 and target["kind"] in SHOOTERS) or (wanted == -3 and target["kind"] == "sword"):
 			if choice < 0 or _centre(other).distance_to(block["leader"]) < _centre(choice).distance_to(block["leader"]):
 				choice = other
 	block["goal_block"] = choice
@@ -323,6 +351,7 @@ func _resolve_cavalry_goal(b: int) -> void:
 
 func _command(team: int) -> void:
 	_fill_holes(team)
+	_keep_a_line_in_front(team)
 	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
 	var line_engaged := false
@@ -345,10 +374,26 @@ func _command(team: int) -> void:
 				block["order"] = "advance"
 				block["reserve"] = false
 				_event("%s, held in reserve, now joins the fight" % block_name(b))
-		elif block["order"] == "withdraw" and block["morale"] >= RETURN_MORALE:
-			block["order"] = "advance"
+		elif block["order"] == "withdraw" and block["morale"] >= RETURN_MORALE and block.get("line", false):
+			block["order"] = "hold"
+			_event("%s has rested and waits to be called again" % block_name(b))
+		elif block["order"] == "withdraw" and block["morale"] >= RETURN_MORALE and not _enemy_within(b, 110.0):
+			block["order"] = "hold" if block.has("home_leader") else "advance"
+			if block.has("home_leader"):
+				block["withdrawn_once"] = false
 			_event("%s has steadied and returns to the line" % block_name(b))
-		elif block["order"] in ["advance", "hold"] and block["kind"] != "archer" and not block["withdrawn_once"] and block["morale"] < WITHDRAW_MORALE:
+		elif block.get("line", false) and block["order"] == "advance" and block["engaged"] and block["morale"] < LINE_SWAP_MORALE and _fresh_line(b) >= 0:
+			var fresh := _fresh_line(b)
+			block["order"] = "withdraw"
+			block["waypoints"] = []
+			blocks[fresh]["order"] = "advance"
+			_event("%s pulls back through %s, which takes the front" % [block_name(b), block_name(fresh)])
+		elif block["kind"] == "longbow" and block["order"] == "hold" and block.has("home_leader") and _enemy_within(b, 70.0):
+			# longbowmen can't fight hand to hand: they step back up the hill
+			block["order"] = "withdraw"
+			block["waypoints"] = []
+			_event("%s pulls back from the enemy" % block_name(b), "lbback%d" % b, 10.0)
+		elif block["order"] in ["advance", "hold"] and block["kind"] not in ["archer", "longbow"] and not block["withdrawn_once"] and block["morale"] < WITHDRAW_MORALE:
 			block["order"] = "withdraw"
 			block["withdrawn_once"] = true
 			block["waypoints"] = []
@@ -376,6 +421,39 @@ func _send_swords_around(b: int) -> void:
 	block["goal_block"] = choice
 	block["waypoints"] = [Vector2(goal.x, outside), Vector2(goal.x - enemy_heading.x * 50.0, goal.y + side * 30.0)]
 	_event("%s swings around %s" % [block_name(b), block_name(choice)])
+
+func _enemy_within(b: int, radius: float) -> bool:
+	var enemy := _nearest_enemy_to(_centre(b), blocks[b]["team"])
+	return enemy >= 0 and units[enemy]["pos"].distance_to(_centre(b)) < radius
+
+## Another line of the same army that is rested and ready to take the front.
+func _fresh_line(b: int) -> int:
+	for other in blocks.size():
+		var line: Dictionary = blocks[other]
+		if other != b and line.get("line", false) and line["team"] == blocks[b]["team"] and line["wing"] == blocks[b]["wing"] and not line["broken"] \
+				and line["order"] == "hold" and line["morale"] >= RETURN_MORALE and _living(other) > 0:
+			return other
+	return -1
+
+## If no line is fighting at the front (the front one broke), the general calls the next.
+func _keep_a_line_in_front(team: int) -> void:
+	var fighting := {}
+	var columns := {}
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block.get("line", false) and block["team"] == team:
+			columns[block["wing"]] = true
+			if block["order"] == "advance" and not block["broken"] and _living(b) > 0:
+				fighting[block["wing"]] = true
+	for column in columns:
+		if fighting.has(column):
+			continue
+		for b in blocks.size():
+			var block: Dictionary = blocks[b]
+			if block.get("line", false) and block["team"] == team and block["wing"] == column and block["order"] == "hold" and not block["broken"] and _living(b) > 0:
+				block["order"] = "advance"
+				_event("%s is called to the front" % block_name(b))
+				break
 
 ## A reserve sword block takes the place of a spear block that broke or is
 ## worn down: it marches to that block's home and holds there.
@@ -455,6 +533,7 @@ func _steer_block(b: int, dt: float) -> void:
 	var distance := centre.distance_to(enemy_pos)
 	block["engaged"] = distance < 45.0
 	var stats: Dictionary = KINDS[block["kind"]]
+	var aim := _detour(centre, enemy_pos)
 	var advance := 0.0
 	var waypoints: Array = block["waypoints"]
 	if block["order"] == "flank" and not waypoints.is_empty():
@@ -472,8 +551,9 @@ func _steer_block(b: int, dt: float) -> void:
 	elif block["order"] == "flank" and block["goal_block"] >= 0:
 		block["order"] = "advance"
 	if block["order"] == "withdraw":
-		_turn_toward(b, enemy_pos, dt)
-		advance = -0.7 if distance < 170.0 else 0.0
+		_turn_toward(b, aim, dt)
+		# a relieved line goes back far enough to rest behind the line that replaced it
+		advance = -0.7 if distance < (260.0 if block.get("line", false) else 170.0) else 0.0
 	elif block["order"] == "hold":
 		if block.has("home_leader") and distance > 90.0:
 			# no enemy close: march back to the block's place in the line and face the front again
@@ -482,22 +562,24 @@ func _steer_block(b: int, dt: float) -> void:
 			var step := minf(to_home.length(), stats["speed"] * 0.8 * dt)
 			if step > 0.5:
 				block["leader"] += to_home.normalized() * step
-				advance = 0.0001  # counts as moving, so archers don't shoot while relining
+				# a long march back counts as moving, so archers don't shoot; a small shift doesn't
+				if to_home.length() > 12.0:
+					advance = 0.0001
 			var turn := clampf(block["heading"].angle_to(block["home_heading"]), -stats["turn"] * dt, stats["turn"] * dt)
 			if absf(turn) > 0.0001:
 				block["leader"] = centre + (block["leader"] - centre).rotated(turn)
 				block["heading"] = block["heading"].rotated(turn)
 		# a holding line keeps its front and turns only to an enemy well off to its side
 		elif absf(block["heading"].angle_to(enemy_pos - centre)) > PI / 3.0:
-			_turn_toward(b, enemy_pos, dt)
+			_turn_toward(b, aim, dt)
 	elif block["order"] == "advance":
-		_turn_toward(b, enemy_pos, dt)
+		_turn_toward(b, aim, dt)
 		match block["kind"]:
-			"archer":
+			"archer", "longbow", "ranger":
 				var reach: float = stats["reach"] + (40.0 if ground_at(centre) == "hill" else 0.0)
 				if distance > reach * 0.9:
 					advance = 1.0
-				elif distance < 120.0:
+				elif distance < 120.0 and block["kind"] != "ranger":
 					advance = -1.0
 			"spear":
 				if clock > block.get("start_after", OPENING_VOLLEYS) and distance > 26.0:
@@ -510,6 +592,22 @@ func _steer_block(b: int, dt: float) -> void:
 		advance *= 0.3
 	block["moving"] = advance != 0.0
 	block["leader"] += block["heading"] * advance * stats["speed"] * 0.8 * _ground_speed(centre, block["kind"]) * dt
+
+func _last_line_sent() -> bool:
+	for block in blocks:
+		if block.get("line_name", "").begins_with("fourth") and block["order"] != "hold":
+			return true
+	return false
+
+## Where a block heads for to reach a point: straight there, or toward the open
+## side of the hill when the river is in the way.
+func _detour(from: Vector2, to: Vector2) -> Vector2:
+	for feature in terrain:
+		if feature["kind"] == "river":
+			var closest := Geometry2D.get_closest_point_to_segment(feature["centre"], from, to)
+			if closest.distance_to(feature["centre"]) < feature["radius"] + 8.0:
+				return HILL_MOUTH
+	return to
 
 func _spread(b: int) -> float:
 	var total := 0.0
@@ -533,7 +631,8 @@ func _lose_morale(b: int, amount: float) -> void:
 		for other in blocks.size():
 			if other != b and not blocks[other]["broken"]:
 				if blocks[other]["team"] == block["team"]:
-					_lose_morale(other, 12.0)
+					# a small squad running away shakes the army less than a big one
+					_lose_morale(other, 12.0 * minf(1.0, block["start"] / 60.0))
 				else:
 					blocks[other]["morale"] = minf(100.0, blocks[other]["morale"] + 10.0)
 
@@ -562,7 +661,7 @@ func _step_unit(i: int, dt: float) -> void:
 		u["retarget"] = RETARGET_TIME
 		u["target"] = -1
 		var engage: float = stats["engage"]
-		if u["kind"] == "archer" and ground_at(u["pos"]) == "hill":
+		if u["kind"] in SHOOTERS and ground_at(u["pos"]) == "hill":
 			engage += 40.0
 		# riders on their way around a flank only fight what gets in the way
 		if block["order"] == "flank" and not block["waypoints"].is_empty():
@@ -570,7 +669,7 @@ func _step_unit(i: int, dt: float) -> void:
 		var nearest := _nearest_enemy_to(u["pos"], u["team"])
 		var slot := _slot(u)
 		if nearest >= 0 and units[nearest]["pos"].distance_to(u["pos"]) <= engage \
-				and (u["kind"] == "archer" or units[nearest]["pos"].distance_to(slot) <= engage + stats["leash"]):
+				and (u["kind"] in SHOOTERS or units[nearest]["pos"].distance_to(slot) <= engage + stats["leash"]):
 			u["target"] = nearest
 	var target: int = u["target"]
 	if target >= 0 and not units[target]["alive"]:
@@ -581,13 +680,17 @@ func _step_unit(i: int, dt: float) -> void:
 		var to_target: Vector2 = units[target]["pos"] - u["pos"]
 		u["facing"] = signf(to_target.x) if absf(to_target.x) > 1.0 else u["facing"]
 		var distance := to_target.length()
-		var reach: float = stats["reach"] + (40.0 if u["kind"] == "archer" and ground_at(u["pos"]) == "hill" else 0.0)
-		if u["kind"] != "archer" and distance > reach * 0.85:
+		var shooter: bool = u["kind"] in SHOOTERS
+		var melee: bool = not shooter or distance <= float(stats.get("melee_range", -1.0))
+		var reach: float = stats.get("melee_reach", stats["reach"]) if shooter and melee else stats["reach"]
+		if shooter and not melee and ground_at(u["pos"]) == "hill":
+			reach += 40.0
+		if melee and distance > reach * 0.85:
 			goal = units[target]["pos"]
-		# archers shoot only once their block has halted and they stand in their places
-		var steady: bool = u["kind"] != "archer" or (not block.get("moving", false) and u["pos"].distance_to(_slot(u)) < 4.0)
+		# bows are shot only once the block has halted and the archer stands in his place
+		var steady: bool = melee or (not block.get("moving", false) and u["pos"].distance_to(_slot(u)) < 4.0)
 		if distance <= reach and u["cooldown"] <= 0.0 and steady:
-			_attack(i, target)
+			_attack(i, target, melee)
 	else:
 		u["facing"] = signf(block["heading"].x) if absf(block["heading"].x) > 0.1 else u["facing"]
 	var to_goal: Vector2 = goal - u["pos"]
@@ -596,17 +699,20 @@ func _step_unit(i: int, dt: float) -> void:
 		var hurry := 1.4 if target < 0 and to_goal.length() > 8.0 else 1.0
 		u["pos"] += to_goal.normalized() * minf(to_goal.length(), stats["speed"] * hurry * ground * dt)
 
-func _attack(i: int, target: int) -> void:
+func _attack(i: int, target: int, melee: bool = true) -> void:
 	var u: Dictionary = units[i]
 	var stats: Dictionary = KINDS[u["kind"]]
 	u["cooldown"] = stats["cooldown"] * randf_range(0.85, 1.15)
-	if u["kind"] == "archer":
+	if not melee:
 		var aim: Vector2 = units[target]["pos"] + Vector2(randf_range(-10, 10), randf_range(-10, 10))
 		arrows.append({"from": u["pos"] + Vector2(0, -12), "to": aim, "t": 0.0,
 			"time": u["pos"].distance_to(aim) / ARROW_SPEED, "team": u["team"], "damage": stats["damage"]})
 		return
 	u["swing"] = 0.18
 	var damage: float = stats["damage"]
+	if stats.has("melee_damage"):
+		damage = stats["melee_damage"]
+		u["cooldown"] = stats["melee_cooldown"] * randf_range(0.85, 1.15)
 	var shock := 0.0
 	# a rider who has been moving rather than fighting hits as a charge, except in mud and
 	# trees; against other riders or a spear block it is an ordinary fight
@@ -727,6 +833,12 @@ func _fly_arrows(dt: float) -> void:
 
 func simulate(dt: float) -> void:
 	clock += dt
+	if scenario == "hill" and not _reinforced and _last_line_sent():
+		_reinforced = true
+		# the block's front faces Blue's back, so it arrives from the left edge facing right
+		_spawn_block(1, HILL_REINFORCEMENT, Vector2(60.0, randf_range(300.0, 700.0)), Vector2.RIGHT, Vector2.DOWN, 1.0)
+		blocks[-1]["title"] = "reserve cavalry"
+		_event("Red reserve cavalry appears behind the Blue army!")
 	_command_timer -= dt
 	if _command_timer <= 0.0:
 		_command_timer = COMMAND_TIME
@@ -941,9 +1053,18 @@ func _draw_unit(u: Dictionary) -> void:
 		"sword", "horse":
 			var angle := 0.6 if swinging else -1.0
 			draw_line(hand, hand + Vector2(cos(angle) * 9 * facing, sin(angle) * 9), Color("d7e6ea"), 2.0)
-		"archer":
+		"archer", "longbow":
 			var start := -PI * 0.5 if facing > 0 else PI * 0.5
-			draw_arc(hand + Vector2(2 * facing, 0), 6.0, start, start + PI, 8, Color("8a6a40"), 1.0)
+			var size := 10.0 if u["kind"] == "longbow" else 6.0
+			draw_arc(hand + Vector2(2 * facing, -size + 6.0), size, start, start + PI, 10, Color("8a6a40"), 1.0)
+		"ranger":
+			if swinging:
+				draw_line(hand, hand + Vector2(cos(0.6) * 7 * facing, sin(0.6) * 7), Color("d7e6ea"), 2.0)
+			else:
+				var start := -PI * 0.5 if facing > 0 else PI * 0.5
+				draw_arc(hand + Vector2(2 * facing, 0), 6.0, start, start + PI, 8, Color("8a6a40"), 1.0)
+			# a short sword at the belt
+			draw_line(body + Vector2(-3 * facing, -8), body + Vector2(-6 * facing, -2), Color("b8c4c8"), 1.0)
 	if u["kind"] in SHIELDED:
 		var shield := body + Vector2(4 * facing - (3 if facing < 0 else 0), -14)
 		draw_rect(Rect2(shield, Vector2(3, 8)), team_color.lightened(0.25))
