@@ -458,10 +458,13 @@ func _attack(i: int, target: int) -> void:
 	var damage: float = stats["damage"]
 	var shock := 0.0
 	# a rider who has been moving rather than fighting hits as a charge, except in mud and
-	# trees; against other riders it is an ordinary fight
-	if u["kind"] == "horse" and units[target]["kind"] != "horse" and u["rest"] >= CHARGE_REST and ground_at(u["pos"]) not in ["marsh", "wood"]:
+	# trees; against other riders or a spear block it is an ordinary fight
+	if u["kind"] == "horse" and units[target]["kind"] not in ["horse", "spear"] and u["rest"] >= CHARGE_REST and ground_at(u["pos"]) not in ["marsh", "wood"]:
 		damage *= 2.5
 		shock = 3.0
+	# a spear keeps a rider at a distance
+	if u["kind"] == "spear" and units[target]["kind"] == "horse":
+		damage *= 1.3
 	# fighting downhill helps
 	if ground_at(u["pos"]) == "hill" and ground_at(units[target]["pos"]) != "hill":
 		damage += 2.0
