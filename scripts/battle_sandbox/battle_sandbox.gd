@@ -57,9 +57,9 @@ const HILL_RADIUS := 270.0
 const HILL_ARMIES := [
 	[["horse", 10, 5, -240.0, 0.0, 0.0], ["horse", 10, 5, -80.0, 0.0, 0.0], ["horse", 10, 5, 80.0, 0.0, 0.0], ["horse", 10, 5, 240.0, 0.0, 0.0],
 	 ["sword", 95, 40, 0.0, 90.0, 6.0], ["spear", 95, 40, 0.0, 145.0, 8.0], ["sword", 95, 40, 0.0, 200.0, 10.0], ["spear", 95, 40, 0.0, 255.0, 12.0]],
-	[["spear", 25, 9, -165.0, 0.0], ["spear", 25, 9, -55.0, 0.0], ["spear", 25, 9, 55.0, 0.0], ["spear", 25, 9, 165.0, 0.0],
+	[["spear", 25, 9, -232.0, 0.0], ["spear", 25, 9, -116.0, 0.0], ["spear", 25, 9, 0.0, 0.0], ["spear", 25, 9, 116.0, 0.0], ["spear", 25, 9, 232.0, 0.0],
 	 ["archer", 18, 9, -165.0, 55.0], ["archer", 18, 9, -55.0, 55.0], ["archer", 18, 9, 55.0, 55.0], ["archer", 18, 9, 165.0, 55.0],
-	 ["sword", 20, 5, -265.0, 25.0], ["sword", 20, 5, 265.0, 25.0]],
+	 ["sword", 20, 9, -90.0, 110.0], ["sword", 20, 9, 90.0, 110.0]],
 ]
 const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
 const DISARRAY_TIME := 0.25
@@ -176,6 +176,10 @@ func _spawn_hill() -> void:
 	for block in blocks:
 		if block["team"] == 1:
 			block["order"] = "hold"
+			block["home_leader"] = block["leader"]
+			block["home_heading"] = block["heading"]
+			# the swordsmen wait behind the line to fill any hole in it
+			block["plugs_holes"] = block["kind"] == "sword"
 	_event("Red holds the hill; Blue sends its cavalry first")
 
 func _place_terrain() -> void:
@@ -318,6 +322,7 @@ func _resolve_cavalry_goal(b: int) -> void:
 	_event("%s rides around the %s flank toward %s" % [block_name(b), "southern" if side > 0 else "northern", block_name(choice)])
 
 func _command(team: int) -> void:
+	_fill_holes(team)
 	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
 	var line_engaged := false
@@ -371,6 +376,32 @@ func _send_swords_around(b: int) -> void:
 	block["goal_block"] = choice
 	block["waypoints"] = [Vector2(goal.x, outside), Vector2(goal.x - enemy_heading.x * 50.0, goal.y + side * 30.0)]
 	_event("%s swings around %s" % [block_name(b), block_name(choice)])
+
+## A reserve sword block takes the place of a spear block that broke or is
+## worn down: it marches to that block's home and holds there.
+func _fill_holes(team: int) -> void:
+	for b in blocks.size():
+		var spear: Dictionary = blocks[b]
+		if spear["team"] != team or spear["kind"] != "spear" or not spear.has("home_leader") or spear.get("covered", false):
+			continue
+		var worn: bool = spear["broken"] or _living(b) * 2 < spear["start"] or spear["morale"] < 50.0
+		if not worn:
+			continue
+		var best := -1
+		for r in blocks.size():
+			var reserve: Dictionary = blocks[r]
+			if reserve["team"] == team and reserve.get("plugs_holes", false) and not reserve["broken"] and _living(r) > 0:
+				if best < 0 or _centre(r).distance_to(spear["home_leader"]) < _centre(best).distance_to(spear["home_leader"]):
+					best = r
+		if best < 0:
+			return
+		var reserve: Dictionary = blocks[best]
+		reserve["plugs_holes"] = false
+		reserve["order"] = "hold"
+		reserve["home_leader"] = spear["home_leader"]
+		reserve["home_heading"] = spear["home_heading"]
+		spear["covered"] = true
+		_event("%s moves up to close the gap left by %s" % [block_name(best), block_name(b)])
 
 # --- blocks ---------------------------------------------------------------
 
@@ -444,8 +475,20 @@ func _steer_block(b: int, dt: float) -> void:
 		_turn_toward(b, enemy_pos, dt)
 		advance = -0.7 if distance < 170.0 else 0.0
 	elif block["order"] == "hold":
+		if block.has("home_leader") and distance > 90.0:
+			# no enemy close: march back to the block's place in the line and face the front again
+			var home: Vector2 = block["home_leader"]
+			var to_home: Vector2 = home - block["leader"]
+			var step := minf(to_home.length(), stats["speed"] * 0.8 * dt)
+			if step > 0.5:
+				block["leader"] += to_home.normalized() * step
+				advance = 0.0001  # counts as moving, so archers don't shoot while relining
+			var turn := clampf(block["heading"].angle_to(block["home_heading"]), -stats["turn"] * dt, stats["turn"] * dt)
+			if absf(turn) > 0.0001:
+				block["leader"] = centre + (block["leader"] - centre).rotated(turn)
+				block["heading"] = block["heading"].rotated(turn)
 		# a holding line keeps its front and turns only to an enemy well off to its side
-		if absf(block["heading"].angle_to(enemy_pos - centre)) > PI / 3.0:
+		elif absf(block["heading"].angle_to(enemy_pos - centre)) > PI / 3.0:
 			_turn_toward(b, enemy_pos, dt)
 	elif block["order"] == "advance":
 		_turn_toward(b, enemy_pos, dt)
