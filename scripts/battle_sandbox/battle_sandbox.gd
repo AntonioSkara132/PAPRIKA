@@ -12,8 +12,9 @@ extends Node2D
 ## the line to recover. Hills, marshes and woods are placed anew on every restart.
 ## Run it with: godot --path . res://scenes/battle_sandbox.tscn
 ## The swamp crossing starts with: godot --path . res://scenes/battle_sandbox.tscn -- --swamp
+## and the hill battle with -- --hill
 ## Controls: arrows/WASD pan, mouse wheel zoom, Space pause, R restart, T switch
-## between the open field and the swamp crossing, 1-3 speed.
+## between the open field, the swamp crossing and the hill battle, 1-3 speed.
 
 const FIELD := Vector2(1600, 1000)
 const BODY := preload("res://assets/art/player_plain.png")
@@ -47,6 +48,21 @@ const SWAMP_ARMIES := [
 ]
 const SWAMP_FRONTS := [280.0, 150.0]  # distance of each army's front from the field centre
 const SWAMP_HALF_WIDTH := 125.0
+## The hill battle: Red holds a large hill with a river curving around its back
+## and both flanks. Blue sends four cavalry squads first, then alternating lines
+## of swordsmen and spearmen. Entries carry a sixth value, the second the block
+## starts moving.
+const HILL_CENTRE := Vector2(980, 500)
+const HILL_RADIUS := 270.0
+const HILL_ARMIES := [
+	[["horse", 15, 5, -240.0, 0.0, 0.0], ["horse", 15, 5, -80.0, 0.0, 0.0], ["horse", 15, 5, 80.0, 0.0, 0.0], ["horse", 15, 5, 240.0, 0.0, 0.0],
+	 ["sword", 95, 40, 0.0, 90.0, 6.0], ["spear", 95, 40, 0.0, 145.0, 8.0], ["sword", 95, 40, 0.0, 200.0, 10.0], ["spear", 95, 40, 0.0, 255.0, 12.0]],
+	[["spear", 25, 9, -165.0, 0.0], ["spear", 25, 9, -55.0, 0.0], ["spear", 25, 9, 55.0, 0.0], ["spear", 25, 9, 165.0, 0.0],
+	 ["archer", 18, 9, -165.0, 55.0], ["archer", 18, 9, -55.0, 55.0], ["archer", 18, 9, 55.0, 55.0], ["archer", 18, 9, 165.0, 55.0],
+	 ["sword", 20, 5, -265.0, 25.0], ["sword", 20, 5, 265.0, 25.0]],
+]
+const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
+const DISARRAY_TIME := 0.25
 const FILE_SPACING := 11.0
 const RANK_SPACING := 12.0
 const RETARGET_TIME := 0.4
@@ -70,7 +86,8 @@ var events: Array[String] = []
 var camera: Camera2D
 var label: Label
 var speed := 1.0
-var scenario := "field"  # "field" or "swamp"
+var scenario := "field"  # "field", "swamp" or "hill"
+var _disarray_timer := 0.0
 var paused := false
 var winner := -1
 var clock := 0.0
@@ -78,8 +95,9 @@ var _command_timer := 0.0
 var _event_times := {}
 
 func _ready() -> void:
-	if "--swamp" in OS.get_cmdline_user_args():
-		scenario = "swamp"
+	for name in ["swamp", "hill"]:
+		if "--" + name in OS.get_cmdline_user_args():
+			scenario = name
 	camera = Camera2D.new()
 	camera.position = FIELD * 0.5
 	camera.zoom = Vector2(0.34, 0.34)
@@ -106,6 +124,9 @@ func _spawn() -> void:
 	_command_timer = 0.0
 	if scenario == "swamp":
 		_spawn_swamp()
+		return
+	if scenario == "hill":
+		_spawn_hill()
 		return
 	_place_terrain()
 	for team in 2:
@@ -136,6 +157,26 @@ func _spawn_swamp() -> void:
 		if block["kind"] == "archer":
 			block["order"] = "hold"
 	_event("Blue swordsmen must cross the swamp to reach the Red archers")
+
+func _spawn_hill() -> void:
+	terrain.clear()
+	# the river first, so water wins where it overlaps the hill's edge
+	for i in 15:
+		var angle := lerpf(-PI * 0.62, PI * 0.62, i / 14.0)
+		var point := HILL_CENTRE + Vector2(cos(angle) * (HILL_RADIUS + 70.0), sin(angle) * (HILL_RADIUS + 90.0))
+		terrain.append({"kind": "river", "centre": point, "radius": 55.0, "seed": randi()})
+	terrain.append({"kind": "hill", "centre": HILL_CENTRE, "radius": HILL_RADIUS, "seed": randi()})
+	for team in 2:
+		var heading := Vector2.RIGHT if team == 0 else Vector2.LEFT
+		var front := HILL_CENTRE - Vector2(HILL_FRONTS[team], 0.0)
+		for entry in HILL_ARMIES[team]:
+			_spawn_block(team, entry, front, heading, heading.orthogonal(), 1.0)
+			if entry.size() > 5:
+				blocks[-1]["start_after"] = entry[5]
+	for block in blocks:
+		if block["team"] == 1:
+			block["order"] = "hold"
+	_event("Red holds the hill; Blue sends its cavalry first")
 
 func _place_terrain() -> void:
 	terrain.clear()
@@ -201,6 +242,8 @@ func _spawn_block(team: int, entry: Array, front: Vector2, heading: Vector2, lat
 	var leader: Vector2 = sample["pos"] - lateral * sample["offset"].x + heading * sample["offset"].y
 	var side_offset := lateral.dot(centre - front)
 	var wing := "centre" if absf(side_offset) < 1.0 else ("left" if side_offset < 0.0 else "right")
+	if absf(side_offset) > 200.0 and kind == "horse":
+		wing = "far " + wing
 	blocks.append({
 		"team": team, "kind": kind, "wing": wing, "leader": leader, "heading": heading,
 		"members": range(first, first + count), "start": count, "morale": 100.0,
@@ -212,7 +255,7 @@ func block_name(b: int) -> String:
 	var block: Dictionary = blocks[b]
 	var short := "Blue" if block["team"] == 0 else "Red"
 	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "horse": "cavalry"}[block["kind"]]
-	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] != "horse" else "", kind]
+	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] != "horse" or scenario == "hill" else "", kind]
 
 func _event(text: String, key: String = "", every: float = 0.0) -> void:
 	if key != "":
@@ -412,10 +455,10 @@ func _steer_block(b: int, dt: float) -> void:
 				elif distance < 120.0:
 					advance = -1.0
 			"spear":
-				if clock > OPENING_VOLLEYS and distance > 26.0:
+				if clock > block.get("start_after", OPENING_VOLLEYS) and distance > 26.0:
 					advance = 1.0
 			"sword", "horse":
-				if clock > OPENING_VOLLEYS + 1.0 and distance > 18.0:
+				if clock > block.get("start_after", OPENING_VOLLEYS + 1.0) and distance > 18.0:
 					advance = 1.0
 	# a block whose soldiers fall behind their places waits for them
 	if advance > 0.0 and _spread(b) > (25.0 if block["kind"] == "horse" else 10.0):
@@ -609,6 +652,12 @@ func _separate() -> void:
 						units[j]["pos"] += push
 		if not blocks[u["block"]]["broken"]:
 			u["pos"] = u["pos"].clamp(Vector2(8, 24), FIELD - Vector2(8, 4))
+		# nobody wades into the river
+		for feature in terrain:
+			if feature["kind"] == "river":
+				var from_centre: Vector2 = u["pos"] - feature["centre"]
+				if from_centre.length() < feature["radius"]:
+					u["pos"] = feature["centre"] + from_centre.normalized() * feature["radius"]
 
 func _fly_arrows(dt: float) -> void:
 	for arrow in arrows:
@@ -643,8 +692,37 @@ func simulate(dt: float) -> void:
 	for i in units.size():
 		_step_unit(i, dt)
 	_separate()
+	_disarray_timer -= dt
+	if _disarray_timer <= 0.0:
+		_disarray_timer = DISARRAY_TIME
+		_spread_disarray()
 	_fly_arrows(dt)
 	_check_winner()
+
+## Soldiers running away, or a block pulling back, push through their own
+## formations: the men they run into are knocked out of their places and their
+## block loses morale.
+func _spread_disarray() -> void:
+	var runners := []
+	for u in units:
+		if u["alive"]:
+			var block: Dictionary = blocks[u["block"]]
+			if block["broken"] or block["order"] == "withdraw":
+				runners.append(u)
+	if runners.is_empty():
+		return
+	var shaken := {}
+	for v in units:
+		if not v["alive"] or blocks[v["block"]]["broken"]:
+			continue
+		for r in runners:
+			if r["team"] == v["team"] and r["block"] != v["block"] and r["pos"].distance_squared_to(v["pos"]) < 144.0:
+				v["pos"] += Vector2(randf_range(-6, 6), randf_range(-6, 6))
+				shaken[v["block"]] = shaken.get(v["block"], 0) + 1
+				break
+	for b in shaken:
+		_lose_morale(b, 0.25 * shaken[b])
+		_event("%s is thrown into disorder by its own fleeing men" % block_name(b), "disarray%d" % b, 6.0)
 
 func _check_winner() -> void:
 	if winner >= 0:
@@ -670,7 +748,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE: paused = not paused
 			KEY_R: _spawn()
 			KEY_T:
-				scenario = "swamp" if scenario == "field" else "field"
+				scenario = {"field": "swamp", "swamp": "hill", "hill": "field"}[scenario]
 				_spawn()
 			KEY_1: speed = 1.0
 			KEY_2: speed = 2.0
@@ -708,7 +786,7 @@ func _update_label() -> void:
 				alive += _living(b)
 		lines.append("%s %d: %s" % [TEAM_NAMES[team], alive, " · ".join(parts)])
 	lines.append_array(events)
-	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), "open field" if scenario == "swamp" else "swamp crossing"])
+	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario]])
 	label.text = "\n".join(lines)
 
 func _draw() -> void:
@@ -718,8 +796,13 @@ func _draw() -> void:
 	for i in 700:
 		var p := Vector2(rng.randf() * FIELD.x, rng.randf() * FIELD.y)
 		draw_rect(Rect2(p, Vector2(2, 1)), Color("8db574"))
+	# water last, so it shows over the hill's edge
 	for feature in terrain:
-		_draw_feature(feature)
+		if feature["kind"] != "river":
+			_draw_feature(feature)
+	for feature in terrain:
+		if feature["kind"] == "river":
+			_draw_feature(feature)
 	for c in corpses:
 		var size := Vector2(18, 7) if c["kind"] == "horse" else Vector2(14, 5)
 		draw_rect(Rect2(c["pos"] - Vector2(size.x * 0.5, 4), size), TEAM_COLORS[c["team"]].darkened(0.45))
@@ -753,6 +836,8 @@ func _draw_feature(feature: Dictionary) -> void:
 			draw_arc(centre, radius, 0, TAU, 48, Color("5f8a4c"), 2.0)
 			draw_circle(centre + Vector2(-radius * 0.1, -radius * 0.1), radius * 0.6, Color("94b872"))
 			draw_arc(centre + Vector2(-radius * 0.1, -radius * 0.1), radius * 0.6, 0, TAU, 40, Color("6f9a56"), 1.0)
+		"river":
+			draw_circle(centre, radius, Color("4a7fa8"))
 		"marsh":
 			draw_circle(centre, radius, Color("5b7a55"))
 			var rng := RandomNumberGenerator.new()
