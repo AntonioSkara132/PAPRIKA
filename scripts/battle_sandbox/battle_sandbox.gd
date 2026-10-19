@@ -55,7 +55,7 @@ const SWAMP_HALF_WIDTH := 125.0
 const HILL_CENTRE := Vector2(980, 500)
 const HILL_RADIUS := 270.0
 const HILL_ARMIES := [
-	[["horse", 15, 5, -240.0, 0.0, 0.0], ["horse", 15, 5, -80.0, 0.0, 0.0], ["horse", 15, 5, 80.0, 0.0, 0.0], ["horse", 15, 5, 240.0, 0.0, 0.0],
+	[["horse", 10, 5, -240.0, 0.0, 0.0], ["horse", 10, 5, -80.0, 0.0, 0.0], ["horse", 10, 5, 80.0, 0.0, 0.0], ["horse", 10, 5, 240.0, 0.0, 0.0],
 	 ["sword", 95, 40, 0.0, 90.0, 6.0], ["spear", 95, 40, 0.0, 145.0, 8.0], ["sword", 95, 40, 0.0, 200.0, 10.0], ["spear", 95, 40, 0.0, 255.0, 12.0]],
 	[["spear", 25, 9, -165.0, 0.0], ["spear", 25, 9, -55.0, 0.0], ["spear", 25, 9, 55.0, 0.0], ["spear", 25, 9, 165.0, 0.0],
 	 ["archer", 18, 9, -165.0, 55.0], ["archer", 18, 9, -55.0, 55.0], ["archer", 18, 9, 55.0, 55.0], ["archer", 18, 9, 165.0, 55.0],
@@ -444,7 +444,9 @@ func _steer_block(b: int, dt: float) -> void:
 		_turn_toward(b, enemy_pos, dt)
 		advance = -0.7 if distance < 170.0 else 0.0
 	elif block["order"] == "hold":
-		_turn_toward(b, enemy_pos, dt)
+		# a holding line keeps its front and turns only to an enemy well off to its side
+		if absf(block["heading"].angle_to(enemy_pos - centre)) > PI / 3.0:
+			_turn_toward(b, enemy_pos, dt)
 	elif block["order"] == "advance":
 		_turn_toward(b, enemy_pos, dt)
 		match block["kind"]:
@@ -699,16 +701,15 @@ func simulate(dt: float) -> void:
 	_fly_arrows(dt)
 	_check_winner()
 
-## Soldiers running away, or a block pulling back, push through their own
-## formations: the men they run into are knocked out of their places and their
-## block loses morale.
+## Soldiers running away push through their own formations: the men they run
+## into are knocked out of their places and their block loses morale. Horses
+## cause the most disorder; men on foot squeeze through with less. A block
+## pulling back on orders passes through the gaps and disturbs no one.
 func _spread_disarray() -> void:
 	var runners := []
 	for u in units:
-		if u["alive"]:
-			var block: Dictionary = blocks[u["block"]]
-			if block["broken"] or block["order"] == "withdraw":
-				runners.append(u)
+		if u["alive"] and blocks[u["block"]]["broken"]:
+			runners.append(u)
 	if runners.is_empty():
 		return
 	var shaken := {}
@@ -717,8 +718,9 @@ func _spread_disarray() -> void:
 			continue
 		for r in runners:
 			if r["team"] == v["team"] and r["block"] != v["block"] and r["pos"].distance_squared_to(v["pos"]) < 144.0:
-				v["pos"] += Vector2(randf_range(-6, 6), randf_range(-6, 6))
-				shaken[v["block"]] = shaken.get(v["block"], 0) + 1
+				var force := 1.0 if r["kind"] == "horse" else 0.35
+				v["pos"] += Vector2(randf_range(-6, 6), randf_range(-6, 6)) * force
+				shaken[v["block"]] = shaken.get(v["block"], 0.0) + force
 				break
 	for b in shaken:
 		_lose_morale(b, 0.25 * shaken[b])
