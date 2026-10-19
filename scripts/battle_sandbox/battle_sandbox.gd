@@ -11,7 +11,9 @@ extends Node2D
 ## around a wing, may keep one sword block back, and pulls shaken blocks out of
 ## the line to recover. Hills, marshes and woods are placed anew on every restart.
 ## Run it with: godot --path . res://scenes/battle_sandbox.tscn
-## Controls: arrows/WASD pan, mouse wheel zoom, Space pause, R restart, 1-3 speed.
+## The swamp crossing starts with: godot --path . res://scenes/battle_sandbox.tscn -- --swamp
+## Controls: arrows/WASD pan, mouse wheel zoom, Space pause, R restart, T switch
+## between the open field and the swamp crossing, 1-3 speed.
 
 const FIELD := Vector2(1600, 1000)
 const BODY := preload("res://assets/art/player_plain.png")
@@ -20,7 +22,7 @@ const TEAM_NAMES := ["Confederation", "Republic"]
 const KINDS := {
 	"spear": {"hp": 34, "damage": 10, "reach": 22.0, "cooldown": 1.0, "speed": 30.0, "armor": 2, "engage": 30.0, "leash": 10.0, "turn": 0.35},
 	"sword": {"hp": 30, "damage": 9, "reach": 13.0, "cooldown": 0.75, "speed": 52.0, "armor": 3, "engage": 45.0, "leash": 40.0, "turn": 0.7},
-	"archer": {"hp": 20, "damage": 7, "reach": 200.0, "cooldown": 1.7, "speed": 34.0, "armor": 0, "engage": 200.0, "leash": 0.0, "turn": 0.5},
+	"archer": {"hp": 20, "damage": 9, "reach": 200.0, "cooldown": 1.7, "speed": 34.0, "armor": 0, "engage": 200.0, "leash": 0.0, "turn": 0.5},
 	"horse": {"hp": 44, "damage": 11, "reach": 15.0, "cooldown": 0.9, "speed": 75.0, "armor": 2, "engage": 50.0, "leash": 60.0, "turn": 1.2},
 }
 ## Blocks per side: kind, soldiers, files (soldiers per rank), lateral and rear position
@@ -37,6 +39,14 @@ const ARMY := [
 	["archer", 14, 7, 165.0, 90.0],
 	["horse", 20, 10, 430.0, 40.0],
 ]
+## The swamp crossing: Blue swordsmen wade through a marsh across the whole
+## field to reach Red archers on the far bank. Blocks are given per team.
+const SWAMP_ARMIES := [
+	[["sword", 30, 10, -330.0, 0.0], ["sword", 30, 10, -110.0, 0.0], ["sword", 30, 10, 110.0, 0.0], ["sword", 30, 10, 330.0, 0.0]],
+	[["archer", 25, 12, -330.0, 0.0], ["archer", 25, 12, -110.0, 0.0], ["archer", 25, 12, 110.0, 0.0], ["archer", 25, 12, 330.0, 0.0]],
+]
+const SWAMP_FRONTS := [280.0, 150.0]  # distance of each army's front from the field centre
+const SWAMP_HALF_WIDTH := 125.0
 const FILE_SPACING := 11.0
 const RANK_SPACING := 12.0
 const RETARGET_TIME := 0.4
@@ -60,6 +70,7 @@ var events: Array[String] = []
 var camera: Camera2D
 var label: Label
 var speed := 1.0
+var scenario := "field"  # "field" or "swamp"
 var paused := false
 var winner := -1
 var clock := 0.0
@@ -67,6 +78,8 @@ var _command_timer := 0.0
 var _event_times := {}
 
 func _ready() -> void:
+	if "--swamp" in OS.get_cmdline_user_args():
+		scenario = "swamp"
 	camera = Camera2D.new()
 	camera.position = FIELD * 0.5
 	camera.zoom = Vector2(0.34, 0.34)
@@ -91,6 +104,9 @@ func _spawn() -> void:
 	winner = -1
 	clock = 0.0
 	_command_timer = 0.0
+	if scenario == "swamp":
+		_spawn_swamp()
+		return
 	_place_terrain()
 	for team in 2:
 		var heading := Vector2.RIGHT if team == 0 else Vector2.LEFT
@@ -101,6 +117,25 @@ func _spawn() -> void:
 			var side := cavalry_side if entry[0] == "horse" else 1.0
 			_spawn_block(team, entry, front, heading, lateral, side)
 		_plan_battle(team)
+
+func _spawn_swamp() -> void:
+	terrain.clear()
+	# a band of overlapping marsh patches from the top of the field to the bottom
+	var y := 40.0
+	while y < FIELD.y:
+		var x := FIELD.x * 0.5 + randf_range(-15.0, 15.0)
+		terrain.append({"kind": "marsh", "centre": Vector2(x, y), "radius": SWAMP_HALF_WIDTH, "seed": randi()})
+		y += 70.0
+	for team in 2:
+		var heading := Vector2.RIGHT if team == 0 else Vector2.LEFT
+		var front: Vector2 = FIELD * 0.5 - heading * float(SWAMP_FRONTS[team])
+		for entry in SWAMP_ARMIES[team]:
+			_spawn_block(team, entry, front, heading, heading.orthogonal(), 1.0)
+	# the archers stand on the far bank and let the swamp slow the enemy
+	for block in blocks:
+		if block["kind"] == "archer":
+			block["order"] = "hold"
+	_event("Blue swordsmen must cross the swamp to reach the Red archers")
 
 func _place_terrain() -> void:
 	terrain.clear()
@@ -587,8 +622,9 @@ func _fly_arrows(dt: float) -> void:
 		for j in units.size():
 			var u: Dictionary = units[j]
 			if u["alive"] and u["team"] != arrow["team"] and u["pos"].distance_to(arrow["to"]) < 8.0:
-				# a shield turns aside arrows that come from the front
-				if u["kind"] in SHIELDED and not blocks[u["block"]]["broken"] \
+				# a shield turns aside arrows that come from the front, unless its
+				# bearer is wading through a marsh and can't keep it up
+				if u["kind"] in SHIELDED and not blocks[u["block"]]["broken"] and ground_at(u["pos"]) != "marsh" \
 						and (arrow["from"] - u["pos"]).normalized().dot(blocks[u["block"]]["heading"]) > 0.3 \
 						and randf() < SHIELD_BLOCK:
 					break
@@ -633,6 +669,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		match event.keycode:
 			KEY_SPACE: paused = not paused
 			KEY_R: _spawn()
+			KEY_T:
+				scenario = "swamp" if scenario == "field" else "field"
+				_spawn()
 			KEY_1: speed = 1.0
 			KEY_2: speed = 2.0
 			KEY_3: speed = 4.0
@@ -669,7 +708,7 @@ func _update_label() -> void:
 				alive += _living(b)
 		lines.append("%s %d: %s" % [TEAM_NAMES[team], alive, " · ".join(parts)])
 	lines.append_array(events)
-	lines.append("Space pause%s · 1-3 speed x%d · R new battle · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed)])
+	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), "open field" if scenario == "swamp" else "swamp crossing"])
 	label.text = "\n".join(lines)
 
 func _draw() -> void:
