@@ -15,6 +15,10 @@ extends Node2D
 ## and the hill battle with -- --hill
 ## Controls: arrows/WASD pan, mouse wheel zoom, Space pause, R restart, T switch
 ## between the open field, the swamp crossing and the hill battle, 1-3 speed.
+## G takes command of Blue, then Red, then hands both back to their generals
+## (or start with -- --general=blue / --general=red). The battle then waits
+## while you click the field to name places; Space starts it, and Enter opens
+## the order bar (see battle_general.gd).
 
 const FIELD := Vector2(1600, 1000)
 const BODY := preload("res://assets/art/player_plain.png")
@@ -70,6 +74,8 @@ const HILL_ARMIES := [
 ]
 const HILL_MOUTH := HILL_CENTRE - Vector2(HILL_RADIUS + 90.0, 0.0)  # the side the river leaves open
 ## Red's reserve cavalry rides in behind Blue once Blue sends its last line forward.
+const COUNTER_TIME := 12.0  # seconds a counterattack lasts before it is called back
+const HILL_REINFORCEMENT_DELAY := 20.0  # seconds after Blue's fourth line goes in
 const HILL_REINFORCEMENT := ["horse", 20, 5, 0.0, 0.0]
 const HILL_NECK_ROWS := [150.0, 205.0, 245.0]  # x offsets from the hill centre of the fallback rows
 const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
@@ -102,12 +108,18 @@ var speed := 1.0
 var scenario := "field"  # "field", "swamp" or "hill"
 var _disarray_timer := 0.0
 var _reinforced := false
+var _last_line_time := -1.0
 var _fell_back := [false, false]
+var _counter_ready := [0.0, 0.0]
 var paused := false
 var winner := -1
 var clock := 0.0
 var _command_timer := 0.0
 var _event_times := {}
+var player_team := -1  # the army the player commands, -1 for none
+var setup := false  # the commanded battle has not started yet
+var general: Node
+var general_message := ""
 
 func _ready() -> void:
 	for name in ["swamp", "hill"]:
@@ -125,9 +137,37 @@ func _ready() -> void:
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 3)
 	layer.add_child(label)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--general="):
+			player_team = {"blue": 0, "red": 1}.get(arg.get_slice("=", 1).to_lower(), -1)
+	general = preload("res://scripts/battle_sandbox/battle_general.gd").new(self)
+	add_child(general)
+	general.message.connect(func(text: String) -> void: general_message = text)
 	_spawn()
 
 func _spawn() -> void:
+	_spawn_armies()
+	setup = false
+	if player_team < 0:
+		return
+	for b in blocks.size():
+		if blocks[b]["team"] == player_team:
+			_hand_over(b)
+	general.take_command()
+	setup = true
+
+## The player's blocks stand where they are until ordered.
+func _hand_over(b: int) -> void:
+	var block: Dictionary = blocks[b]
+	block["order"] = "hold"
+	block["home_leader"] = block["leader"]
+	block["home_heading"] = block["heading"]
+	block["plugs_holes"] = false
+	block["reserve"] = false
+	block["goal_block"] = -1
+	block["waypoints"] = []
+
+func _spawn_armies() -> void:
 	units.clear()
 	blocks.clear()
 	arrows.clear()
@@ -137,7 +177,9 @@ func _spawn() -> void:
 	winner = -1
 	clock = 0.0
 	_reinforced = false
+	_last_line_time = -1.0
 	_fell_back = [false, false]
+	_counter_ready = [0.0, 0.0]
 	_command_timer = 0.0
 	if scenario == "swamp":
 		_spawn_swamp()
@@ -279,7 +321,7 @@ func _spawn_block(team: int, entry: Array, front: Vector2, heading: Vector2, lat
 		"team": team, "kind": kind, "wing": wing, "leader": leader, "heading": heading,
 		"members": range(first, first + count), "start": count, "morale": 100.0,
 		"broken": false, "engaged": false, "order": "advance", "waypoints": [],
-		"goal_block": -1, "withdrawn_once": false,
+		"goal_block": -1, "withdrawn_once": false, "files": files,
 	})
 
 func block_name(b: int) -> String:
@@ -353,8 +395,12 @@ func _resolve_cavalry_goal(b: int) -> void:
 	_event("%s rides around the %s flank toward %s" % [block_name(b), "southern" if side > 0 else "northern", block_name(choice)])
 
 func _command(team: int) -> void:
+	# the player's army does only what it is ordered to; a block can still break and run
+	if team == player_team:
+		return
 	_fill_holes(team)
 	_fall_back_to_neck(team)
+	_counterattack(team)
 	_keep_a_line_in_front(team)
 	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
@@ -492,8 +538,8 @@ func _fall_back_to_neck(team: int) -> void:
 		return
 	_fell_back[team] = true
 	var heading := Vector2.LEFT
-	line.sort_custom(func(a, b): return _centre(a).y < _centre(b).y)
-	bows.sort_custom(func(a, b): return _centre(a).y < _centre(b).y)
+	# the strongest melee blocks, spears first, take the front row
+	line.sort_custom(func(a, b): return _neck_rank(a) > _neck_rank(b))
 	# the river's arms close in toward the back of the hill, so each row further
 	# back is narrower; melee blocks fill the front rows, longbows stand last
 	var rows: Array = [[], [], []]
@@ -502,6 +548,9 @@ func _fall_back_to_neck(team: int) -> void:
 	rows[2].append_array(bows)
 	for r in rows.size():
 		var members: Array = rows[r]
+		# within a row each block keeps its place from north to south, so no block
+		# crosses the others or leaves a flank behind on the way back
+		members.sort_custom(func(a, b): return _centre(a).y < _centre(b).y)
 		var x: float = HILL_NECK_ROWS[r]
 		var half := _neck_half_width(x)
 		var gap := minf(95.0, 2.0 * half / maxf(1.0, members.size() - 1))
@@ -515,6 +564,49 @@ func _fall_back_to_neck(team: int) -> void:
 			block["retiring"] = true
 			block["plugs_holes"] = false
 	_event("%s falls back to the narrow ground between the river's arms" % TEAM_NAMES[team])
+
+func _neck_rank(b: int) -> float:
+	return _living(b) + (100.0 if blocks[b]["kind"] == "spear" else 0.0)
+
+## While the enemy's own runaways throw its lines into disorder, the hill's
+## defender sends its reserves and rangers down against the shaken blocks, then
+## calls them back before the enemy recovers.
+func _counterattack(team: int) -> void:
+	if scenario != "hill" or _fell_back[team]:
+		return
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] == team and block.get("counter_until", -1.0) >= 0.0:
+			if clock > block["counter_until"] or block["morale"] < 60.0 or block["broken"]:
+				block["counter_until"] = -1.0
+				block.erase("attack_point")
+				if not block["broken"]:
+					block["order"] = "hold"
+					block["retiring"] = true
+					_event("%s is called back up the hill" % block_name(b), "back%d" % b, 10.0)
+	if clock < _counter_ready[team]:
+		return
+	var shaken := -1
+	for b in blocks.size():
+		var enemy: Dictionary = blocks[b]
+		if enemy["team"] != team and not enemy["broken"] and _living(b) > 0 and clock - enemy.get("shaken_at", -INF) < 2.0:
+			if shaken < 0 or enemy["morale"] < blocks[shaken]["morale"]:
+				shaken = b
+	if shaken < 0 or blocks[shaken]["morale"] > 95.0:
+		return
+	var sent := 0
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] != team or block["broken"] or _living(b) * 2 < block["start"] or block["morale"] < 80.0:
+			continue
+		if block["kind"] == "ranger" or (block["kind"] == "sword" and block.get("plugs_holes", false)):
+			block["order"] = "advance"
+			block["attack_point"] = _centre(shaken)
+			block["counter_until"] = clock + COUNTER_TIME
+			sent += 1
+	if sent > 0:
+		_counter_ready[team] = clock + COUNTER_TIME + 20.0
+		_event("%s counterattacks %s while it is in disorder!" % [TEAM_NAMES[team], block_name(shaken)])
 
 ## Half the dry width between the river's arms at x offset `x` from the hill
 ## centre, keeping blocks clear of the water.
@@ -596,7 +688,7 @@ func _steer_block(b: int, dt: float) -> void:
 	elif not block["engaged"]:
 		block["morale"] = minf(100.0, block["morale"] + 1.5 * dt)
 	var centre := _centre(b)
-	var enemy := _nearest_enemy_to(centre, block["team"])
+	var enemy := _nearest_enemy_to(block.get("attack_point", centre), block["team"])
 	if enemy < 0:
 		return
 	var enemy_pos: Vector2 = units[enemy]["pos"]
@@ -629,6 +721,8 @@ func _steer_block(b: int, dt: float) -> void:
 			# no enemy close: march back to the block's place in the line and face the front again
 			var home: Vector2 = block["home_leader"]
 			var to_home: Vector2 = home - block["leader"]
+			if to_home.length() > 40.0:
+				to_home = (_detour(block["leader"], home) - block["leader"]).normalized() * to_home.length()
 			if to_home.length() < 8.0:
 				block["retiring"] = false
 			var step := minf(to_home.length(), stats["speed"] * 0.8 * dt)
@@ -664,6 +758,60 @@ func _steer_block(b: int, dt: float) -> void:
 		advance *= 0.3
 	block["moving"] = advance != 0.0
 	block["leader"] += block["heading"] * advance * stats["speed"] * 0.8 * _ground_speed(centre, block["kind"]) * dt
+
+# --- orders from the player ----------------------------------------------
+
+func order_hold(b: int) -> void:
+	var block: Dictionary = blocks[b]
+	block["order"] = "hold"
+	block["home_leader"] = block["leader"]
+	block["home_heading"] = block["heading"]
+	block["retiring"] = false
+	block.erase("attack_point")
+
+func order_withdraw(b: int) -> void:
+	var block: Dictionary = blocks[b]
+	block["order"] = "withdraw"
+	block["waypoints"] = []
+	block["retiring"] = false
+	block.erase("attack_point")
+
+## Advance on the nearest enemy, or on the enemy nearest `point` when given.
+func order_attack(b: int, point: Vector2) -> void:
+	var block: Dictionary = blocks[b]
+	block["order"] = "advance"
+	block["start_after"] = 0.0
+	block["waypoints"] = []
+	block["retiring"] = false
+	if point == Vector2.INF:
+		block.erase("attack_point")
+	else:
+		block["attack_point"] = point
+	if block["kind"] == "horse":
+		block["goal_block"] = -1
+
+## March to `spot` (the middle of the block's front rank) without stopping to
+## fight on the way, then hold there facing `heading`.
+func order_move(b: int, spot: Vector2, heading: Vector2) -> void:
+	var block: Dictionary = blocks[b]
+	block["order"] = "hold"
+	block["home_leader"] = spot
+	block["home_heading"] = heading
+	block["retiring"] = true
+	block["waypoints"] = []
+	block.erase("attack_point")
+
+func enemy_centre(team: int) -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for u in units:
+		if u["alive"] and u["team"] != team:
+			sum += u["pos"]
+			n += 1
+	return sum / n if n > 0 else FIELD * 0.5
+
+func block_width(b: int) -> float:
+	return (mini(blocks[b]["files"], _living(b)) - 1) * FILE_SPACING + 10.0
 
 func _last_line_sent() -> bool:
 	for block in blocks:
@@ -926,13 +1074,34 @@ func _fly_arrows(dt: float) -> void:
 				_hit(j, arrow["damage"], arrow["from"])
 				break
 
+## Before the battle starts only the commanded army moves, to the places it
+## was sent; the enemy waits and nobody fights.
+func _deploy(dt: float) -> void:
+	for b in blocks.size():
+		if blocks[b]["team"] == player_team and blocks[b]["order"] == "hold":
+			_steer_block(b, dt)
+	for i in units.size():
+		var u: Dictionary = units[i]
+		if u["alive"] and u["team"] == player_team:
+			var goal := _slot(u)
+			var step := minf(goal.distance_to(u["pos"]), KINDS[u["kind"]]["speed"] * 1.4 * dt)
+			if step > 0.5:
+				u["pos"] += (goal - u["pos"]).normalized() * step
+	_separate()
+
 func simulate(dt: float) -> void:
 	clock += dt
-	if scenario == "hill" and not _reinforced and _last_line_sent():
+	if scenario == "hill" and _last_line_time < 0.0 and _last_line_sent():
+		_last_line_time = clock
+	# the reserve cavalry comes once Blue's last line is committed to the fight
+	if scenario == "hill" and not _reinforced and _last_line_time >= 0.0 and clock > _last_line_time + HILL_REINFORCEMENT_DELAY:
 		_reinforced = true
 		# the block's front faces Blue's back, so it arrives from the left edge facing right
 		_spawn_block(1, HILL_REINFORCEMENT, Vector2(60.0, randf_range(300.0, 700.0)), Vector2.RIGHT, Vector2.DOWN, 1.0)
 		blocks[-1]["title"] = "reserve cavalry"
+		if player_team == 1:
+			_hand_over(blocks.size() - 1)
+			general.add_block(blocks.size() - 1)
 		_event("Red reserve cavalry appears behind the Blue army!")
 	_command_timer -= dt
 	if _command_timer <= 0.0:
@@ -973,6 +1142,7 @@ func _spread_disarray() -> void:
 				shaken[v["block"]] = shaken.get(v["block"], 0.0) + force
 				break
 	for b in shaken:
+		blocks[b]["shaken_at"] = clock
 		_lose_morale(b, 0.25 * shaken[b])
 		_event("%s is thrown into disorder by its own fleeing men" % block_name(b), "disarray%d" % b, 6.0)
 
@@ -997,7 +1167,16 @@ func fighting_counts() -> Array:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_SPACE: paused = not paused
+			KEY_SPACE:
+				if setup:
+					setup = false
+					general_message = "The battle has begun."
+				else:
+					paused = not paused
+			KEY_G:
+				player_team = player_team + 1 if player_team < 1 else -1
+				general_message = ""
+				_spawn()
 			KEY_R: _spawn()
 			KEY_T:
 				scenario = {"field": "swamp", "swamp": "hill", "hill": "field"}[scenario]
@@ -1010,16 +1189,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			camera.zoom = (camera.zoom / 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
+		elif event.button_index == MOUSE_BUTTON_LEFT and player_team >= 0:
+			general.click(make_input_local(event).position)
 
 func _process(delta: float) -> void:
 	var pan := Vector2.ZERO
-	if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A): pan.x -= 1
+	if general.typing():
+		pass
+	elif Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A): pan.x -= 1
 	if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D): pan.x += 1
 	if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W): pan.y -= 1
 	if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S): pan.y += 1
 	camera.position += pan * 400.0 * delta / camera.zoom.x
-	if not paused:
-		simulate(minf(delta, 0.05) * speed)
+	# the battle waits while the commanded army sets up, and slows while an order is typed
+	if paused:
+		pass
+	elif setup:
+		_deploy(minf(delta, 0.05) * speed)
+	else:
+		simulate(minf(delta, 0.05) * speed * (0.25 if general.typing() else 1.0))
 	_update_label()
 	queue_redraw()
 
@@ -1038,7 +1226,13 @@ func _update_label() -> void:
 				alive += _living(b)
 		lines.append("%s %d: %s" % [TEAM_NAMES[team], alive, " · ".join(parts)])
 	lines.append_array(events)
-	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario]])
+	if player_team >= 0:
+		lines.append_array(general.status_lines())
+		if setup:
+			lines.append("SETUP: the battle waits. Click the field and name places, give first orders, then press Space to start.")
+		if not general_message.is_empty():
+			lines.append("> " + general_message)
+	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · G command %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario], ["Blue", "Red", "nobody"][player_team + 1]])
 	label.text = "\n".join(lines)
 
 func _draw() -> void:
@@ -1078,6 +1272,8 @@ func _draw() -> void:
 		var p: Vector2 = arrow["from"].lerp(arrow["to"], k) + Vector2(0, -sin(k * PI) * 30.0)
 		var dir: Vector2 = (arrow["to"] - arrow["from"]).normalized()
 		draw_line(p - dir * 5.0, p + dir * 2.0, Color("3a2a1a"), 1.0)
+	if player_team >= 0:
+		general.draw_on(self)
 
 func _draw_feature(feature: Dictionary) -> void:
 	var centre: Vector2 = feature["centre"]
