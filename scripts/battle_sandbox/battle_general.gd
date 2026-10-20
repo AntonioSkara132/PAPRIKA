@@ -9,6 +9,8 @@ extends Node
 ##
 ## Simple orders are read here without the service: "spearmen to the ford",
 ## "first line attack", "cavalry attack at the ford", "rangers hold",
+## "archers to the hill" (bowmen, longbowmen and rangers), "infantry hold"
+## (everyone on foot), "melee attack" (spears, swords and cavalry),
 ## "swordsmen retreat", "everyone form a line from the ford to the hill".
 ## Anything else goes to the order service when it is running.
 
@@ -16,8 +18,11 @@ signal message(text: String)
 
 const PLACE_LETTERS := ["A", "B", "C", "D", "E", "F", "G", "H"]
 const RESERVED_WORDS := ["all", "everyone", "everybody", "soldier", "soldiers", "group", "here", "there", "line", "stop", "halt", "hold", "attack", "charge", "move", "go", "to", "and", "between", "from", "at", "mark", "forget", "retreat", "withdraw", "back", "facing", "face", "the", "a", "advance", "form"]
-const KIND_GROUPS := {"spear": "spearmen", "sword": "swordsmen", "archer": "bowmen", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}
-const GROUP_WORDS := {"spears": "spearmen", "spearman": "spearmen", "swords": "swordsmen", "swordmen": "swordsmen", "swordsman": "swordsmen", "archers": "bowmen", "archer": "bowmen", "bows": "bowmen", "longbows": "longbowmen", "longbowman": "longbowmen", "ranger": "rangers", "horse": "cavalry", "horsemen": "cavalry", "riders": "cavalry", "knights": "cavalry"}
+const KIND_GROUPS := {"spear": "spearmen", "sword": "swordsmen", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}
+# groups that cover several kinds: "archers to the ford" moves bowmen,
+# longbowmen and rangers alike
+const WIDE_GROUPS := {"archers": ["archer", "longbow", "ranger"], "infantry": ["spear", "sword", "archer", "longbow", "ranger"], "melee": ["spear", "sword", "horse"]}
+const GROUP_WORDS := {"spears": "spearmen", "spearman": "spearmen", "swords": "swordsmen", "swordmen": "swordsmen", "swordsman": "swordsmen", "archer": "archers", "bowmen": "archers", "bowman": "archers", "shooters": "archers", "missile": "archers", "bows": "archers", "foot": "infantry", "footmen": "infantry", "meele": "melee", "mele": "melee", "longbows": "longbowmen", "longbowman": "longbowmen", "ranger": "rangers", "horse": "cavalry", "horsemen": "cavalry", "riders": "cavalry", "knights": "cavalry"}
 const LINE_WORDS := ["first", "second", "third", "fourth", "fifth"]
 const BLOCK_GAP := 20.0  # space between neighbouring blocks placed by one order
 
@@ -191,7 +196,11 @@ func add_block(b: int) -> void:
 	_names[id] = name
 	block["order_name"] = name
 	var group: String = KIND_GROUPS[block["kind"]]
-	groups[group] = groups.get(group, []) + [id]
+	if not WIDE_GROUPS.has(group):
+		groups[group] = groups.get(group, []) + [id]
+	for wide: String in WIDE_GROUPS:
+		if block["kind"] in WIDE_GROUPS[wide]:
+			groups[wide] = groups.get(wide, []) + [id]
 
 func block_label(b: int) -> String:
 	for id: String in _ids:
