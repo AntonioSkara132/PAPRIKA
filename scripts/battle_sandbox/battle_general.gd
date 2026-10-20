@@ -14,6 +14,7 @@ extends Node
 ## "archers to the hill" (bowmen, longbowmen and rangers), "infantry hold"
 ## (everyone on foot), "melee attack" (spears, swords and cavalry),
 ## "swordsmen retreat", "everyone form a line from the ford to the hill".
+## Several orders can be typed at once, separated by commas.
 ## Anything else goes to the order service when it is running.
 
 signal message(text: String)
@@ -325,6 +326,8 @@ func submit(text: String) -> bool:
 		return forget_place(place_command[1])
 	if text.to_lower() in ["stop", "halt", "hold"]:
 		return execute({"action": "stop", "soldier_ids": standing_ids(), "start": null, "end": null, "facing": null, "message": "Everyone holds.", "group_name": null}, "typed")
+	if text.contains(",") and _submit_several(text):
+		return true
 	var rewritten := rewrite(text)
 	var order := parse(rewritten)
 	if order.get("action") == "unknown":
@@ -342,6 +345,30 @@ func submit(text: String) -> bool:
 		return client.submit(rewritten, order_context())
 	message.emit("Could not read that order, and the order service is not running. Try e.g. spearmen to the ford.")
 	return false
+
+## Carries out several orders separated by commas: "spearmen to the ford,
+## archers hold, cavalry attack". A piece that is not a whole order, such as
+## "spearmen" in "spearmen, swordsmen to the ford", joins the next piece.
+## Returns false, having done nothing, when no piece is an order the game reads.
+func _submit_several(text: String) -> bool:
+	var orders: Array[Dictionary] = []
+	var buffer := ""
+	for piece in text.split(","):
+		buffer = piece if buffer.is_empty() else buffer + "," + piece
+		var order := parse(rewrite(buffer))
+		if not order.is_empty() and order.get("action") != "unknown":
+			orders.append(order)
+			buffer = ""
+	if orders.is_empty():
+		return false
+	var answers: Array[String] = []
+	for order in orders:
+		execute(order, "read in the game")
+		answers.append(feedback.text)
+	if not buffer.strip_edges().is_empty():
+		answers.append("Could not read: %s" % buffer.strip_edges())
+	message.emit(" ".join(answers))
+	return true
 
 ## Reads the simple orders without the service. Expects rewritten text.
 func parse(text: String) -> Dictionary:
