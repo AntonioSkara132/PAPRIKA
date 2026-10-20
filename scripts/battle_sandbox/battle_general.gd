@@ -14,7 +14,10 @@ extends Node
 ## "archers to the hill" (bowmen, longbowmen and rangers), "infantry hold"
 ## (everyone on foot), "melee attack" (spears, swords and cavalry),
 ## "swordsmen retreat", "everyone form a line from the ford to the hill".
-## Several orders can be typed at once, separated by commas.
+## Several orders can be typed at once, separated by commas. "define fallback
+## as: spearmen to the ridge, archers to the hill" (or "mark command fallback
+## as: ...") saves them under a name; typing "fallback" then gives them all,
+## and "forget command fallback" removes it.
 ## Anything else goes to the order service when it is running.
 
 signal message(text: String)
@@ -34,6 +37,7 @@ var battle: Node2D
 var places: Dictionary = {}  # place id (A-H, then L9, L10, ...) -> Vector2
 var place_names: Dictionary = {}  # place id -> name
 var groups: Dictionary = {}  # name -> Array of soldier ids
+var saved_commands: Dictionary = {}  # name -> the order text it stands for
 var here := Vector2.INF  # the last point clicked on the field
 var client: SquadOrderClient
 var bar: LineEdit
@@ -120,6 +124,9 @@ func vocabulary() -> Array[String]:
 			words.append("%s line" % LINE_WORDS[k])
 	for letter: String in place_names:
 		words.append("the " + place_names[letter])
+	for command_name: String in saved_commands:
+		words.append(command_name)
+	words.append("define")
 	return words
 
 ## Completes the words before the cursor; pressing Tab again shows the next match.
@@ -319,6 +326,47 @@ func submit(text: String) -> bool:
 	if text.length() > 300:
 		message.emit("Type an order of up to 300 characters.")
 		return false
+	var saved := _saved_command(text)
+	if not saved.is_empty():
+		return saved[0]
+	if saved_commands.has(text.to_lower().trim_suffix(".").trim_suffix("!")):
+		return _submit_text(saved_commands[text.to_lower().trim_suffix(".").trim_suffix("!")])
+	return _submit_text(text)
+
+## Handles "define fallback as: ...", "mark command fallback as: ..." and
+## "forget command fallback".
+## [result] when the text was one of them, [] otherwise.
+func _saved_command(text: String) -> Array:
+	var regex := RegEx.new()
+	regex.compile("(?i)^(define(\\s+(command|order|orders))?|(mark|save|name)\\s+(command|order|orders))\\s+(?<name>.+?)\\s+as\\s*:?\\s*(?<body>.*)$")
+	var found := regex.search(text)
+	if found != null:
+		var command_name := " ".join(found.get_string("name").to_lower().split(" ", false))
+		var body := found.get_string("body").strip_edges()
+		var check := RegEx.new()
+		check.compile("^[a-z]+( [a-z]+){0,2}$")
+		if check.search(command_name) == null or command_name.length() > 24:
+			message.emit("A command name is one to three words of letters, e.g. define fallback as: spearmen to the ridge.")
+			return [false]
+		if body.is_empty():
+			message.emit("Write the orders after the colon, e.g. define %s as: spearmen to the ridge, archers hold." % command_name)
+			return [false]
+		var replaced := saved_commands.has(command_name)
+		saved_commands[command_name] = body
+		message.emit("%s command %s. Type %s to give: %s" % ["Changed" if replaced else "Saved", command_name, command_name, body])
+		return [true]
+	regex.compile("(?i)^(forget|delete|remove)\\s+(command|order)\\s+(?<name>.+?)[.!]?$")
+	found = regex.search(text)
+	if found != null:
+		var command_name := found.get_string("name").strip_edges().to_lower()
+		if saved_commands.erase(command_name):
+			message.emit("Forgot command %s." % command_name)
+			return [true]
+		message.emit("No command is called %s." % command_name)
+		return [false]
+	return []
+
+func _submit_text(text: String) -> bool:
 	var place_command := _place_command(text)
 	if not place_command.is_empty():
 		if place_command[0] == "mark":
@@ -566,5 +614,7 @@ func status_lines() -> Array[String]:
 	for letter: String in places:
 		names.append(place_names[letter])
 	result.append("You command %s. Click the field and type mark here as <name> to name a place. Enter: type an order. Places: %s" % [["Blue", "Red"][battle.player_team], ", ".join(names) if not names.is_empty() else "none yet"])
+	if not saved_commands.is_empty():
+		result.append("Saved commands: %s" % ", ".join(saved_commands.keys()))
 	result.append("Groups: %s · lines: line1-line4 or first line … · order service: %s" % [", ".join(groups.keys().filter(func(g: String) -> bool: return not g.begins_with("line"))), client.status])
 	return result
