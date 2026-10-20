@@ -119,7 +119,7 @@ var _event_times := {}
 var player_team := -1  # the army the player commands, -1 for none
 var setup := false  # the commanded battle has not started yet
 var general: Node
-var general_message := ""
+var show_log := false
 
 func _ready() -> void:
 	for name in ["swamp", "hill"]:
@@ -142,7 +142,6 @@ func _ready() -> void:
 			player_team = {"blue": 0, "red": 1}.get(arg.get_slice("=", 1).to_lower(), -1)
 	general = preload("res://scripts/battle_sandbox/battle_general.gd").new(self)
 	add_child(general)
-	general.message.connect(func(text: String) -> void: general_message = text)
 	_spawn()
 
 func _spawn() -> void:
@@ -1170,12 +1169,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE:
 				if setup:
 					setup = false
-					general_message = "The battle has begun."
+					general.message.emit("The battle has begun.")
 				else:
 					paused = not paused
+			KEY_L: show_log = not show_log
 			KEY_G:
 				player_team = player_team + 1 if player_team < 1 else -1
-				general_message = ""
 				_spawn()
 			KEY_R: _spawn()
 			KEY_T:
@@ -1194,12 +1193,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	var pan := Vector2.ZERO
-	if general.typing():
-		pass
-	elif Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A): pan.x -= 1
-	if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D): pan.x += 1
-	if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W): pan.y -= 1
-	if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S): pan.y += 1
+	# letters typed into the order bar must not move the view
+	if not general.typing():
+		if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A): pan.x -= 1
+		if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D): pan.x += 1
+		if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W): pan.y -= 1
+		if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S): pan.y += 1
 	camera.position += pan * 400.0 * delta / camera.zoom.x
 	# the battle waits while the commanded army sets up, and slows while an order is typed
 	if paused:
@@ -1213,6 +1212,14 @@ func _process(delta: float) -> void:
 
 func _update_label() -> void:
 	var lines := []
+	if not show_log:
+		var alive := fighting_counts()
+		lines.append("%ds · Blue %d · Red %d%s" % [int(clock), alive[0], alive[1], " · PAUSED" if paused else ""])
+		if setup:
+			lines.append("SETUP: click the field to name places, give first orders, Space starts the battle")
+		lines.append("L battle log and keys")
+		label.text = "\n".join(lines)
+		return
 	for team in 2:
 		var alive := 0
 		var parts := []
@@ -1230,9 +1237,7 @@ func _update_label() -> void:
 		lines.append_array(general.status_lines())
 		if setup:
 			lines.append("SETUP: the battle waits. Click the field and name places, give first orders, then press Space to start.")
-		if not general_message.is_empty():
-			lines.append("> " + general_message)
-	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · G command %s · arrows pan · wheel zoom" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario], ["Blue", "Red", "nobody"][player_team + 1]])
+	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · G command %s · arrows pan · wheel zoom · L hide log" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario], ["Blue", "Red", "nobody"][player_team + 1]])
 	label.text = "\n".join(lines)
 
 func _draw() -> void:

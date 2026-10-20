@@ -28,6 +28,8 @@ var groups: Dictionary = {}  # name -> Array of soldier ids
 var here := Vector2.INF  # the last point clicked on the field
 var client: SquadOrderClient
 var bar: LineEdit
+var feedback: Label  # the last answer and Tab completions, just above the order bar
+var _completion := {}  # "stem", "prefix", "matches", "index" while Tab cycles
 var _ids: Dictionary = {}  # soldier id -> block index
 var _names: Dictionary = {}  # soldier id -> block name without the team
 
@@ -47,6 +49,14 @@ func _ready() -> void:
 	bar.visible = false
 	layer.add_child(bar)
 	bar.text_submitted.connect(_on_submitted)
+	bar.text_changed.connect(func(_text: String) -> void: _completion.clear())
+	feedback = Label.new()
+	feedback.add_theme_font_size_override("font_size", 13)
+	feedback.add_theme_color_override("font_outline_color", Color.BLACK)
+	feedback.add_theme_constant_override("outline_size", 4)
+	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	layer.add_child(feedback)
+	message.connect(func(text: String) -> void: feedback.text = text)
 	get_viewport().size_changed.connect(_place_bar)
 	_place_bar()
 
@@ -54,6 +64,8 @@ func _place_bar() -> void:
 	var size := get_viewport().get_visible_rect().size
 	bar.position = Vector2(8, size.y - 40)
 	bar.size = Vector2(minf(700.0, size.x - 16), 32)
+	feedback.position = Vector2(8, size.y - 100)
+	feedback.size = Vector2(minf(900.0, size.x - 16), 56)
 
 func typing() -> bool:
 	return bar.visible
@@ -66,6 +78,7 @@ func open_bar(prefill: String = "") -> void:
 
 func close_bar() -> void:
 	bar.visible = false
+	_completion.clear()
 	bar.release_focus()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -76,9 +89,62 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
-	if bar.visible and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if not bar.visible or not event is InputEventKey or not event.pressed:
+		return
+	if event.keycode == KEY_ESCAPE:
 		close_bar()
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_TAB:
+		complete()
+		get_viewport().set_input_as_handled()
+
+## Every word or phrase Tab can complete: blocks, groups, places and order words.
+func vocabulary() -> Array[String]:
+	var words: Array[String] = ["everyone", "attack", "charge", "attack at", "hold", "retreat", "withdraw", "fall back", "form a line from", "facing", "mark here as", "forget", "stop"]
+	for id: String in _ids:
+		if standing_ids().has(id):
+			words.append(_names[id])
+	for group: String in groups:
+		words.append(group)
+	for k in LINE_WORDS.size():
+		if groups.has("line%d" % (k + 1)):
+			words.append("%s line" % LINE_WORDS[k])
+	for letter: String in place_names:
+		words.append("the " + place_names[letter])
+	return words
+
+## Completes the words before the cursor; pressing Tab again shows the next match.
+func complete() -> void:
+	if _completion.is_empty():
+		var before := bar.text.left(bar.caret_column)
+		var words := before.split(" ")
+		var found: Array[String] = []
+		var stem := ""
+		# try the last three, two, then one words, so "left sp" finds "left spears"
+		for count in range(mini(3, words.size()), 0, -1):
+			var prefix := " ".join(words.slice(words.size() - count)).to_lower()
+			if prefix.strip_edges().is_empty():
+				continue
+			for word in vocabulary():
+				if word.begins_with(prefix) and word != prefix and not found.has(word):
+					found.append(word)
+			if not found.is_empty():
+				stem = " ".join(words.slice(0, words.size() - count))
+				break
+		if found.is_empty():
+			message.emit("Nothing to complete. Try a block, group or place name.")
+			return
+		found.sort()
+		_completion = {"stem": stem, "rest": bar.text.substr(bar.caret_column), "matches": found, "index": -1}
+	_completion["index"] = (_completion["index"] + 1) % _completion["matches"].size()
+	var pick: String = _completion["matches"][_completion["index"]]
+	var head: String = (_completion["stem"] + " " if not _completion["stem"].is_empty() else "") + pick + " "
+	var saved := _completion
+	bar.text = head + _completion["rest"]
+	bar.caret_column = head.length()
+	_completion = saved
+	if saved["matches"].size() > 1:
+		feedback.text = "Tab: " + " · ".join(saved["matches"])
 
 func _on_submitted(text: String) -> void:
 	close_bar()
@@ -443,6 +509,9 @@ func draw_on(canvas: Node2D) -> void:
 		var block: Dictionary = battle.blocks[b]
 		if block.get("retiring", false) and block.has("home_leader"):
 			canvas.draw_dashed_line(battle._centre(b), block["home_leader"], Color(1, 1, 1, 0.5), 2.0, 8.0)
+
+func _process(_delta: float) -> void:
+	feedback.visible = battle.player_team >= 0 and not feedback.text.is_empty()
 
 func status_lines() -> Array[String]:
 	var result: Array[String] = []
