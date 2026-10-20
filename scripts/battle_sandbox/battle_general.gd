@@ -5,7 +5,9 @@ extends Node
 ## "soldier" for the order service (soldier 1, soldier 2, ...) and has a name
 ## such as "left spears" or "first line centre"; blocks of one kind also form a
 ## group ("spearmen", "cavalry", ...). Named places are clicked on the field and
-## named with "mark here as ford"; the service knows them as the letters A to H.
+## named with "mark here as ford". There is no limit on places; the first eight
+## are the letters A to H the service knows, later ones L9, L10, ... are read
+## only by the game.
 ##
 ## Simple orders are read here without the service: "spearmen to the ford",
 ## "first line attack", "cavalry attack at the ford", "rangers hold",
@@ -16,7 +18,8 @@ extends Node
 
 signal message(text: String)
 
-const PLACE_LETTERS := ["A", "B", "C", "D", "E", "F", "G", "H"]
+const SERVICE_LETTERS := ["A", "B", "C", "D", "E", "F", "G", "H"]
+const PLACE_TOKEN := "[A-H]|L\\d+"  # how a place looks in rewritten order text
 const RESERVED_WORDS := ["all", "everyone", "everybody", "soldier", "soldiers", "group", "here", "there", "line", "stop", "halt", "hold", "attack", "charge", "move", "go", "to", "and", "between", "from", "at", "mark", "forget", "retreat", "withdraw", "back", "facing", "face", "the", "a", "advance", "form"]
 const KIND_GROUPS := {"spear": "spearmen", "sword": "swordsmen", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}
 # groups that cover several kinds: "archers to the ford" moves bowmen,
@@ -27,8 +30,8 @@ const LINE_WORDS := ["first", "second", "third", "fourth", "fifth"]
 const BLOCK_GAP := 20.0  # space between neighbouring blocks placed by one order
 
 var battle: Node2D
-var places: Dictionary = {}  # letter -> Vector2
-var place_names: Dictionary = {}  # letter -> name
+var places: Dictionary = {}  # place id (A-H, then L9, L10, ...) -> Vector2
+var place_names: Dictionary = {}  # place id -> name
 var groups: Dictionary = {}  # name -> Array of soldier ids
 var here := Vector2.INF  # the last point clicked on the field
 var client: SquadOrderClient
@@ -257,13 +260,15 @@ func mark_place(raw_name: String, at: Vector2) -> bool:
 		if rewrite(place_name) != place_name:
 			message.emit("\"%s\" already names a block or group; pick another name." % place_name)
 			return false
-		for free: String in PLACE_LETTERS:
+		for free: String in SERVICE_LETTERS:
 			if not places.has(free):
 				letter = free
 				break
-	if letter.is_empty():
-		message.emit("Eight places are already marked. Forget one first, e.g. forget %s." % place_names.values()[0])
-		return false
+		var n := SERVICE_LETTERS.size() + 1
+		while letter.is_empty():
+			if not places.has("L%d" % n):
+				letter = "L%d" % n
+			n += 1
 	var moved := places.has(letter)
 	places[letter] = at
 	place_names[letter] = place_name
@@ -328,6 +333,11 @@ func submit(text: String) -> bool:
 	if not order.is_empty():
 		return execute(order, "read in the game")
 	if client.compatible:
+		var extra := RegEx.new()
+		extra.compile("\\bL\\d+\\b")
+		if extra.search(rewritten) != null:
+			message.emit("The order service knows only the first eight places. Use one of them, or a simpler order such as spearmen to the ford.")
+			return false
 		message.emit("Asking the order service…")
 		return client.submit(rewritten, order_context())
 	message.emit("Could not read that order, and the order service is not running. Try e.g. spearmen to the ford.")
@@ -336,10 +346,10 @@ func submit(text: String) -> bool:
 ## Reads the simple orders without the service. Expects rewritten text.
 func parse(text: String) -> Dictionary:
 	var who := "(?<who>(everyone|everybody|all|soldier \\d+|[a-z][a-z0-9_-]*)((\\s*,\\s*|\\s+and\\s+)(soldier \\d+|[a-z][a-z0-9_-]*))*)"
-	var place := "(?<end>[A-H])"
-	var facing := "(\\s+(and\\s+)?fac(e|ing)\\s+(?<facing>[A-H]))?"
+	var place := "(?<end>" + PLACE_TOKEN + ")"
+	var facing := "(\\s+(and\\s+)?fac(e|ing)\\s+(?<facing>" + PLACE_TOKEN + "))?"
 	var forms := [
-		["form_line", "^" + who + ",?\\s+form\\s+(a\\s+)?line\\s+(from|between)\\s+(?<start>[A-H])\\s+(to|and)\\s+" + place + facing + "[.!]?$"],
+		["form_line", "^" + who + ",?\\s+form\\s+(a\\s+)?line\\s+(from|between)\\s+(?<start>" + PLACE_TOKEN + ")\\s+(to|and)\\s+" + place + facing + "[.!]?$"],
 		["attack", "^" + who + ",?\\s+(attack|charge|advance)(\\s+(the\\s+enemy\\s+)?(at|near|by|on)?\\s*" + place + ")?[.!]?$"],
 		["withdraw", "^" + who + ",?\\s+(retreat|withdraw|fall\\s+back|pull\\s+back)[.!]?$"],
 		["move_to", "^" + who + ",?\\s+(retreat|withdraw|fall\\s+back|pull\\s+back)\\s+to\\s+" + place + facing + "[.!]?$"],
@@ -396,7 +406,8 @@ func order_context() -> Dictionary:
 			group_data[group_name] = members
 	var landmarks: Dictionary = {}
 	for letter: String in places:
-		landmarks[letter] = [places[letter].x, places[letter].y]
+		if letter in SERVICE_LETTERS:
+			landmarks[letter] = [places[letter].x, places[letter].y]
 	return {"soldiers": soldiers, "groups": group_data, "landmarks": landmarks}
 
 func _on_service_order(order: Dictionary, source: String) -> void:
