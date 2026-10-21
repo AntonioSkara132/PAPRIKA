@@ -30,6 +30,6 @@ func _init() -> void:
 		if block["team"] == 1 and block["kind"] in battle.SHOOTERS and not block["broken"] and battle._living(b) > 0 \
 				and battle._centre(b).x > battle.SWAMP_LINES[1] + 60.0:
 			red_across += battle._living(b)
-	print("winner=%d after %.0fs, fighting=%s, Red archers across the second swamp=%d" % [battle.winner, seconds, battle.fighting_counts(), red_across])
+	print("winner=%d after %.0fs, fighting=%s, Red archers across the second ford=%d" % [battle.winner, seconds, battle.fighting_counts(), red_across])
 	print("FAILURES: %d" % failures)
 	quit(failures)
