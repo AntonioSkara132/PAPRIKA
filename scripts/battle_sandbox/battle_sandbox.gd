@@ -12,9 +12,9 @@ extends Node2D
 ## the line to recover. Hills, marshes and woods are placed anew on every restart.
 ## Run it with: godot --path . res://scenes/battle_sandbox.tscn
 ## The swamp crossing starts with: godot --path . res://scenes/battle_sandbox.tscn -- --swamp
-## and the hill battle with -- --hill
+## the hill battle with -- --hill, and the battle of the two swamp lines with -- --swamps
 ## Controls: arrows/WASD pan, mouse wheel zoom, Space pause, R restart, T switch
-## between the open field, the swamp crossing and the hill battle, 1-3 speed.
+## between the open field, the swamp crossing, the hill battle and the two swamp lines, 1-3 speed.
 ## G takes command of Blue, then Red, then hands both back to their generals
 ## (or start with -- --general=blue / --general=red). The battle then waits
 ## while you click the field to name places; Space starts it, and Enter opens
@@ -32,6 +32,8 @@ const KINDS := {
 	# rangers shoot like archers but draw a short sword when an enemy comes close
 	"ranger": {"hp": 26, "damage": 9, "reach": 180.0, "cooldown": 2.0, "speed": 45.0, "armor": 1, "engage": 180.0, "leash": 0.0, "turn": 0.6,
 		"melee_range": 25.0, "melee_reach": 13.0, "melee_damage": 7, "melee_cooldown": 0.8},
+	# a gun stands where it was set up; its ball hits everyone near where it lands
+	"cannon": {"hp": 60, "damage": 24, "reach": 420.0, "cooldown": 7.0, "speed": 0.0, "armor": 3, "engage": 420.0, "leash": 0.0, "turn": 0.0, "splash": 22.0},
 	"horse": {"hp": 44, "damage": 11, "reach": 15.0, "cooldown": 0.9, "speed": 75.0, "armor": 2, "engage": 50.0, "leash": 60.0, "turn": 1.2},
 }
 ## Blocks per side: kind, soldiers, files (soldiers per rank), lateral and rear position
@@ -79,6 +81,38 @@ const HILL_REINFORCEMENT_DELAY := 20.0  # seconds after Blue's fourth line goes 
 const HILL_REINFORCEMENT := ["horse", 20, 5, 0.0, 0.0]
 const HILL_NECK_ROWS := [150.0, 205.0, 245.0]  # x offsets from the hill centre of the fallback rows
 const HILL_FRONTS := [520.0, 120.0]  # x distance of each army's front from the hill centre
+## The two swamp lines: rivers run along the north and south edges, and two
+## bands of swamp cross the field between them. The first has a narrow dry
+## passage in the middle. Red, mostly archers, holds the ground between the
+## swamps; Blue attacks from the west with swordsmen, spearmen, cavalry,
+## archers and a battery of cannons. Each entry: kind, soldiers, files,
+## position of the block's front centre, facing, title.
+const SWAMP_LINES := [600.0, 1120.0]  # x of each swamp band's middle
+const SWAMP_PASSAGE := 500.0  # y of the dry passage through the first band
+const SWAMPS_ARMIES := [
+	[["spear", 16, 4, Vector2(390, 500), Vector2.RIGHT, "spear squad"],
+	 ["sword", 30, 10, Vector2(300, 210), Vector2.RIGHT, "first swords"],
+	 ["sword", 30, 10, Vector2(300, 320), Vector2.RIGHT, "second swords"],
+	 ["sword", 30, 10, Vector2(300, 430), Vector2.RIGHT, "third swords"],
+	 ["sword", 30, 10, Vector2(300, 650), Vector2.RIGHT, "reserve swords"],
+	 ["spear", 30, 10, Vector2(250, 300), Vector2.RIGHT, "gun guard"],
+	 ["archer", 18, 9, Vector2(330, 760), Vector2.RIGHT, "archers"],
+	 ["archer", 18, 9, Vector2(230, 450), Vector2.RIGHT, "second archers"],
+	 ["horse", 20, 5, Vector2(190, 560), Vector2.RIGHT, "cavalry"],
+	 ["cannon", 4, 4, Vector2(330, 170), Vector2.RIGHT, "cannons"]],
+	[["archer", 24, 12, Vector2(860, 210), Vector2.LEFT, "north archers"],
+	 ["ranger", 22, 11, Vector2(860, 330), Vector2.LEFT, "north rangers"],
+	 ["archer", 16, 8, Vector2(730, 420), Vector2.DOWN, "passage archers north"],
+	 ["archer", 16, 8, Vector2(730, 580), Vector2.UP, "passage archers south"],
+	 ["longbow", 18, 9, Vector2(800, 500), Vector2.LEFT, "passage longbowmen"],
+	 ["archer", 24, 12, Vector2(860, 700), Vector2.LEFT, "south archers"],
+	 ["ranger", 20, 10, Vector2(860, 820), Vector2.LEFT, "south rangers"],
+	 ["sword", 26, 13, Vector2(870, 500), Vector2.LEFT, "passage guard"],
+	 ["sword", 26, 13, Vector2(1000, 500), Vector2.LEFT, "rearguard"]],
+]
+## where the north archers step up to shoot at swordsmen wading the first swamp
+const SWAMPS_EDGE := {"north archers": Vector2(700, 200), "north rangers": Vector2(700, 300)}
+const SWAMPS_REFUGE_X := 1270.0  # where Red's archers form up again behind the second swamp
 const LINE_SWAP_MORALE := 55.0
 const DISARRAY_TIME := 0.25
 const FILE_SPACING := 11.0
@@ -91,7 +125,7 @@ const WITHDRAW_MORALE := 45.0
 const RETURN_MORALE := 70.0
 const COMMAND_TIME := 2.0
 const CHARGE_REST := 3.0  # a rider who hasn't struck for this long hits as a charge
-const SHOOTERS := ["archer", "longbow", "ranger"]
+const SHOOTERS := ["archer", "longbow", "ranger", "cannon"]
 const SHIELD_BLOCK := 0.5  # share of frontal arrows a shield stops
 const SHIELDED := ["spear", "sword"]
 const MORALE_BLOCK_SIZE := 40.0  # deaths in smaller blocks count as if the block had this many men
@@ -100,6 +134,7 @@ var units: Array[Dictionary] = []
 var blocks: Array[Dictionary] = []
 var arrows: Array[Dictionary] = []
 var corpses: Array[Dictionary] = []
+var craters: Array[Dictionary] = []  # where cannon balls landed, shown briefly
 var terrain: Array[Dictionary] = []
 var events: Array[String] = []
 var camera: Camera2D
@@ -120,9 +155,10 @@ var player_team := -1  # the army the player commands, -1 for none
 var setup := false  # the commanded battle has not started yet
 var general: Node
 var show_log := false
+var _swamps := {}  # what has happened so far in the battle of the two swamp lines
 
 func _ready() -> void:
-	for name in ["swamp", "hill"]:
+	for name in ["swamp", "hill", "swamps"]:
 		if "--" + name in OS.get_cmdline_user_args():
 			scenario = name
 	camera = Camera2D.new()
@@ -171,6 +207,7 @@ func _spawn_armies() -> void:
 	blocks.clear()
 	arrows.clear()
 	corpses.clear()
+	craters.clear()
 	events.clear()
 	_event_times.clear()
 	winner = -1
@@ -180,6 +217,10 @@ func _spawn_armies() -> void:
 	_fell_back = [false, false]
 	_counter_ready = [0.0, 0.0]
 	_command_timer = 0.0
+	_swamps = {}
+	if scenario == "swamps":
+		_spawn_swamps()
+		return
 	if scenario == "swamp":
 		_spawn_swamp()
 		return
@@ -215,6 +256,35 @@ func _spawn_swamp() -> void:
 		if block["kind"] == "archer":
 			block["order"] = "hold"
 	_event("Blue swordsmen must cross the swamp to reach the Red archers")
+
+func _spawn_swamps() -> void:
+	terrain.clear()
+	# rivers first, so ground_at finds water before marsh where they overlap
+	var x := 0.0
+	while x <= FIELD.x:
+		for y in [20.0, FIELD.y - 20.0]:
+			terrain.append({"kind": "river", "centre": Vector2(x, y), "radius": 50.0, "seed": randi()})
+		x += 60.0
+	for line in SWAMP_LINES.size():
+		var y := 40.0
+		while y < FIELD.y - 30.0:
+			# the first band leaves a narrow dry passage in the middle
+			if line == 0 and absf(y - SWAMP_PASSAGE) < 110.0:
+				y += 50.0
+				continue
+			var centre := Vector2(SWAMP_LINES[line] + randf_range(-10.0, 10.0), y)
+			terrain.append({"kind": "marsh", "centre": centre, "radius": 80.0, "seed": randi()})
+			y += 50.0
+	for team in 2:
+		for entry in SWAMPS_ARMIES[team]:
+			var heading: Vector2 = entry[4]
+			_spawn_block(team, [entry[0], entry[1], entry[2], 0.0, 0.0], entry[3], heading, heading.orthogonal(), 1.0)
+			var block: Dictionary = blocks[-1]
+			block["title"] = entry[5]
+			block["order"] = "hold"
+			block["home_leader"] = block["leader"]
+			block["home_heading"] = heading
+	_event("Red holds the swamps; Blue probes the passage with a spear squad")
 
 func _spawn_hill() -> void:
 	terrain.clear()
@@ -330,7 +400,7 @@ func block_name(b: int) -> String:
 		return "%s %s" % [short, block["title"]]
 	if block.has("line_name"):
 		return "%s %s (%s)" % [short, block["line_name"], block["kind"] + "s"]
-	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}[block["kind"]]
+	var kind: String = {"spear": "spears", "sword": "swords", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry", "cannon": "cannons"}[block["kind"]]
 	return "%s %s%s" % [short, (block["wing"] + " ") if block["kind"] != "horse" or scenario == "hill" else "", kind]
 
 func _event(text: String, key: String = "", every: float = 0.0) -> void:
@@ -401,6 +471,8 @@ func _command(team: int) -> void:
 	_fall_back_to_neck(team)
 	_counterattack(team)
 	_keep_a_line_in_front(team)
+	if scenario == "swamps":
+		_swamps_plan(team)
 	# the weakest spear block decides when the reserve is needed
 	var spear_morale := 100.0
 	var line_engaged := false
@@ -416,7 +488,7 @@ func _command(team: int) -> void:
 		if block["kind"] == "horse" and block["order"] == "flank" and block["goal_block"] < 0:
 			_resolve_cavalry_goal(b)
 		# once the lines have met, a sword wing goes around the end of the enemy line
-		if block["kind"] == "sword" and block["order"] == "advance" and line_engaged and not block.get("flanked", false):
+		if block["kind"] == "sword" and block["order"] == "advance" and line_engaged and not block.get("flanked", false) and scenario != "swamps":
 			_send_swords_around(b)
 		if block.get("reserve", false) and block["order"] == "hold":
 			if spear_morale < 70.0 or clock > 35.0 or (line_engaged and clock > 20.0):
@@ -613,6 +685,168 @@ func _neck_half_width(x: float) -> float:
 	var t := clampf(x / (HILL_RADIUS + 70.0), -1.0, 1.0)
 	return maxf(0.0, (HILL_RADIUS + 90.0) * sqrt(1.0 - t * t) - 55.0 - 45.0)
 
+## The block of `team` with this title, or -1 when it is gone or has run.
+func _titled(team: int, title: String) -> int:
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] == team and block.get("title", "") == title and not block["broken"] and _living(b) > 0:
+			return b
+	return -1
+
+## Steps of the battle of the two swamp lines. Each step happens once, when
+## its condition is met; `_swamps` keeps the time each step happened.
+func _swamps_plan(team: int) -> void:
+	if team == 0:
+		_swamps_blue()
+	else:
+		_swamps_red()
+
+func _swamps_step(name: String) -> bool:
+	if _swamps.has(name):
+		return false
+	_swamps[name] = clock
+	return true
+
+func _swamps_blue() -> void:
+	var squad := _titled(0, "spear squad")
+	# a small spear squad tries the passage first
+	if clock > 3.0 and _swamps_step("probe") and squad >= 0:
+		order_move(squad, Vector2(SWAMP_LINES[0] + 110.0, SWAMP_PASSAGE), Vector2.RIGHT)
+		_event("Blue spear squad marches into the passage")
+	if squad >= 0 and _swamps.has("probe") and not _swamps.has("squad charges") and _centre(squad).x > SWAMP_LINES[0] + 60.0:
+		_swamps_step("squad charges")
+		order_attack(squad, Vector2.INF)
+	# once the squad is lost, the swordsmen wade the north half of the first swamp
+	var squad_lost: bool = squad < 0 or _living(squad) * 2 < blocks[squad]["start"]
+	if _swamps.has("probe") and (squad_lost or clock > _swamps["probe"] + 50.0) and _swamps_step("swords cross"):
+		for title in ["first swords", "second swords", "third swords"]:
+			var b := _titled(0, title)
+			if b >= 0:
+				order_attack(b, Vector2(860, 270))
+		_event("Blue swordsmen wade into the north half of the first swamp")
+	if not _swamps.has("swords cross"):
+		return
+	# when the first of them is through, they split
+	var through := false
+	for title in ["first swords", "second swords", "third swords"]:
+		var b := _titled(0, title)
+		through = through or (b >= 0 and _centre(b).x > SWAMP_LINES[0] + 95.0)
+	if through and _swamps_step("split"):
+		var third := _titled(0, "third swords")
+		if third >= 0:
+			order_attack(third, Vector2(730, 440))
+		for title in ["archers", "second archers"]:
+			var b := _titled(0, title)
+			if b >= 0:
+				order_attack(b, Vector2.INF)
+		_event("Blue swordsmen split: some chase the archers, some turn on the passage")
+	if not _swamps.has("split"):
+		return
+	# the chasers follow whichever northern archers are nearest
+	for title in ["first swords", "second swords"]:
+		var b := _titled(0, title)
+		if b < 0:
+			continue
+		var prey := -1
+		for name in ["north archers", "north rangers"]:
+			var r := _titled(1, name)
+			if r >= 0 and (prey < 0 or _centre(r).distance_to(_centre(b)) < _centre(prey).distance_to(_centre(b))):
+				prey = r
+		order_attack(b, _centre(prey) if prey >= 0 else Vector2.INF)
+	# the cavalry rides through the passage once its guards are busy with the swordsmen
+	var third := _titled(0, "third swords")
+	var guards_busy: bool = third < 0 or blocks[third]["engaged"] or clock > _swamps["split"] + 20.0
+	var cavalry := _titled(0, "cavalry")
+	if guards_busy and cavalry >= 0 and _swamps_step("cavalry"):
+		var block: Dictionary = blocks[cavalry]
+		var goal := _titled(1, "passage longbowmen")
+		if goal < 0:
+			goal = _titled(1, "passage guard")
+		block["order"] = "flank"
+		block["goal_block"] = goal
+		block["waypoints"] = [Vector2(SWAMP_LINES[0] - 150.0, SWAMP_PASSAGE), Vector2(SWAMP_LINES[0], SWAMP_PASSAGE), Vector2(SWAMP_LINES[0] + 130.0, SWAMP_PASSAGE)]
+		block["retiring"] = false
+		block.erase("home_leader")
+		if goal < 0:
+			order_attack(cavalry, Vector2.INF)
+		_event("Blue cavalry rides through the passage")
+	if _swamps.has("cavalry") and clock > _swamps["cavalry"] + 6.0 and _swamps_step("reserve"):
+		var reserve := _titled(0, "reserve swords")
+		if reserve >= 0:
+			order_attack(reserve, Vector2(SWAMP_LINES[0] + 200.0, SWAMP_PASSAGE))
+			_event("Blue reserve swordsmen follow the cavalry through the passage")
+	# once Red runs for the second swamp, everyone still free goes after it
+	if _swamps.has("red retreats") and clock > _swamps["red retreats"] + 8.0 and _swamps_step("pursuit"):
+		for b in blocks.size():
+			var block: Dictionary = blocks[b]
+			if block["team"] == 0 and not block["broken"] and block["kind"] not in ["cannon"] and block.get("title", "") != "gun guard":
+				order_attack(b, Vector2.INF)
+		_event("Blue pursues Red across the second swamp")
+
+func _swamps_red() -> void:
+	# the north archers step up to the swamp's edge when swordsmen come for it,
+	# which brings them within reach of the Blue guns
+	var wading := false
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] == 0 and block["kind"] == "sword" and not block["broken"] and _living(b) > 0:
+			var centre := _centre(b)
+			wading = wading or (centre.x > SWAMP_LINES[0] - 200.0 and centre.y < SWAMP_PASSAGE - 60.0)
+	if wading and _swamps_step("edge"):
+		for title in SWAMPS_EDGE:
+			var b := _titled(1, title)
+			if b >= 0:
+				order_move(b, SWAMPS_EDGE[title], Vector2.LEFT)
+		_event("Red north archers step up to the swamp's edge to shoot the swordsmen")
+	# when the swordsmen are nearly out of the swamp, or the guns have hurt them,
+	# each northern block falls back across the second swamp
+	if _swamps.has("edge"):
+		for title in SWAMPS_EDGE:
+			var b := _titled(1, title)
+			if b < 0 or blocks[b].get("fled_back", false):
+				continue
+			if _enemy_within(b, 110.0) or blocks[b]["morale"] < 55.0 or _living(b) * 2 < blocks[b]["start"]:
+				_retreat_across(b)
+				_event("%s falls back toward the second swamp" % block_name(b))
+	# once Blue is through the first swamp in force, all the archers go
+	var through := 0
+	for b in blocks.size():
+		var block: Dictionary = blocks[b]
+		if block["team"] == 0 and not block["broken"] and _living(b) > 0 and block["kind"] in ["sword", "horse"] \
+				and _centre(b).x > SWAMP_LINES[0] + 90.0:
+			through += 1
+	var guard_lost := _titled(1, "passage guard") < 0
+	if (through >= 3 or guard_lost) and _swamps_step("red retreats"):
+		for b in blocks.size():
+			if blocks[b]["team"] == 1 and blocks[b]["kind"] in SHOOTERS and not blocks[b]["broken"]:
+				_retreat_across(b)
+		var guard := _titled(1, "passage guard")
+		if guard >= 0:
+			order_attack(guard, Vector2(SWAMP_LINES[0] + 130.0, SWAMP_PASSAGE))
+		_event("All Red archers retreat across the second swamp; the swordsmen cover them")
+	# the swordsmen follow once the archers are across, or when they can't hold any longer
+	if _swamps.has("red retreats"):
+		var across := true
+		for b in blocks.size():
+			if blocks[b]["team"] == 1 and blocks[b].get("fled_back", false) and not blocks[b]["broken"] and _living(b) > 0:
+				across = across and _centre(b).x > SWAMP_LINES[1] + 80.0
+		for title in ["passage guard", "rearguard"]:
+			var b := _titled(1, title)
+			if b >= 0 and not blocks[b].get("fled_back", false) and (across or blocks[b]["morale"] < 50.0):
+				_retreat_across(b)
+				_event("Red %s pulls back across the second swamp" % title)
+
+## Sends a Red block to its place in the new line behind the second swamp.
+func _retreat_across(b: int) -> void:
+	var block: Dictionary = blocks[b]
+	block["fled_back"] = true
+	var y := clampf(_centre(b).y, 140.0, FIELD.y - 140.0)
+	# spread the new line so blocks don't stack on each other
+	for other in blocks.size():
+		if other != b and blocks[other].get("fled_back", false) and absf(blocks[other]["home_leader"].y - y) < 90.0:
+			y = clampf(y + 95.0 if y < FIELD.y * 0.5 else y - 95.0, 140.0, FIELD.y - 140.0)
+	order_move(b, Vector2(SWAMPS_REFUGE_X + (60.0 if block["kind"] == "sword" else 0.0), y), Vector2.LEFT)
+
 ## A reserve sword block takes the place of a spear block that broke or is
 ## worn down: it marches to that block's home and holds there.
 func _fill_holes(team: int) -> void:
@@ -724,7 +958,7 @@ func _steer_block(b: int, dt: float) -> void:
 				to_home = (_detour(block["leader"], home) - block["leader"]).normalized() * to_home.length()
 			if to_home.length() < 8.0:
 				block["retiring"] = false
-			var step := minf(to_home.length(), stats["speed"] * 0.8 * dt)
+			var step := minf(to_home.length(), stats["speed"] * 0.8 * _ground_speed(centre, block["kind"]) * dt)
 			if step > 0.5:
 				block["leader"] += to_home.normalized() * step
 				# a long march back counts as moving, so archers don't shoot; a small shift doesn't
@@ -770,6 +1004,8 @@ func order_hold(b: int) -> void:
 
 func order_withdraw(b: int) -> void:
 	var block: Dictionary = blocks[b]
+	if block["kind"] == "cannon":
+		return  # the guns stay where they were set up
 	block["order"] = "withdraw"
 	block["waypoints"] = []
 	block["retiring"] = false
@@ -778,6 +1014,8 @@ func order_withdraw(b: int) -> void:
 ## Advance on the nearest enemy, or on the enemy nearest `point` when given.
 func order_attack(b: int, point: Vector2) -> void:
 	var block: Dictionary = blocks[b]
+	if block["kind"] == "cannon":
+		return  # the guns stay where they were set up
 	block["order"] = "advance"
 	block["start_after"] = 0.0
 	block["waypoints"] = []
@@ -793,6 +1031,8 @@ func order_attack(b: int, point: Vector2) -> void:
 ## fight on the way, then hold there facing `heading`.
 func order_move(b: int, spot: Vector2, heading: Vector2) -> void:
 	var block: Dictionary = blocks[b]
+	if block["kind"] == "cannon":
+		return  # the guns stay where they were set up
 	block["order"] = "hold"
 	block["home_leader"] = spot
 	block["home_heading"] = heading
@@ -827,7 +1067,7 @@ func _inside_river(p: Vector2) -> bool:
 ## side of the hill when the river is in the way.
 func _detour(from: Vector2, to: Vector2) -> Vector2:
 	# a path that only grazes the river from the same side needs no detour
-	if _inside_river(from) == _inside_river(to):
+	if scenario != "hill" or _inside_river(from) == _inside_river(to):
 		return to
 	for feature in terrain:
 		if feature["kind"] == "river":
@@ -946,9 +1186,12 @@ func _attack(i: int, target: int, melee: bool = true) -> void:
 	var stats: Dictionary = KINDS[u["kind"]]
 	u["cooldown"] = stats["cooldown"] * randf_range(0.85, 1.15)
 	if not melee:
-		var aim: Vector2 = units[target]["pos"] + Vector2(randf_range(-10, 10), randf_range(-10, 10))
+		# a gun's aim spreads more the further it shoots
+		var spread: float = 10.0 if u["kind"] != "cannon" else 8.0 + u["pos"].distance_to(units[target]["pos"]) * 0.06
+		var aim: Vector2 = units[target]["pos"] + Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
 		arrows.append({"from": u["pos"] + Vector2(0, -12), "to": aim, "t": 0.0,
-			"time": u["pos"].distance_to(aim) / ARROW_SPEED, "team": u["team"], "damage": stats["damage"]})
+			"time": u["pos"].distance_to(aim) / (ARROW_SPEED * (1.6 if u["kind"] == "cannon" else 1.0)), "team": u["team"], "damage": stats["damage"],
+			"splash": stats.get("splash", 0.0)})
 		return
 	u["swing"] = 0.18
 	var damage: float = stats["damage"]
@@ -972,15 +1215,15 @@ func _attack(i: int, target: int, melee: bool = true) -> void:
 
 ## Where the blow came from matters: from the side or behind it hurts more,
 ## and it shakes the block far more than a blow from the front.
-func _hit(index: int, damage: float, from: Vector2, shock: float = 0.0) -> void:
+func _hit(index: int, damage: float, from: Vector2, shock: float = 0.0, melee: bool = true) -> void:
 	var u: Dictionary = units[index]
 	if not u["alive"]:
 		return
 	var b: int = u["block"]
 	var block: Dictionary = blocks[b]
 	var morale_loss := shock
-	# riders attacked on their way around a flank give up the route and turn to fight
-	if block["order"] == "flank" and not block["waypoints"].is_empty():
+	# riders attacked hand to hand on their way around a flank give up the route and turn to fight
+	if melee and block["order"] == "flank" and not block["waypoints"].is_empty():
 		block["waypoints"] = []
 		block["order"] = "advance"
 		_event("%s is caught on the move and turns to fight" % block_name(b))
@@ -1058,6 +1301,9 @@ func _fly_arrows(dt: float) -> void:
 	var landed := arrows.filter(func(a): return a["t"] >= a["time"])
 	arrows = arrows.filter(func(a): return a["t"] < a["time"])
 	for arrow in landed:
+		if arrow["splash"] > 0.0:
+			_land_ball(arrow)
+			continue
 		# trees catch half the arrows aimed at soldiers among them
 		if ground_at(arrow["to"]) == "wood" and randf() < 0.5:
 			continue
@@ -1070,8 +1316,20 @@ func _fly_arrows(dt: float) -> void:
 						and (arrow["from"] - u["pos"]).normalized().dot(blocks[u["block"]]["heading"]) > 0.3 \
 						and randf() < SHIELD_BLOCK:
 					break
-				_hit(j, arrow["damage"], arrow["from"])
+				_hit(j, arrow["damage"], arrow["from"], 0.0, false)
 				break
+
+## A cannon ball hurts everyone of the other side near where it lands, more
+## the closer they are; no shield stops it, and every man it strikes frightens
+## his block.
+func _land_ball(ball: Dictionary) -> void:
+	for j in units.size():
+		var u: Dictionary = units[j]
+		if u["alive"] and u["team"] != ball["team"]:
+			var d: float = u["pos"].distance_to(ball["to"])
+			if d < ball["splash"]:
+				_hit(j, ball["damage"] * (1.0 - 0.5 * d / ball["splash"]), ball["from"], 2.0, false)
+	craters.append({"pos": ball["to"], "t": 0.0})
 
 ## Before the battle starts only the commanded army moves, to the places it
 ## was sent; the enemy waits and nobody fights.
@@ -1117,6 +1375,9 @@ func simulate(dt: float) -> void:
 		_disarray_timer = DISARRAY_TIME
 		_spread_disarray()
 	_fly_arrows(dt)
+	for crater in craters:
+		crater["t"] += dt
+	craters = craters.filter(func(c): return c["t"] < 6.0)
 	_check_winner()
 
 ## Soldiers running away push through their own formations: the men they run
@@ -1178,7 +1439,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_spawn()
 			KEY_R: _spawn()
 			KEY_T:
-				scenario = {"field": "swamp", "swamp": "hill", "hill": "field"}[scenario]
+				scenario = {"field": "swamp", "swamp": "hill", "hill": "swamps", "swamps": "field"}[scenario]
 				_spawn()
 			KEY_1: speed = 1.0
 			KEY_2: speed = 2.0
@@ -1237,7 +1498,7 @@ func _update_label() -> void:
 		lines.append_array(general.status_lines())
 		if setup:
 			lines.append("SETUP: the battle waits. Click the field and name places, give first orders, then press Space to start.")
-	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · G command %s · arrows pan · wheel zoom · L hide log" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "open field"}[scenario], ["Blue", "Red", "nobody"][player_team + 1]])
+	lines.append("Space pause%s · 1-3 speed x%d · R new battle · T %s · G command %s · arrows pan · wheel zoom · L hide log" % [" (PAUSED)" if paused else "", int(speed), {"field": "swamp crossing", "swamp": "hill battle", "hill": "two swamp lines", "swamps": "open field"}[scenario], ["Blue", "Red", "nobody"][player_team + 1]])
 	label.text = "\n".join(lines)
 
 func _draw() -> void:
@@ -1272,8 +1533,13 @@ func _draw() -> void:
 			var foot := _centre(b) + Vector2(0, -24)
 			draw_line(foot, foot + Vector2(0, -20), Color("5a4026"), 1.0)
 			draw_rect(Rect2(foot + Vector2(0, -20), Vector2(10, 7)), TEAM_COLORS[blocks[b]["team"]].lightened(0.2))
+	for crater in craters:
+		draw_circle(crater["pos"], 9.0, Color(0.25, 0.2, 0.15, 0.6 * (1.0 - crater["t"] / 6.0)))
 	for arrow in arrows:
 		var k: float = arrow["t"] / arrow["time"]
+		if arrow["splash"] > 0.0:
+			draw_circle(arrow["from"].lerp(arrow["to"], k) + Vector2(0, -sin(k * PI) * 20.0), 2.5, Color("202020"))
+			continue
 		var p: Vector2 = arrow["from"].lerp(arrow["to"], k) + Vector2(0, -sin(k * PI) * 30.0)
 		var dir: Vector2 = (arrow["to"] - arrow["from"]).normalized()
 		draw_line(p - dir * 5.0, p + dir * 2.0, Color("3a2a1a"), 1.0)
@@ -1320,6 +1586,16 @@ func _draw_unit(u: Dictionary) -> void:
 	var pos: Vector2 = u["pos"]
 	var facing: float = u["facing"]
 	var lift := 0.0
+	if u["kind"] == "cannon":
+		# a gun on its carriage, barrel toward the enemy, and its crewman beside it
+		var wood := Color("6b4a2e")
+		draw_rect(Rect2(pos + Vector2(-8, -6), Vector2(16, 4)), wood)
+		draw_circle(pos + Vector2(-5, -2), 3.0, wood.darkened(0.3))
+		draw_circle(pos + Vector2(5, -2), 3.0, wood.darkened(0.3))
+		draw_line(pos + Vector2(-6 * facing, -8), pos + Vector2(12 * facing, -11), Color("3a3a3a"), 4.0)
+		draw_rect(Rect2(pos + Vector2(-12 * facing - 3, -14), Vector2(6, 8)), team_color)
+		draw_rect(Rect2(pos + Vector2(-12 * facing - 3, -17), Vector2(6, 3)), team_color.darkened(0.3))
+		return
 	if u["kind"] == "horse":
 		# a stand-in horse: body, neck and legs under the rider
 		lift = 7.0

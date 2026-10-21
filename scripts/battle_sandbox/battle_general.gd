@@ -25,11 +25,11 @@ signal message(text: String)
 const SERVICE_LETTERS := ["A", "B", "C", "D", "E", "F", "G", "H"]
 const PLACE_TOKEN := "[A-H]|L\\d+"  # how a place looks in rewritten order text
 const RESERVED_WORDS := ["all", "everyone", "everybody", "soldier", "soldiers", "group", "here", "there", "line", "stop", "halt", "hold", "attack", "charge", "move", "go", "to", "and", "between", "from", "at", "mark", "forget", "retreat", "withdraw", "back", "facing", "face", "the", "a", "advance", "form"]
-const KIND_GROUPS := {"spear": "spearmen", "sword": "swordsmen", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}
+const KIND_GROUPS := {"spear": "spearmen", "sword": "swordsmen", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry", "cannon": "cannons"}
 # groups that cover several kinds: "archers to the ford" moves bowmen,
 # longbowmen and rangers alike
 const WIDE_GROUPS := {"archers": ["archer", "longbow", "ranger"], "infantry": ["spear", "sword", "archer", "longbow", "ranger"], "melee": ["spear", "sword", "horse"]}
-const GROUP_WORDS := {"spears": "spearmen", "spearman": "spearmen", "swords": "swordsmen", "swordmen": "swordsmen", "swordsman": "swordsmen", "archer": "archers", "bowmen": "archers", "bowman": "archers", "shooters": "archers", "missile": "archers", "bows": "archers", "foot": "infantry", "footmen": "infantry", "meele": "melee", "mele": "melee", "longbows": "longbowmen", "longbowman": "longbowmen", "ranger": "rangers", "horse": "cavalry", "horsemen": "cavalry", "riders": "cavalry", "knights": "cavalry"}
+const GROUP_WORDS := {"spears": "spearmen", "spearman": "spearmen", "swords": "swordsmen", "swordmen": "swordsmen", "swordsman": "swordsmen", "archer": "archers", "bowmen": "archers", "bowman": "archers", "shooters": "archers", "missile": "archers", "bows": "archers", "foot": "infantry", "footmen": "infantry", "meele": "melee", "mele": "melee", "longbows": "longbowmen", "longbowman": "longbowmen", "ranger": "rangers", "horse": "cavalry", "horsemen": "cavalry", "riders": "cavalry", "knights": "cavalry", "cannon": "cannons", "guns": "cannons", "artillery": "cannons"}
 const LINE_WORDS := ["first", "second", "third", "fourth", "fifth"]
 const BLOCK_GAP := 20.0  # space between neighbouring blocks placed by one order
 
@@ -197,7 +197,7 @@ func add_block(b: int) -> void:
 	var block: Dictionary = battle.blocks[b]
 	var base: String = block.get("line_name", block.get("title", ""))
 	if base.is_empty():
-		base = "%s %s" % [block["wing"], {"spear": "spears", "sword": "swords", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry"}[block["kind"]]]
+		base = "%s %s" % [block["wing"], {"spear": "spears", "sword": "swords", "archer": "archers", "longbow": "longbowmen", "ranger": "rangers", "horse": "cavalry", "cannon": "cannons"}[block["kind"]]]
 	var name := base
 	var n := 2
 	while _names.values().has(name):
