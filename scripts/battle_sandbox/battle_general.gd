@@ -39,6 +39,7 @@ var place_names: Dictionary = {}  # place id -> name
 var groups: Dictionary = {}  # name -> Array of soldier ids
 var saved_commands: Dictionary = {}  # name -> the order text it stands for
 var here := Vector2.INF  # the last point clicked on the field
+var selected := -1  # the block picked by clicking it, waiting for a click on where to go
 var client: SquadOrderClient
 var bar: LineEdit
 var feedback: Label  # the last answer and Tab completions, just above the order bar
@@ -166,10 +167,53 @@ func _on_submitted(text: String) -> void:
 	close_bar()
 	submit(text)
 
-## A click on the field: remember the spot and offer to name it.
+## A click on the field. A click on one of the commanded blocks selects it,
+## and the next click on the ground sends it there, facing the enemy. A click
+## on the ground with nothing selected remembers the spot and offers to name it.
 func click(point: Vector2) -> void:
+	var b := block_at(point)
+	if b >= 0:
+		selected = b if selected != b else -1
+		if selected >= 0:
+			message.emit("%s selected: click where it should go (right click to cancel)." % _block_title(b))
+		return
+	if selected >= 0:
+		var block: Dictionary = battle.blocks[selected]
+		if block["kind"] == "cannon":
+			message.emit("The guns stay where they were set up.")
+		elif block["broken"] or battle._living(selected) == 0:
+			message.emit("%s is gone." % _block_title(selected))
+		else:
+			var facing: Vector2 = (battle.enemy_centre(battle.player_team) - point).normalized()
+			battle.order_move(selected, point, facing if facing != Vector2.ZERO else block["heading"])
+			message.emit("%s moves to the spot clicked." % _block_title(selected))
+		selected = -1
+		return
 	here = point
 	open_bar("mark here as ")
+
+func deselect() -> void:
+	selected = -1
+
+## The commanded block with a living soldier near `point`, or -1.
+func block_at(point: Vector2) -> int:
+	var best := -1
+	var best_d := 18.0
+	for id: String in _ids:
+		var b: int = _ids[id]
+		if battle.blocks[b]["broken"]:
+			continue
+		for i: int in battle.blocks[b]["members"]:
+			var u: Dictionary = battle.units[i]
+			# a soldier is drawn above his feet, so measure to the middle of his body
+			var d: float = (u["pos"] + Vector2(0, -10)).distance_to(point)
+			if u["alive"] and d < best_d:
+				best_d = d
+				best = b
+	return best
+
+func _block_title(b: int) -> String:
+	return battle.blocks[b].get("order_name", battle.block_name(b))
 
 # --- the commanded army ---------------------------------------------------
 
@@ -594,6 +638,9 @@ func draw_on(canvas: Node2D) -> void:
 	if here != Vector2.INF:
 		canvas.draw_line(here + Vector2(-8, -8), here + Vector2(8, 8), Color.WHITE, 2.0)
 		canvas.draw_line(here + Vector2(-8, 8), here + Vector2(8, -8), Color.WHITE, 2.0)
+	if selected >= 0 and not battle.blocks[selected]["broken"] and battle._living(selected) > 0:
+		var radius: float = battle.block_width(selected) * 0.5 + 18.0
+		canvas.draw_arc(battle._centre(selected) + Vector2(0, -8), radius, 0.0, TAU, 40, Color("f5e04c"), 3.0)
 	for id: String in _ids:
 		var b: int = _ids[id]
 		if battle.blocks[b]["broken"] or battle._living(b) == 0:

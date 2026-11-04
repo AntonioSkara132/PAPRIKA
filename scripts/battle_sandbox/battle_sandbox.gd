@@ -18,7 +18,8 @@ extends Node2D
 ## G takes command of Blue, then Red, then hands both back to their generals
 ## (or start with -- --general=blue / --general=red). The battle then waits
 ## while you click the field to name places; Space starts it, and Enter opens
-## the order bar (see battle_general.gd).
+## the order bar (see battle_general.gd). Click one of your blocks, then a spot
+## on the field, to send it there; right click cancels the choice.
 
 const FIELD := Vector2(1600, 1000)
 const BODY := preload("res://assets/art/player_plain.png")
@@ -1517,6 +1518,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera.zoom = (camera.zoom / 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
 		elif event.button_index == MOUSE_BUTTON_LEFT and player_team >= 0:
 			general.click(make_input_local(event).position)
+		elif event.button_index == MOUSE_BUTTON_RIGHT and player_team >= 0:
+			general.deselect()
 
 func _process(delta: float) -> void:
 	var pan := Vector2.ZERO
