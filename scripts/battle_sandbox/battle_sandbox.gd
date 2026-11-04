@@ -18,8 +18,9 @@ extends Node2D
 ## G takes command of Blue, then Red, then hands both back to their generals
 ## (or start with -- --general=blue / --general=red). The battle then waits
 ## while you click the field to name places; Space starts it, and Enter opens
-## the order bar (see battle_general.gd). Click one of your blocks, then a spot
-## on the field, to send it there; right click cancels the choice.
+## the order bar (see battle_general.gd). Click one of your blocks, or drag a
+## box around several, then click a spot on the field to send them there;
+## right click cancels the choice.
 
 const FIELD := Vector2(1600, 1000)
 const BODY := preload("res://assets/art/player_plain.png")
@@ -1511,13 +1512,22 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_1: speed = 1.0
 			KEY_2: speed = 2.0
 			KEY_3: speed = 4.0
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and player_team >= 0 and general.drag_from != Vector2.INF:
+		# a short press is a click; a drag selects every block of yours inside the box
+		var point: Vector2 = make_input_local(event).position
+		var from: Vector2 = general.drag_from
+		general.drag_from = Vector2.INF
+		if from.distance_to(point) < 8.0:
+			general.click(point)
+		else:
+			general.box_select(Rect2(from, point - from).abs())
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			camera.zoom = (camera.zoom / 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
 		elif event.button_index == MOUSE_BUTTON_LEFT and player_team >= 0:
-			general.click(make_input_local(event).position)
+			general.drag_from = make_input_local(event).position
 		elif event.button_index == MOUSE_BUTTON_RIGHT and player_team >= 0:
 			general.deselect()
 

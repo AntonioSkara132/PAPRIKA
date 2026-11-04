@@ -39,7 +39,8 @@ var place_names: Dictionary = {}  # place id -> name
 var groups: Dictionary = {}  # name -> Array of soldier ids
 var saved_commands: Dictionary = {}  # name -> the order text it stands for
 var here := Vector2.INF  # the last point clicked on the field
-var selected := -1  # the block picked by clicking it, waiting for a click on where to go
+var selected: Array = []  # blocks picked by clicking or a dragged box, waiting for a click on where to go
+var drag_from := Vector2.INF  # where a left-button drag started on the field
 var client: SquadOrderClient
 var bar: LineEdit
 var feedback: Label  # the last answer and Tab completions, just above the order bar
@@ -168,32 +169,62 @@ func _on_submitted(text: String) -> void:
 	submit(text)
 
 ## A click on the field. A click on one of the commanded blocks selects it,
-## and the next click on the ground sends it there, facing the enemy. A click
-## on the ground with nothing selected remembers the spot and offers to name it.
+## and the next click on the ground sends the selected blocks there, facing
+## the enemy. A click on the ground with nothing selected remembers the spot
+## and offers to name it.
 func click(point: Vector2) -> void:
 	var b := block_at(point)
 	if b >= 0:
-		selected = b if selected != b else -1
-		if selected >= 0:
+		selected = [] if selected == [b] else [b]
+		if not selected.is_empty():
 			message.emit("%s selected: click where it should go (right click to cancel)." % _block_title(b))
 		return
-	if selected >= 0:
-		var block: Dictionary = battle.blocks[selected]
-		if block["kind"] == "cannon":
-			message.emit("The guns stay where they were set up.")
-		elif block["broken"] or battle._living(selected) == 0:
-			message.emit("%s is gone." % _block_title(selected))
-		else:
-			var facing: Vector2 = (battle.enemy_centre(battle.player_team) - point).normalized()
-			battle.order_move(selected, point, facing if facing != Vector2.ZERO else block["heading"])
-			message.emit("%s moves to the spot clicked." % _block_title(selected))
-		selected = -1
+	if not selected.is_empty():
+		_send_selected(point)
 		return
 	here = point
 	open_bar("mark here as ")
 
+## Selects every commanded block with a living soldier inside the dragged box.
+func box_select(box: Rect2) -> void:
+	selected = []
+	for id: String in _ids:
+		var b: int = _ids[id]
+		if battle.blocks[b]["broken"]:
+			continue
+		for i: int in battle.blocks[b]["members"]:
+			var u: Dictionary = battle.units[i]
+			if u["alive"] and box.has_point(u["pos"]):
+				selected.append(b)
+				break
+	if selected.is_empty():
+		message.emit("No blocks of yours in that box.")
+	else:
+		message.emit("%d blocks selected: click where they should go (right click to cancel)." % selected.size())
+
+## Sends the selected blocks to `point`, keeping where they stand relative to
+## each other, all facing the enemy.
+func _send_selected(point: Vector2) -> void:
+	var moving: Array[int] = []
+	for b: int in selected:
+		if battle.blocks[b]["kind"] != "cannon" and not battle.blocks[b]["broken"] and battle._living(b) > 0:
+			moving.append(b)
+	selected = []
+	if moving.is_empty():
+		message.emit("The guns stay where they were set up.")
+		return
+	var middle := Vector2.ZERO
+	for b in moving:
+		middle += battle.blocks[b]["leader"]
+	middle /= moving.size()
+	var facing: Vector2 = (battle.enemy_centre(battle.player_team) - point).normalized()
+	for b in moving:
+		var heading: Vector2 = facing if facing != Vector2.ZERO else battle.blocks[b]["heading"]
+		battle.order_move(b, point + battle.blocks[b]["leader"] - middle, heading)
+	message.emit("%s %s to the spot clicked." % [_block_title(moving[0]) if moving.size() == 1 else "%d blocks" % moving.size(), "moves" if moving.size() == 1 else "move"])
+
 func deselect() -> void:
-	selected = -1
+	selected = []
 
 ## The commanded block with a living soldier near `point`, or -1.
 func block_at(point: Vector2) -> int:
@@ -638,9 +669,15 @@ func draw_on(canvas: Node2D) -> void:
 	if here != Vector2.INF:
 		canvas.draw_line(here + Vector2(-8, -8), here + Vector2(8, 8), Color.WHITE, 2.0)
 		canvas.draw_line(here + Vector2(-8, 8), here + Vector2(8, -8), Color.WHITE, 2.0)
-	if selected >= 0 and not battle.blocks[selected]["broken"] and battle._living(selected) > 0:
-		var radius: float = battle.block_width(selected) * 0.5 + 18.0
-		canvas.draw_arc(battle._centre(selected) + Vector2(0, -8), radius, 0.0, TAU, 40, Color("f5e04c"), 3.0)
+	for b: int in selected:
+		if not battle.blocks[b]["broken"] and battle._living(b) > 0:
+			var radius: float = battle.block_width(b) * 0.5 + 18.0
+			canvas.draw_arc(battle._centre(b) + Vector2(0, -8), radius, 0.0, TAU, 40, Color("f5e04c"), 3.0)
+	if drag_from != Vector2.INF:
+		var box := Rect2(drag_from, canvas.get_local_mouse_position() - drag_from).abs()
+		if box.size.length() > 8.0:
+			canvas.draw_rect(box, Color(0.96, 0.88, 0.3, 0.12))
+			canvas.draw_rect(box, Color("f5e04c"), false, 2.0)
 	for id: String in _ids:
 		var b: int = _ids[id]
 		if battle.blocks[b]["broken"] or battle._living(b) == 0:
