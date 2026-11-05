@@ -838,7 +838,10 @@ func dock_menu() -> bool:
 	if not _available() or not has("veki_hired"):
 		return false
 	if has("otpornik_passes"):
-		_tell("Dock Officer", "Berth four, the Otpornik line. Your passes are ready whenever you are.")
+		_tell("Dock Officer", "Berth four, the Otpornik line. Your passes are ready whenever you are.", [
+			_choice("Board the line to Otpornik", board_otpornik_line),
+			_choice("Not yet", Callable()),
+		])
 		return true
 	if veki_companion == null or veki_companion.global_position.distance_to(world.player.global_position) > 160.0:
 		_tell("Dock Officer", "Passes for Otpornik? Bring your whole party. I issue them to the people standing in front of me.")
@@ -851,8 +854,18 @@ func dock_menu() -> bool:
 		_line("Dock Officer", "Berth four. Your passes are ready whenever you are."),
 	], func() -> void:
 		set_flag("otpornik_passes")
-		GameState.notify("Passes to Otpornik issued. Otpornik is not in the game yet; the Iskra chapter ends here.")
+		GameState.notify("Passes to Otpornik issued. Talk to the Dock Officer again to board the line.")
 		sync())
+	return true
+
+## The whole party boards the passenger line; Veki has to be with the player.
+func board_otpornik_line() -> bool:
+	if not has("otpornik_passes"):
+		return false
+	if veki_companion == null or veki_companion.global_position.distance_to(world.player.global_position) > 160.0:
+		_tell("Dock Officer", "Three passes, three passengers. Bring Veki to the berth and you can board.")
+		return false
+	world.story_travel_requested.emit("otpornik")
 	return true
 
 ## Before the decision, talking to the Head of Nation restarts a cancelled meeting.
@@ -1005,7 +1018,7 @@ func status() -> String:
 	if not _available():
 		return ""
 	if has("otpornik_passes"):
-		return "Otpornik: your passes are ready at the passenger dock. Otpornik is not playable yet."
+		return "Otpornik: your passes are ready. Board the line at the passenger dock."
 	if has("veki_hired"):
 		return "Breece: go to the passenger dock with Veki for the line to Otpornik."
 	if has("board_met"):

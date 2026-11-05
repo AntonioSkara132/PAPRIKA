@@ -240,6 +240,9 @@ const ENEMIES := {
 	"republic_swordsman": {"name": "Republic Swordsman", "level": 4, "max_health": 38, "damage": 8, "speed": 48.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "republic_soldier_defeated", "reward": 8},
 	"collector": {"name": "Debt Collector", "level": 3, "max_health": 40, "damage": 7, "speed": 50.0, "reach": 24.0, "armor": 1, "attack_cooldown": 1.0, "event": "bandit_defeated", "reward": 10},
 	"republic_guardsman": {"name": "Republic Guardsman", "level": 6, "max_health": 60, "damage": 8, "speed": 42.0, "reach": 28.0, "armor": 4, "attack_cooldown": 1.1, "event": "republic_soldier_defeated", "reward": 15},
+	"yard_scavenger_sword": {"name": "Yard Scavenger", "level": 5, "max_health": 60, "damage": 9, "speed": 50.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "bandit_defeated", "reward": 15},
+	"yard_scavenger_spear": {"name": "Scavenger Spearman", "level": 5, "max_health": 55, "damage": 8, "speed": 46.0, "reach": 40.0, "armor": 2, "attack_cooldown": 1.2, "event": "bandit_defeated", "reward": 15},
+	"yard_scavenger_bow": {"name": "Scavenger Archer", "level": 5, "max_health": 45, "damage": 7, "speed": 44.0, "reach": 140.0, "ranged": true, "armor": 1, "attack_cooldown": 1.6, "event": "bandit_defeated", "reward": 15},
 	"forest_beast": {"name": "Forest Beast", "level": 6, "max_health": 90, "damage": 9, "speed": 82.0, "reach": 22.0, "attack_cooldown": 1.3, "event": "monster_defeated", "reward": 6},
 }
 

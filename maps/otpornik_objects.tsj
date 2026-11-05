@@ -1,0 +1,875 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "name": "otpornik_objects",
+  "tilewidth": 2560,
+  "tileheight": 2464,
+  "tilecount": 144,
+  "columns": 0,
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/otpornik/ground.png",
+      "imagewidth": 1280,
+      "imageheight": 1232
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/otpornik/sprite_000.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/otpornik/sprite_001.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/otpornik/sprite_002.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/otpornik/sprite_003.png",
+      "imagewidth": 64,
+      "imageheight": 44
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/otpornik/sprite_004.png",
+      "imagewidth": 96,
+      "imageheight": 110
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/otpornik/sprite_005.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/otpornik/sprite_006.png",
+      "imagewidth": 220,
+      "imageheight": 132
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/otpornik/sprite_007.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/otpornik/sprite_008.png",
+      "imagewidth": 62,
+      "imageheight": 70
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/otpornik/sprite_009.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/otpornik/sprite_010.png",
+      "imagewidth": 46,
+      "imageheight": 86
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/otpornik/sprite_011.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/otpornik/sprite_012.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/otpornik/sprite_013.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/otpornik/sprite_014.png",
+      "imagewidth": 46,
+      "imageheight": 70
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/otpornik/sprite_015.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/otpornik/sprite_016.png",
+      "imagewidth": 56,
+      "imageheight": 94
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/otpornik/sprite_017.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/otpornik/sprite_018.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/otpornik/sprite_019.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/otpornik/sprite_020.png",
+      "imagewidth": 220,
+      "imageheight": 250
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/otpornik/sprite_021.png",
+      "imagewidth": 84,
+      "imageheight": 86
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/otpornik/sprite_022.png",
+      "imagewidth": 70,
+      "imageheight": 86
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/otpornik/sprite_023.png",
+      "imagewidth": 28,
+      "imageheight": 10
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/otpornik/sprite_024.png",
+      "imagewidth": 130,
+      "imageheight": 104
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/otpornik/sprite_025.png",
+      "imagewidth": 46,
+      "imageheight": 78
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/otpornik/sprite_026.png",
+      "imagewidth": 31,
+      "imageheight": 10
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/otpornik/sprite_027.png",
+      "imagewidth": 120,
+      "imageheight": 92
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/otpornik/sprite_028.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/otpornik/sprite_029.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/otpornik/sprite_030.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/otpornik/sprite_031.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/otpornik/sprite_032.png",
+      "imagewidth": 170,
+      "imageheight": 120
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/otpornik/sprite_033.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/otpornik/sprite_034.png",
+      "imagewidth": 20,
+      "imageheight": 52
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/otpornik/sprite_035.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/otpornik/sprite_036.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/otpornik/sprite_037.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/otpornik/sprite_038.png",
+      "imagewidth": 64,
+      "imageheight": 44
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/otpornik/sprite_039.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/otpornik/sprite_040.png",
+      "imagewidth": 150,
+      "imageheight": 116
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/otpornik/sprite_041.png",
+      "imagewidth": 44,
+      "imageheight": 40
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/otpornik/sprite_042.png",
+      "imagewidth": 52,
+      "imageheight": 86
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/otpornik/sprite_043.png",
+      "imagewidth": 46,
+      "imageheight": 70
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/otpornik/sprite_044.png",
+      "imagewidth": 44,
+      "imageheight": 40
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/otpornik/sprite_045.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/otpornik/sprite_046.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/otpornik/sprite_047.png",
+      "imagewidth": 44,
+      "imageheight": 40
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/otpornik/sprite_048.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/otpornik/sprite_049.png",
+      "imagewidth": 70,
+      "imageheight": 78
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/otpornik/sprite_050.png",
+      "imagewidth": 20,
+      "imageheight": 52
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/otpornik/sprite_051.png",
+      "imagewidth": 62,
+      "imageheight": 70
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/otpornik/sprite_052.png",
+      "imagewidth": 52,
+      "imageheight": 94
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/otpornik/sprite_053.png",
+      "imagewidth": 26,
+      "imageheight": 10
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/otpornik/sprite_054.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/otpornik/sprite_055.png",
+      "imagewidth": 56,
+      "imageheight": 78
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/otpornik/sprite_056.png",
+      "imagewidth": 46,
+      "imageheight": 86
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/otpornik/sprite_057.png",
+      "imagewidth": 25,
+      "imageheight": 10
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/otpornik/sprite_058.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/otpornik/sprite_059.png",
+      "imagewidth": 44,
+      "imageheight": 58
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/otpornik/sprite_060.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/otpornik/sprite_061.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/otpornik/sprite_062.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/otpornik/sprite_063.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/otpornik/sprite_064.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/otpornik/sprite_065.png",
+      "imagewidth": 30,
+      "imageheight": 40
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/otpornik/sprite_066.png",
+      "imagewidth": 52,
+      "imageheight": 70
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/otpornik/sprite_067.png",
+      "imagewidth": 170,
+      "imageheight": 80
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/otpornik/sprite_068.png",
+      "imagewidth": 10,
+      "imageheight": 36
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/otpornik/sprite_069.png",
+      "imagewidth": 62,
+      "imageheight": 70
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/otpornik/sprite_070.png",
+      "imagewidth": 30,
+      "imageheight": 40
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/otpornik/sprite_071.png",
+      "imagewidth": 30,
+      "imageheight": 40
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/otpornik/sprite_072.png",
+      "imagewidth": 84,
+      "imageheight": 60
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/otpornik/sprite_073.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/otpornik/sprite_074.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/otpornik/sprite_075.png",
+      "imagewidth": 64,
+      "imageheight": 160
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/otpornik/sprite_076.png",
+      "imagewidth": 120,
+      "imageheight": 84
+    },
+    {
+      "id": 78,
+      "image": "../assets/art/otpornik/sprite_077.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 79,
+      "image": "../assets/art/otpornik/sprite_078.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 80,
+      "image": "../assets/art/otpornik/sprite_079.png",
+      "imagewidth": 70,
+      "imageheight": 70
+    },
+    {
+      "id": 81,
+      "image": "../assets/art/otpornik/sprite_080.png",
+      "imagewidth": 56,
+      "imageheight": 78
+    },
+    {
+      "id": 82,
+      "image": "../assets/art/otpornik/sprite_081.png",
+      "imagewidth": 19,
+      "imageheight": 10
+    },
+    {
+      "id": 83,
+      "image": "../assets/art/otpornik/sprite_082.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 84,
+      "image": "../assets/art/otpornik/sprite_083.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 85,
+      "image": "../assets/art/otpornik/sprite_084.png",
+      "imagewidth": 110,
+      "imageheight": 74
+    },
+    {
+      "id": 86,
+      "image": "../assets/art/otpornik/sprite_085.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 87,
+      "image": "../assets/art/otpornik/sprite_086.png",
+      "imagewidth": 14,
+      "imageheight": 14
+    },
+    {
+      "id": 88,
+      "image": "../assets/art/otpornik/sprite_087.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 89,
+      "image": "../assets/art/otpornik/sprite_088.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 90,
+      "image": "../assets/art/otpornik/sprite_089.png",
+      "imagewidth": 32,
+      "imageheight": 46
+    },
+    {
+      "id": 91,
+      "image": "../assets/art/otpornik/sprite_090.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 92,
+      "image": "../assets/art/otpornik/sprite_091.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 93,
+      "image": "../assets/art/otpornik/sprite_092.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 94,
+      "image": "../assets/art/otpornik/sprite_093.png",
+      "imagewidth": 84,
+      "imageheight": 60
+    },
+    {
+      "id": 95,
+      "image": "../assets/art/otpornik/sprite_095.png",
+      "imagewidth": 64,
+      "imageheight": 58
+    },
+    {
+      "id": 96,
+      "image": "../assets/art/otpornik/sprite_096.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 97,
+      "image": "../assets/art/otpornik/sprite_097.png",
+      "imagewidth": 40,
+      "imageheight": 56
+    },
+    {
+      "id": 98,
+      "image": "../assets/art/otpornik/sprite_098.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 99,
+      "image": "../assets/art/otpornik/sprite_099.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 100,
+      "image": "../assets/art/otpornik/sprite_100.png",
+      "imagewidth": 18,
+      "imageheight": 18
+    },
+    {
+      "id": 101,
+      "image": "../assets/art/otpornik/sprite_101.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 102,
+      "image": "../assets/art/otpornik/sprite_102.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 103,
+      "image": "../assets/art/otpornik/sprite_103.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 104,
+      "image": "../assets/art/otpornik/sprite_104.png",
+      "imagewidth": 32,
+      "imageheight": 56
+    },
+    {
+      "id": 105,
+      "image": "../assets/art/otpornik/sprite_105.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 106,
+      "image": "../assets/art/otpornik/sprite_106.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 107,
+      "image": "../assets/art/otpornik/sprite_107.png",
+      "imagewidth": 130,
+      "imageheight": 76
+    },
+    {
+      "id": 108,
+      "image": "../assets/art/otpornik/sprite_108.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 109,
+      "image": "../assets/art/otpornik/sprite_109.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 110,
+      "image": "../assets/art/otpornik/sprite_110.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 111,
+      "image": "../assets/art/otpornik/sprite_111.png",
+      "imagewidth": 24,
+      "imageheight": 18
+    },
+    {
+      "id": 112,
+      "image": "../assets/art/otpornik/sprite_112.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 113,
+      "image": "../assets/art/otpornik/sprite_113.png",
+      "imagewidth": 36,
+      "imageheight": 34
+    },
+    {
+      "id": 114,
+      "image": "../assets/art/otpornik/sprite_114.png",
+      "imagewidth": 16,
+      "imageheight": 18
+    },
+    {
+      "id": 115,
+      "image": "../assets/art/otpornik/sprite_115.png",
+      "imagewidth": 14,
+      "imageheight": 24
+    },
+    {
+      "id": 116,
+      "image": "../assets/art/otpornik/sprite_116.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 117,
+      "image": "../assets/art/otpornik/sprite_117.png",
+      "imagewidth": 140,
+      "imageheight": 96
+    },
+    {
+      "id": 118,
+      "image": "../assets/art/otpornik/sprite_118.png",
+      "imagewidth": 178,
+      "imageheight": 98
+    },
+    {
+      "id": 119,
+      "image": "../assets/art/otpornik/sprite_119.png",
+      "imagewidth": 148,
+      "imageheight": 104
+    },
+    {
+      "id": 120,
+      "image": "../assets/art/otpornik/sprite_120.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 121,
+      "image": "../assets/art/otpornik/sprite_121.png",
+      "imagewidth": 26,
+      "imageheight": 22
+    },
+    {
+      "id": 122,
+      "image": "../assets/art/otpornik/sprite_122.png",
+      "imagewidth": 40,
+      "imageheight": 22
+    },
+    {
+      "id": 123,
+      "image": "../assets/art/otpornik/sprite_123.png",
+      "imagewidth": 16,
+      "imageheight": 16
+    },
+    {
+      "id": 124,
+      "image": "../assets/art/otpornik/sprite_124.png",
+      "imagewidth": 30,
+      "imageheight": 90
+    },
+    {
+      "id": 125,
+      "image": "../assets/art/otpornik/sprite_125.png",
+      "imagewidth": 66,
+      "imageheight": 42
+    },
+    {
+      "id": 126,
+      "image": "../assets/art/otpornik/sprite_126.png",
+      "imagewidth": 40,
+      "imageheight": 22
+    },
+    {
+      "id": 127,
+      "image": "../assets/art/otpornik/sprite_127.png",
+      "imagewidth": 40,
+      "imageheight": 22
+    },
+    {
+      "id": 128,
+      "image": "../assets/art/otpornik/sprite_128.png",
+      "imagewidth": 70,
+      "imageheight": 44
+    },
+    {
+      "id": 129,
+      "image": "../assets/art/otpornik/sprite_129.png",
+      "imagewidth": 80,
+      "imageheight": 48
+    },
+    {
+      "id": 130,
+      "image": "../assets/art/otpornik/sprite_130.png",
+      "imagewidth": 76,
+      "imageheight": 46
+    },
+    {
+      "id": 131,
+      "image": "../assets/art/otpornik/sprite_131.png",
+      "imagewidth": 30,
+      "imageheight": 90
+    },
+    {
+      "id": 132,
+      "image": "../assets/art/otpornik/lasta.png",
+      "imagewidth": 220,
+      "imageheight": 112
+    },
+    {
+      "id": 133,
+      "image": "../assets/art/otpornik/npc_civic_engineer.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 134,
+      "image": "../assets/art/otpornik/npc_library_archivist.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 135,
+      "image": "../assets/art/otpornik/npc_park_artist.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 136,
+      "image": "../assets/art/otpornik/npc_market_keeper.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 137,
+      "image": "../assets/art/otpornik/npc_greenhouse_worker.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 138,
+      "image": "../assets/art/otpornik/npc_canal_worker.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 139,
+      "image": "../assets/art/otpornik/npc_board_officer.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 140,
+      "image": "../assets/art/otpornik/npc_dock_mechanic.png",
+      "imagewidth": 16,
+      "imageheight": 24
+    },
+    {
+      "id": 141,
+      "image": "../assets/art/otpornik/ship_deck.png",
+      "imagewidth": 288,
+      "imageheight": 112
+    },
+    {
+      "id": 142,
+      "image": "../assets/art/otpornik/ship_upper.png",
+      "imagewidth": 288,
+      "imageheight": 144
+    },
+    {
+      "id": 143,
+      "image": "../assets/art/otpornik/ship_lower.png",
+      "imagewidth": 192,
+      "imageheight": 112
+    }
+  ]
+}

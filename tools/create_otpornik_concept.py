@@ -898,7 +898,9 @@ def garden_wall(w):
     return img
 
 
-def build():
+def build(game=False):
+    """Draw the concept. With game=True, return the ground (with sprite shadows) and the
+    sprite list unpainted, without the people, for tools/build_otpornik_world.py."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
     ground(img)
     sprites = []
@@ -920,7 +922,7 @@ def build():
     put(glass_lab(), 80, 328, "HIGH-VOLTAGE LAB", 332)
     put(observatory(), 560, 140, "OBSERVATORY", 144)
     put(library(), 540, 290, "LIBRARY", 294)
-    put(department(), 330, 372, "APPLIED MECHANICS (enter)", 358)
+    put(department(), 330, 372, "APPLIED MECHANICS" if game else "APPLIED MECHANICS (enter)", 358)
     for x, y in ((40, 238), (190, 214), (620, 196), (520, 196), (260, 300), (230, 96), (470, 66)):
         put(tree(rng.random() < 0.4), x, y)
     put(clock_post(), 486, 330)
@@ -1025,6 +1027,13 @@ def build():
         put(lamp(), x, y)
     put(walking_robot(), 860, 400)
     put(walking_robot(), 1180, 170)
+
+    if game:
+        for bottom, sprite, x, label, label_y in sprites:
+            shadow(img, x + 2, bottom - 4, x + sprite.width - 2, bottom + 4)
+        for text, x, y in (("UNIVERSITY", 120, 6), ("TOWN", 1000, 36), ("BEACH", 90, 870), ("SPACEPORT", 1210, 452)):
+            sign(img, x, y, text, bg=YELLOW, fg=INK)
+        return img, sorted(sprites, key=lambda s: s[0])
 
     # people
     pool = npc_pool()
