@@ -123,9 +123,9 @@ In a debug build, press **F6** to add testing gold, then **F5** if you want it i
 
 ### Planet map
 
-Press **M** to view the library's census of 49 worlds: Engineeria's five named planets are northwest, the Cauliflower Confederation's six are northeast, and the other 38 have **UNKNOWN** symbols. Click a planet, or browse with arrows/Tab, for a brief description. **M**, **Escape**, or the close button returns to the game. The gold diamond marks your current planet. This is an informational chart, not a travel menu, and does not change your save or story progress.
+Press **M** to view the library's census of 49 worlds: Engineeria's five named planets are northwest, the Cauliflower Confederation's six are northeast, and the other 38 have **UNKNOWN** symbols. South of Engineeria, the Sea of Propuh holds the places of the arc after Otpornik; so far that is the space rock R-7, which is not counted in the census. Click a planet, or browse with arrows/Tab, for a brief description. **M**, **Escape**, or the close button returns to the game. The gold diamond marks your current planet. This is an informational chart, not a travel menu, and does not change your save or story progress.
 
-Original 32×32 flat-world sprites represent the established landscapes. Otpornik, Elektrika and Cichvarda retain their names and history but use question marks because their terrain is unspecified. The training station is identified separately rather than counted as a planet. Positions are schematic, not distances or travel routes.
+Original 32×32 flat-world sprites represent the established landscapes. Elektrika and Cichvarda retain their names and history but use question marks because their terrain is unspecified. The training station is identified separately rather than counted as a planet. Positions are schematic, not distances or travel routes.
 
 ![Interactive map with Iskra selected](art/concepts/planet_map_verification/native_map_iskra.png)
 

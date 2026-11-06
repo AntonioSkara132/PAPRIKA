@@ -15,7 +15,7 @@ SPEC.loader.exec_module(ART)
 class PlanetArtTests(unittest.TestCase):
     def test_all_symbols_are_native_32px_and_transparent(self):
         for name in ART.NAMES:
-            with self.subTest(name=name), Image.open(ART.OUT / (name.lower() + ".png")) as image:
+            with self.subTest(name=name), Image.open(ART.OUT / (ART.key_of(name) + ".png")) as image:
                 self.assertEqual(image.size, (32, 32))
                 self.assertEqual(image.mode, "RGBA")
                 self.assertEqual(image.getpixel((0, 0))[3], 0)
@@ -23,26 +23,26 @@ class PlanetArtTests(unittest.TestCase):
                 self.assertLessEqual(len(image.getcolors()), 24)
 
     def test_known_biomes_have_distinct_art(self):
-        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra"]
+        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra", "otpornik", "rock", "unknown"]
         images = {ART.planet(name).tobytes() for name in names}
         self.assertEqual(len(images), len(names))
 
     def test_undefined_terrain_does_not_invent_a_biome(self):
-        for name in ["cichvarda", "elektrika", "otpornik"]:
+        for name in ["cichvarda", "elektrika"]:
             with self.subTest(name=name):
                 self.assertEqual(ART.planet(name).tobytes(), ART.unknown().tobytes())
 
     def test_generated_files_match_the_source(self):
         for name in ART.NAMES:
-            with self.subTest(name=name), Image.open(ART.OUT / (name.lower() + ".png")) as image:
-                self.assertEqual(image.tobytes(), ART.planet(name.lower()).tobytes())
+            with self.subTest(name=name), Image.open(ART.OUT / (ART.key_of(name) + ".png")) as image:
+                self.assertEqual(image.tobytes(), ART.planet(ART.key_of(name)).tobytes())
 
     def test_atlas_regions_match_individual_symbols(self):
         records = json.loads((ART.OUT / "sheet.json").read_text())
         self.assertEqual(len(records), len(ART.NAMES))
         self.assertEqual(len({record["id"] for record in records}), len(records))
         with Image.open(ART.OUT / "sheet.png") as sheet:
-            self.assertEqual(sheet.size, (128, 96))
+            self.assertEqual(sheet.size, (128, 128))
             for record in records:
                 x, y, w, h = record["region"]
                 with Image.open(ART.OUT / record["image"]) as sprite:
@@ -50,7 +50,7 @@ class PlanetArtTests(unittest.TestCase):
 
     def test_reference_sheet_is_present(self):
         with Image.open(ART.PREVIEW) as image:
-            self.assertEqual(image.size, (576, 468))
+            self.assertEqual(image.size, (576, 624))
 
 
 if __name__ == "__main__":

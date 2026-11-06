@@ -170,7 +170,7 @@ func _create_tile_layer(layer: Dictionary, layer_index: int) -> void:
 			_add_group_cell(group_id, cell, sprite.position + Vector2(tile_size) * 0.5)
 		elif layer_name == "Water":
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5, true)
-		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs", "Chamber Walls", "Mountain Rock", "Fences", "Ship Walls", "Ledges", "Thicket", "Mine Rock", "Ore Heaps", "Port Walls", "Hull Walls", "Seabed Rock"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
+		elif layer_name in ["Station Walls", "Station Void", "Barracks Walls", "Artichoke Cliffs", "Chamber Walls", "Mountain Rock", "Fences", "Ship Walls", "Ledges", "Thicket", "Mine Rock", "Ore Heaps", "Port Walls", "Hull Walls", "Walls", "Seabed Rock"] or (_map_field_prefix in ["paprika", "brudet"] and local_id in [5, 6]) or layer_name == "Field Boundaries and Forest Details" and gid in [14, 15]:
 			_add_collision_rect(Vector2(tile_size), sprite.position + Vector2(tile_size) * 0.5)
 
 func _create_field_plot(cell: Vector2i, local_id: int, sprite: Sprite2D, ready_texture: Texture2D, common: bool) -> void:
@@ -271,7 +271,7 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	holder.add_child(sprite)
 	# Barbed wire slows walkers and minefield marks are stepped on, so neither blocks movement.
 	# Skoljka's fish, jellyfish, coral and buoys ("sea_decor") are scenery only.
-	if name in ["ground_backdrop", "iskra_scenery", "otpornik_scenery", "stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern", "rudnik_gate", "sea_decor"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
+	if name in ["ground_backdrop", "iskra_scenery", "otpornik_scenery", "rock_scenery", "stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern", "rudnik_gate", "sea_decor"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))

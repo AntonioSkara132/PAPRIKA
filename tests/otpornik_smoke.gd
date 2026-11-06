@@ -134,6 +134,7 @@ func _run() -> void:
 	legacy["schema"] = GameState.ISKRA_SAVE_SCHEMA
 	legacy["current_planet"] = "iskra"
 	legacy["planet_positions"].erase("otpornik")
+	legacy["planet_positions"].erase("rock")
 	_check(GameState._valid_save(legacy), "schema 15 saves stay valid")
 
 	# Back to Iskra on the passenger line.

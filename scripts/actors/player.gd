@@ -29,6 +29,7 @@ var _built := false
 var _holding_field_mine := false
 var damage_scale := 1.0
 var _costume_texture_path := ""
+var _brine_eye: ColorRect
 
 func configure(texture_path: String, spawn_position: Vector2, bounds: Rect2) -> void:
 	global_position = spawn_position
@@ -65,6 +66,16 @@ func _build(texture_path: String) -> void:
 	_armor_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_armor_overlay.visible = false
 	add_child(_armor_overlay)
+	# After the merge with the Voice the MC's eye turns white. Every player
+	# sprite has its eye at pixel (8, 6).
+	_brine_eye = ColorRect.new()
+	_brine_eye.name = "BrineEye"
+	_brine_eye.color = Color(0.94, 0.98, 1.0)
+	_brine_eye.size = Vector2.ONE
+	_brine_eye.position = _sprite.position + Vector2(8, 6)
+	_brine_eye.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_brine_eye.visible = false
+	add_child(_brine_eye)
 	_held_mine_icon = Sprite2D.new()
 	_held_mine_icon.name = "HeldPracticeMine"
 	_held_mine_icon.texture = load("res://assets/art/space_military_base/station_mine_icon.png") as Texture2D
@@ -168,11 +179,11 @@ func _attack(preferred_target: Node2D = null) -> void:
 	if weapon.is_empty():
 		GameState.notify("Equip a weapon before attacking.")
 		return
-	var attack_damage := GameData.weapon_damage(weapon)
+	var attack_damage := GameState.brine_damage(GameData.weapon_damage(weapon))
 	var reach := float(weapon.get("reach", 24.0))
 	_attack_cooldown = float(weapon.get("cooldown", 0.5))
 	if bool(weapon.get("ranged", false)):
-		attack_damage = GameState.fire_arrow_damage()
+		attack_damage = GameState.brine_damage(GameState.fire_arrow_damage())
 		var projectile := Projectile.new()
 		get_parent().add_child(projectile)
 		projectile.configure(global_position + facing * 10.0 + Vector2(0, -7), facing, attack_damage, 190.0, reach, true)
@@ -286,6 +297,8 @@ func set_costume_texture(texture_path: String) -> void:
 	_refresh_appearance()
 
 func _refresh_appearance() -> void:
+	if _brine_eye != null:
+		_brine_eye.visible = GameState.is_brine()
 	if not _costume_texture_path.is_empty() and ResourceLoader.exists(_costume_texture_path):
 		_sprite.texture = load(_costume_texture_path) as Texture2D
 		return

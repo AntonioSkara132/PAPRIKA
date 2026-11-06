@@ -110,11 +110,21 @@
     ]
   },
   {
-    "id": "unknown",
-    "image": "unknown.png",
+    "id": "rock",
+    "image": "rock.png",
     "region": [
       96,
       64,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "unknown",
+    "image": "unknown.png",
+    "region": [
+      0,
+      96,
       32,
       32
     ]

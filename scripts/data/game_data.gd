@@ -228,6 +228,9 @@ const ENEMIES := {
 	"armed_zombie": {"name": "Armed Zombie", "level": 2, "max_health": 24, "damage": 7, "speed": 32.0, "reach": 31.0, "event": "monster_defeated", "reward": 7},
 	"armored_zombie": {"name": "Armored Zombie", "level": 3, "max_health": 30, "damage": 6, "speed": 28.0, "armor": 1, "event": "monster_defeated", "reward": 9},
 	"hacker": {"name": "Hacker", "level": 5, "max_health": 110, "damage": 18, "speed": 58.0, "event": "hacker_defeated", "reward": 100},
+	# The hackers who come back to R-7 with Veki. Later hackers are stronger than the Paprika and Brudet ones.
+	"void_hacker": {"name": "Pyjama Hacker", "level": 8, "max_health": 260, "damage": 22, "speed": 60.0, "reach": 26.0, "armor": 3, "attack_cooldown": 0.9, "event": "rock_hacker_defeated", "reward": 150},
+	"hacker_trooper": {"name": "Jumpsuit Hacker", "level": 8, "max_health": 200, "damage": 18, "speed": 56.0, "reach": 28.0, "armor": 4, "attack_cooldown": 1.0, "event": "rock_hacker_defeated", "reward": 100},
 	"phase_hacker": {"name": "Phase Hacker", "level": 5, "max_health": 95, "damage": 13, "speed": 54.0, "event": "hacker_defeated", "reward": 80},
 	"finling": {"name": "Finling", "level": 2, "max_health": 14, "damage": 4, "speed": 50.0, "event": "river_monster_defeated", "reward": 6},
 	"lake_maw": {"name": "Lake Maw", "level": 3, "max_health": 42, "damage": 8, "speed": 36.0, "event": "river_monster_defeated", "reward": 16},

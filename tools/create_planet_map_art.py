@@ -11,7 +11,14 @@ PREVIEW = ROOT / "art/concepts/planet_sprite_sheet.png"
 INK = (28, 23, 48)
 GOLD = (245, 195, 76)
 CREAM = (247, 241, 221)
-NAMES = ["Otpornik", "Elektrika", "Iskra", "Skoljka", "Rudnik", "Paprika", "Brudet", "Pomidor", "Cichvarda", "Chvarak", "Artichoke", "Unknown"]
+NAMES = ["Otpornik", "Elektrika", "Iskra", "Skoljka", "Rudnik", "Paprika", "Brudet", "Pomidor", "Cichvarda", "Chvarak", "Artichoke", "R-7", "Unknown"]
+COLUMNS = 4
+ROWS = (len(NAMES) + COLUMNS - 1) // COLUMNS
+
+
+def key_of(name):
+    """File and game id of a symbol: R-7 is the "rock" world in the game."""
+    return "rock" if name == "R-7" else name.lower()
 
 
 def world(top, side):
@@ -77,8 +84,29 @@ def unknown():
     return image
 
 
+def rock():
+    """R-7: a small cratered rock, not a planet, with the scaffolding over the cave."""
+    image = Image.new("RGBA", (32, 32))
+    draw = ImageDraw.Draw(image)
+    outline = [(5, 19), (8, 12), (14, 9), (21, 10), (27, 14), (28, 21), (23, 27), (13, 28), (7, 25)]
+    draw.polygon(outline, fill=INK)
+    draw.polygon([(6, 19), (9, 13), (14, 10), (21, 11), (26, 15), (27, 21), (22, 26), (13, 27), (8, 24)], fill=(116, 112, 124))
+    draw.polygon([(8, 23), (13, 26), (22, 25), (26, 21), (26, 18), (19, 23), (11, 22)], fill=(84, 80, 94))
+    for box in ((9, 15, 13, 18), (20, 19, 23, 22), (12, 21, 14, 23)):
+        draw.ellipse(box, fill=(76, 72, 86))
+        draw.point((box[0] + 1, box[1] + 1), fill=(150, 146, 156))
+    # The cave mouth under its scaffolding.
+    draw.pieslice((15, 12, 21, 20), 180, 360, fill=INK)
+    draw.line((14, 11, 14, 16), fill=(184, 101, 52))
+    draw.line((22, 11, 22, 16), fill=(184, 101, 52))
+    draw.line((13, 11, 23, 11), fill=(184, 101, 52))
+    return image
+
+
 def planet(key):
-    if key in ("unknown", "otpornik", "elektrika", "cichvarda"):
+    if key == "rock":
+        return rock()
+    if key in ("unknown", "elektrika", "cichvarda"):
         return unknown()
     palettes = {
         "paprika": ((115, 160, 78), (106, 80, 50)),
@@ -89,6 +117,7 @@ def planet(key):
         "rudnik": ((99, 134, 89), (99, 86, 78)),
         "skoljka": ((47, 117, 162), (29, 66, 109)),
         "iskra": ((75, 63, 56), (114, 76, 41)),
+        "otpornik": ((104, 160, 84), (92, 86, 98)),
     }
     image = world(*palettes[key])
     draw = ImageDraw.Draw(image)
@@ -163,19 +192,35 @@ def planet(key):
         draw.pieslice((12, 5, 20, 12), 180, 360, fill=(237, 202, 124))
         draw.line((11, 9, 21, 9), fill=GOLD)
         draw.rectangle((13, 22, 20, 24), fill=(91, 153, 92))
+    elif key == "otpornik":
+        # Beach in the south west, the spaceport pad in the south east and the
+        # university's twin towers with teal roofs in the north.
+        terrain(image, lambda d: d.polygon([(3, 20), (12, 22), (14, 26), (3, 26)], fill=(232, 207, 142)))
+        terrain(image, lambda d: d.rectangle((18, 18, 28, 26), fill=(139, 141, 152)))
+        draw.ellipse((20, 19, 26, 23), fill=INK)
+        draw.ellipse((21, 20, 25, 22), fill=(242, 182, 64))
+        for x in (11, 17):
+            draw.rectangle((x - 2, 7, x + 2, 17), fill=INK)
+            draw.rectangle((x - 1, 8, x + 1, 16), fill=(229, 214, 172))
+            draw.point((x, 10), fill=(77, 128, 166))
+            draw.point((x, 13), fill=(77, 128, 166))
+            draw.polygon([(x - 3, 8), (x, 4), (x + 3, 8)], fill=INK)
+            draw.polygon([(x - 2, 7), (x, 5), (x + 2, 7)], fill=(70, 156, 141))
+        draw.line((13, 11, 15, 11), fill=(126, 196, 214))
+        tree(draw, 6, 17)
     return image
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     PREVIEW.parent.mkdir(parents=True, exist_ok=True)
-    atlas = Image.new("RGBA", (128, 96))
-    sheet = Image.new("RGBA", (576, 468), (17, 17, 29, 255))
+    atlas = Image.new("RGBA", (COLUMNS * 32, ROWS * 32))
+    sheet = Image.new("RGBA", (COLUMNS * 144, ROWS * 156), (17, 17, 29, 255))
     draw = ImageDraw.Draw(sheet)
     font = ImageFont.load_default()
     records = []
     for index, name in enumerate(NAMES):
-        key = name.lower()
+        key = key_of(name)
         sprite = planet(key)
         sprite.save(OUT / f"{key}.png")
         x, y = index % 4 * 32, index // 4 * 32

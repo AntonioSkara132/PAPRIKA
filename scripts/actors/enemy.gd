@@ -123,7 +123,7 @@ func _build(texture_path: String) -> void:
 	_build_gear()
 
 func _build_gear() -> void:
-	if enemy_id not in ["collector", "bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman", "republic_guardsman"]:
+	if enemy_id not in ["collector", "bandit_spear", "bandit_bow", "bandit_sword", "armed_zombie", "armored_zombie", "republic_archer", "republic_spearman", "republic_swordsman", "republic_guardsman", "hacker_trooper"]:
 		return
 	_weapon_visual = Line2D.new()
 	_weapon_visual.width = 2.0
@@ -139,7 +139,7 @@ func _build_gear() -> void:
 			# A cudgel is drawn in the collector's sprite; this is only its swing.
 			_weapon_visual.points = PackedVector2Array([Vector2(8, -6), Vector2(10, -14)])
 			_weapon_visual.default_color = Color("5a3826")
-		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman", "republic_guardsman":
+		"bandit_sword", "armed_zombie", "armored_zombie", "republic_swordsman", "republic_guardsman", "hacker_trooper":
 			_weapon_visual.points = PackedVector2Array([Vector2(7, -5), Vector2(11, -12), Vector2(13, -20)])
 			_weapon_visual.default_color = Color("d7e3e4")
 		_:
@@ -184,7 +184,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var distance := global_position.distance_to(target.global_position)
 	_label.visible = distance < 92.0 or health < max_health
-	if enemy_id in ["hacker", "phase_hacker"] and state != State.PHASE_WARNING and distance < 170.0 and _attack_cooldown <= 0.0:
+	if enemy_id in ["hacker", "phase_hacker", "void_hacker"] and state != State.PHASE_WARNING and distance < 170.0 and _attack_cooldown <= 0.0:
 		_fire_hostile_projectile(target, 130.0, 190.0)
 		_attack_cooldown = 1.25
 	if state not in [State.TELEGRAPH, State.RECOVER, State.PHASE_WARNING]:
@@ -200,7 +200,7 @@ func _physics_process(delta: float) -> void:
 			state = State.RETURN
 		elif state == State.CHASE:
 			_choose_patrol()
-	if enemy_id == "phase_hacker" and state == State.CHASE and distance < 125.0 and distance > 24.0 and _phase_cooldown <= 0.0:
+	if enemy_id in ["phase_hacker", "void_hacker"] and state == State.CHASE and distance < 125.0 and distance > 24.0 and _phase_cooldown <= 0.0:
 		_start_phase(target)
 	match state:
 		State.PHASE_WARNING:

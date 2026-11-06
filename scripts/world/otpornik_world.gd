@@ -129,8 +129,10 @@ func location_title() -> String:
 	return ROOM_TITLES[room] if not room.is_empty() else "OTPORNIK — SPACEPORT"
 
 func story_status_text() -> String:
+	if GameState.davor_taken():
+		return "Martin took Davor on R-7. Find out where his ship went."
 	if has_flag("lasta_bought"):
-		return "The Lasta is yours. Look her over with Veki before the flight to Breece."
+		return "The Lasta is yours. Talk to Veki at the helm when you are ready to fly."
 	var text := "Buy an interplanetary ship at the Ship Broker: the Lasta costs %d gold." % LASTA_PRICE
 	if GameState.gold < LASTA_PRICE:
 		text += "\nEarn the rest from the Yard Foreman at the construction bay (%d/%d jobs)." % [yard_runs_done(), YARD_RUNS]
@@ -162,6 +164,10 @@ func _on_player_respawned() -> void:
 # ---------- party ----------
 
 func _spawn_companions() -> void:
+	_spawn_veki()
+	# After R-7, Martin has Davor.
+	if GameState.davor_taken():
+		return
 	davor = RaidSoldier.new()
 	davor.name = "Davor"
 	davor.configure("davor", "Davor", "res://assets/art/engineeria/davor.png", GameState.OTPORNIK_ARRIVAL, "sword", 0, self)
@@ -175,6 +181,8 @@ func _spawn_companions() -> void:
 	davor.get_up_seconds = 0.0
 	actors_root.add_child(davor)
 	GameState.apply_davor_health(davor)
+
+func _spawn_veki() -> void:
 	veki = RaidSoldier.new()
 	veki.name = "Veki"
 	veki.configure("veki", "Veki", "res://assets/art/iskra/npcs/veki.png", GameState.OTPORNIK_ARRIVAL, "sword", 1, self)
@@ -194,13 +202,14 @@ func _place_companions() -> void:
 		companion.set_order("follow")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if davor != null and player != null and not get_tree().paused and not player.ui_is_open():
+	if veki != null and player != null and not get_tree().paused and not player.ui_is_open():
 		for order in ["follow", "hold", "attack"]:
 			if event.is_action_pressed("order_" + order):
 				for companion in [davor, veki]:
-					if not companion.down:
+					if companion != null and not companion.down:
 						companion.set_order(order)
-				GameState.notify({"follow": "Davor and Veki: following you.", "hold": "Davor and Veki: holding this position.", "attack": "Davor and Veki: attacking nearby enemies."}[order])
+				var names := "Davor and Veki" if davor != null else "Veki"
+				GameState.notify(names + {"follow": ": following you.", "hold": ": holding this position.", "attack": ": attacking nearby enemies."}[order])
 				get_viewport().set_input_as_handled()
 				return
 	super._unhandled_input(event)
@@ -364,6 +373,12 @@ func _on_service_requested(id: String, _title: String) -> void:
 		"porter": _tell("University Porter", "The university is closed to visitors this term. Lectures, exams and the High-Voltage Lab are for enrolled students only. The town and the yards are open to everyone.")
 
 func _terminal() -> void:
+	if GameState.davor_taken():
+		_scene([
+			_line("Line Clerk", "The passenger line to Iskra leaves from here."),
+			_line("Veki", "Iskra can wait. Martin has Davor, and every day we lose, he takes him further away."),
+		])
+		return
 	_tell("Line Clerk", "The passenger line to Iskra leaves from here. Your Tower passes cover the return as well.", [
 		_choice("Take the line back to Iskra", func() -> void: story_travel_requested.emit("iskra")),
 		_choice("Stay on Otpornik", Callable()),
@@ -506,8 +521,20 @@ func _on_ship_spot(id: String) -> void:
 		"ship_lower_store": _tell("", "Crates, barrels and a shelf of jars. Most of it is spare plates, bolts and lamp oil. Someone left a sack of dried beans.")
 
 func _helm() -> void:
+	if GameState.davor_taken():
+		_scene([
+			_line("Veki", "Martin's ship flew toward Republic space. Somebody in this port saw which way, and how far."),
+			_line("Veki", "Ask around, fill your pack, rest in the bunks. Then we go and get Davor back."),
+			_line("", "The search for Davor is the next chapter. It is not in the game yet."),
+		])
+		return
 	_scene([
 		_line("Veki", "She will fly. The console is older than I am, but every gauge works."),
 		_line("Veki", "Fill your pack and rest in the bunks below. When you are ready, Breece is a long way out."),
-		_line("", "The flight to Breece is the next chapter. It is not in the game yet."),
+		_line("Davor", "Before Breece, set a course for R-7. A rock off the old survey lanes. I left something there a long time ago."),
+		_line("Veki", "R-7? There is nothing out there."),
+		_line("Davor", "That is why I left it there."),
+	], Callable(), [
+		_choice("Fly to R-7", func() -> void: story_travel_requested.emit("rock")),
+		_choice("Not yet", Callable()),
 	])

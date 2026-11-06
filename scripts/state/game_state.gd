@@ -15,7 +15,8 @@ signal player_defeated
 
 const SAVE_PATH := "user://paprika_save.json"
 const SAVE_BACKUP_PATH := "user://paprika_save.backup.json"
-const SAVE_SCHEMA := 16
+const SAVE_SCHEMA := 17
+const ROCK_SAVE_SCHEMA := 17
 const OTPORNIK_SAVE_SCHEMA := 16
 const ISKRA_SAVE_SCHEMA := 15
 const SKOLJKA_SAVE_SCHEMA := 14
@@ -34,7 +35,8 @@ const PAPRIKA_OLD_SOUTH_Y := 352.0
 const PAPRIKA_OLD_SOUTH_ROW := 22
 const PAPRIKA_LAYOUT_SHIFT := 768.0
 const PAPRIKA_FIELD_ROW_SHIFT := 48
-const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka", "iskra", "otpornik"]
+const PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka", "iskra", "otpornik", "rock"]
+const OTPORNIK_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka", "iskra", "otpornik"]
 const ISKRA_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka", "iskra"]
 const SKOLJKA_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria", "skoljka"]
 const EMBASSY_PLANETS := ["paprika", "brudet", "station", "artichoke", "pomidor", "chvarak", "engineeria"]
@@ -66,6 +68,16 @@ const ISKRA_UNLOCK_FLAG := "skoljka_aftermath"
 ## In front of Otpornik's passenger terminal. The Iskra Dock Officer's passes are the only way there.
 const OTPORNIK_ARRIVAL := Vector2(2392, 1144)
 const OTPORNIK_UNLOCK_FLAG := "iskra_investigation_otpornik_passes"
+## R-7, the rock on the way to Breece where Davor asks the Lasta to stop. Only
+## the Lasta flies there, so a save on the rock needs her.
+const ROCK_ARRIVAL := Vector2(232, 472)
+const ROCK_UNLOCK_FLAG := "otpornik_lasta_bought"
+## Set on R-7 when Martin's men take Davor; he is no longer with the party.
+const DAVOR_TAKEN_FLAG := "rock_davor_taken"
+## Set when the MC merges with the Voice in the Dark on R-7 and becomes a Brine.
+const BRINE_FLAG := "brine_merged"
+const BRINE_MAX_HEALTH_BONUS := 52
+const BRINE_DAMAGE_SCALE := 1.5
 ## Set on Rudnik when Captain Bruno promises two seats on the ore ship. A save on
 ## Skoljka needs it, because the ore ship is the only way there.
 const PASSAGE_FLAG := "rudnik_passage_earned"
@@ -112,7 +124,7 @@ var completed_unique_jobs: Array[String] = []
 var camp_unlocked: bool = false
 var player_position := Vector2(320, 220)
 var current_planet := "paprika"
-var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y], "otpornik": [OTPORNIK_ARRIVAL.x, OTPORNIK_ARRIVAL.y]}
+var planet_positions: Dictionary = {"paprika": [320.0, 220.0], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y], "otpornik": [OTPORNIK_ARRIVAL.x, OTPORNIK_ARRIVAL.y], "rock": [ROCK_ARRIVAL.x, ROCK_ARRIVAL.y]}
 var current_area := "exterior"
 var military_barracks_position := [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 var military_stage := "none"
@@ -196,7 +208,7 @@ func start_new_game() -> void:
 	camp_unlocked = false
 	player_position = Vector2(320, 220)
 	current_planet = "paprika"
-	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y], "otpornik": [OTPORNIK_ARRIVAL.x, OTPORNIK_ARRIVAL.y]}
+	planet_positions = {"paprika": [player_position.x, player_position.y], "brudet": [BRUDET_ARRIVAL.x, BRUDET_ARRIVAL.y], "station": [MILITARY_ARRIVAL.x, MILITARY_ARRIVAL.y], "artichoke": [ARTICHOKE_ARRIVAL.x, ARTICHOKE_ARRIVAL.y], "pomidor": [POMIDOR_ARRIVAL.x, POMIDOR_ARRIVAL.y], "chvarak": [CHVARAK_ARRIVAL.x, CHVARAK_ARRIVAL.y], "engineeria": [ENGINEERIA_ARRIVAL.x, ENGINEERIA_ARRIVAL.y], "skoljka": [SKOLJKA_ARRIVAL.x, SKOLJKA_ARRIVAL.y], "iskra": [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y], "otpornik": [OTPORNIK_ARRIVAL.x, OTPORNIK_ARRIVAL.y], "rock": [ROCK_ARRIVAL.x, ROCK_ARRIVAL.y]}
 	current_area = "exterior"
 	military_barracks_position = [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]
 	military_stage = "none"
@@ -873,6 +885,27 @@ func restore_health() -> void:
 	health = max_health
 	health_changed.emit(health, max_health)
 
+func is_brine() -> bool:
+	return defeated_persistent_enemies.has(BRINE_FLAG)
+
+func davor_taken() -> bool:
+	return defeated_persistent_enemies.has(DAVOR_TAKEN_FLAG)
+
+## The merge with the Voice: more max health, full health, and stronger attacks
+## from then on (see brine_damage). Happens once.
+func become_brine() -> bool:
+	if is_brine():
+		return false
+	defeated_persistent_enemies.append(BRINE_FLAG)
+	max_health += BRINE_MAX_HEALTH_BONUS
+	restore_health()
+	military_changed.emit()
+	return true
+
+## The player's attack damage, raised once the MC is a Brine.
+func brine_damage(damage: int) -> int:
+	return ceili(damage * BRINE_DAMAGE_SCALE) if is_brine() else damage
+
 func hacker_defeated() -> bool:
 	for enemy_id in defeated_persistent_enemies:
 		if enemy_id.begins_with("hacker_"):
@@ -1396,6 +1429,8 @@ func load_game() -> bool:
 		planet_positions["iskra"] = [ISKRA_ARRIVAL.x, ISKRA_ARRIVAL.y]
 	if int(data["schema"]) < OTPORNIK_SAVE_SCHEMA:
 		planet_positions["otpornik"] = [OTPORNIK_ARRIVAL.x, OTPORNIK_ARRIVAL.y]
+	if int(data["schema"]) < ROCK_SAVE_SCHEMA:
+		planet_positions["rock"] = [ROCK_ARRIVAL.x, ROCK_ARRIVAL.y]
 	current_area = String(data.get("current_area", "exterior"))
 	military_barracks_position = data.get("military_barracks_position", [MILITARY_BARRACKS_ARRIVAL.x, MILITARY_BARRACKS_ARRIVAL.y]).duplicate()
 	military_stage = String(data.get("military_stage", "none"))
@@ -1474,7 +1509,7 @@ func _valid_save(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
 	var schema = data.get("schema", -1)
-	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA, EMBASSY_SAVE_SCHEMA, SKOLJKA_SAVE_SCHEMA, ISKRA_SAVE_SCHEMA, OTPORNIK_SAVE_SCHEMA]:
+	if not _is_number(schema) or float(schema) != float(int(schema)) or int(schema) not in [1, 2, SQUAD_SAVE_SCHEMA, PLANET_SAVE_SCHEMA, PAPRIKA_LAYOUT_SCHEMA, BRUDET_TEAM_SAVE_SCHEMA, PAPRIKA_LOCAL_RECRUIT_SCHEMA, CAMP_UNLOCK_SAVE_SCHEMA, STATION_SAVE_SCHEMA, MILITARY_ROUND_SAVE_SCHEMA, ARTICHOKE_SAVE_SCHEMA, POMIDOR_SAVE_SCHEMA, EMBASSY_SAVE_SCHEMA, SKOLJKA_SAVE_SCHEMA, ISKRA_SAVE_SCHEMA, OTPORNIK_SAVE_SCHEMA, ROCK_SAVE_SCHEMA]:
 		return false
 	schema = int(schema)
 	var item_counts = data.get("inventory", null)
@@ -1488,7 +1523,7 @@ func _valid_save(data: Variant) -> bool:
 	if schema >= PLANET_SAVE_SCHEMA:
 		var planet = data.get("current_planet", null)
 		var positions = data.get("planet_positions", null)
-		var allowed_planets: Array = PLANETS if schema >= OTPORNIK_SAVE_SCHEMA else ISKRA_PLANETS if schema >= ISKRA_SAVE_SCHEMA else SKOLJKA_PLANETS if schema >= SKOLJKA_SAVE_SCHEMA else EMBASSY_PLANETS if schema >= EMBASSY_SAVE_SCHEMA else POMIDOR_PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
+		var allowed_planets: Array = PLANETS if schema >= ROCK_SAVE_SCHEMA else OTPORNIK_PLANETS if schema >= OTPORNIK_SAVE_SCHEMA else ISKRA_PLANETS if schema >= ISKRA_SAVE_SCHEMA else SKOLJKA_PLANETS if schema >= SKOLJKA_SAVE_SCHEMA else EMBASSY_PLANETS if schema >= EMBASSY_SAVE_SCHEMA else POMIDOR_PLANETS if schema >= POMIDOR_SAVE_SCHEMA else ARTICHOKE_PLANETS if schema >= ARTICHOKE_SAVE_SCHEMA else STATION_PLANETS if schema >= STATION_SAVE_SCHEMA else LEGACY_PLANETS
 		if not planet is String or not allowed_planets.has(planet) or not positions is Dictionary or positions.size() != allowed_planets.size():
 			return false
 		for planet_id in allowed_planets:
@@ -1657,6 +1692,8 @@ func _valid_military_save(data: Dictionary, item_counts: Dictionary, gear: Dicti
 	if data["current_planet"] == "iskra" and not Array(data.get("defeated_persistent_enemies", [])).has(ISKRA_UNLOCK_FLAG):
 		return false
 	if data["current_planet"] == "otpornik" and not Array(data.get("defeated_persistent_enemies", [])).has(OTPORNIK_UNLOCK_FLAG):
+		return false
+	if data["current_planet"] == "rock" and not Array(data.get("defeated_persistent_enemies", [])).has(ROCK_UNLOCK_FLAG):
 		return false
 	if schema >= MILITARY_ROUND_SAVE_SCHEMA:
 		if (not cannon_round_active and cannon_phase != "empty") or (cannon_round_active and stage != "cannon") or (stage != "cannon" and cannon_phase != "empty"):

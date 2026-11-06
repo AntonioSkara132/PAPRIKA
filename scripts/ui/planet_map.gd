@@ -10,6 +10,7 @@ const MUTED := Color("b6adbf")
 const GOLD := Color("f5c34c")
 const ENGINEERIA := Color("dfaa65")
 const CAULIFLOWER := Color("9dcc86")
+const SEA := Color("7fb8c9")
 
 signal close_requested
 
@@ -35,7 +36,8 @@ func _ready() -> void:
 	location_label = _label("", Vector2(15, 31), Vector2(430, 15), 9, MUTED)
 	_label("ENGINEERIA · NW", Vector2(19, 47), Vector2(194, 14), 10, ENGINEERIA)
 	_label("CAULIFLOWER · NE", Vector2(244, 47), Vector2(194, 14), 10, CAULIFLOWER)
-	_label("UNKNOWN WORLDS · %d" % Atlas.unknown_count(), CHART_ORIGIN + Vector2(9, 121), Vector2(250, 14), 9, MUTED)
+	_label("SEA OF PROPUH", CHART_ORIGIN + Atlas.SEA_RECT.position + Vector2(8, 4), Vector2(110, 14), 10, SEA)
+	_label("UNKNOWN WORLDS · %d" % Atlas.unknown_count(), CHART_ORIGIN + Vector2(9, Atlas.UNKNOWN_TOP - 22), Vector2(250, 14), 9, MUTED)
 	_label("Click a planet · Arrow keys / Tab browse · Enter selects", Vector2(14, 317), Vector2(330, 14), 9, MUTED)
 	_label("Library census · schematic, not to scale", Vector2(350, 317), Vector2(260, 14), 9, MUTED)
 	close_button = Button.new()
@@ -75,6 +77,7 @@ func _draw() -> void:
 	for index in 100:
 		var point := CHART_ORIGIN + Vector2(rng.randi_range(2, 423), rng.randi_range(1, 244))
 		draw_rect(Rect2(point, Vector2.ONE), Color("494455") if index % 4 else Color("807181"))
+	draw_rect(Rect2(CHART_ORIGIN + Atlas.SEA_RECT.position, Atlas.SEA_RECT.size), Color(0.16, 0.3, 0.36, 0.3))
 	draw_line(CHART_ORIGIN + Vector2(215, 5), CHART_ORIGIN + Vector2(215, 113), Color("39323e"))
 	if entries_by_id.has(current_planet_id):
 		var point: Vector2 = CHART_ORIGIN + entries_by_id[current_planet_id]["position"] + Vector2(22, -17)
@@ -84,7 +87,8 @@ func _add_planet(entry: Dictionary) -> void:
 	var known: bool = entry["known"]
 	var button := Button.new()
 	button.name = String(entry["id"])
-	button.size = Vector2(64, 52) if known else Vector2(24, 24)
+	var unknown_size := Vector2(Atlas.UNKNOWN_SIZE, Atlas.UNKNOWN_SIZE)
+	button.size = Vector2(64, 52) if known else unknown_size
 	button.position = CHART_ORIGIN + entry["position"] - button.size * 0.5
 	button.tooltip_text = "%s — %s" % [entry["name"], entry["terrain"]]
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -98,7 +102,7 @@ func _add_planet(entry: Dictionary) -> void:
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	image.size = Vector2(32, 32) if known else Vector2(24, 24)
+	image.size = Vector2(32, 32) if known else unknown_size
 	image.position = Vector2(16, 1) if known else Vector2.ZERO
 	button.add_child(image)
 	if known:
@@ -140,7 +144,7 @@ func select_planet(id: String) -> void:
 	var entry: Dictionary = entries_by_id[id]
 	detail_name.text = entry["name"]
 	detail_faction.text = entry["faction"]
-	detail_faction.modulate = ENGINEERIA if entry["faction"] == "Engineeria" else CAULIFLOWER if entry["faction"] == "Cauliflower Confederation" else Color.WHITE
+	detail_faction.modulate = ENGINEERIA if entry["faction"] == "Engineeria" else CAULIFLOWER if entry["faction"] == "Cauliflower Confederation" else SEA if entry["faction"] == "Sea of Propuh" else Color.WHITE
 	detail_terrain.text = entry["terrain"]
 	detail_description.text = entry["description"]
 	detail_image.texture = load(entry["image"]) as Texture2D

@@ -12,6 +12,7 @@ const WORLD_SCRIPTS := {
 	"skoljka": "res://scripts/world/skoljka_world.gd",
 	"iskra": "res://scripts/world/iskra_world.gd",
 	"otpornik": "res://scripts/world/otpornik_world.gd",
+	"rock": "res://scripts/world/space_rock_world.gd",
 }
 const DEBUG_GOLD_AMOUNT := 100_000
 
@@ -162,6 +163,7 @@ func _switch_world(planet: String, traveling: bool = false, departure: Vector2 =
 		"skoljka": "SkoljkaWorld",
 		"iskra": "IskraWorld",
 		"otpornik": "OtpornikWorld",
+		"rock": "SpaceRockWorld",
 	}[location]
 	add_child(next_world)
 	var loader := next_world.get("tiled_loader") as TiledLoader
