@@ -110,7 +110,9 @@ func _physics_process(delta: float) -> void:
 		_prompt_scan_timer = 0.10
 		_update_nearest_interactable()
 	var world := get_parent().get_parent() as GameWorld
-	if world != null and GameState.squad_deployed and GameState.controlled_member_id != "player":
+	if world != null and world.drive_player_body(self, delta):
+		pass
+	elif world != null and GameState.squad_deployed and GameState.controlled_member_id != "player":
 		world.step_squad_actor(self, delta)
 	else:
 		if _ui_is_open():

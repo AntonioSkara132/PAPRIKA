@@ -17,9 +17,10 @@ extends GameWorld
 ## 3. Rescued: the cave is lit for the player now and a Brine can push the
 ##    rocks out. Outside, Veki lands the Lasta with two hackers aboard: they
 ##    caught him, and he bought his way back by promising them treasure in
-##    the cave. The player and Veki fight them off. Boarding the Lasta sets
-##    course for the Republic planet where Martin took Davor; that flight is
-##    the next chapter and not in the game yet, so the player stays on R-7.
+##    the cave. The player and Veki fight them off. Boarding the Lasta, the
+##    player picks the next stop: Smokva, Krešo's bar, where someone may know
+##    where Martin went, or Otpornik. After Smokva the Lasta does not go back
+##    to Otpornik.
 ##
 ## A fight in progress is not saved; after a load the raid starts again from
 ## the landing, and the hackers come again when the player is outside.
@@ -404,13 +405,28 @@ func _talk_to_veki() -> void:
 				_choice("Stay on R-7", Callable()),
 			])
 
-## The flight to the Republic planet is the next chapter. Until it exists the
-## Lasta stays on R-7 and this only says so.
+## Veki asks where to go next. Smokva closes Otpornik for good, so the
+## choice to go there asks once more.
 func leave_rock() -> void:
 	_scene([
-		_line("Veki", "A navy ship with a gold stripe flies for the Republic. Martin will take Davor to one of their cities."),
-		_line("Veki", "We set course for the Republic."),
-	], func() -> void: GameState.notify("The flight to the Republic is the next chapter. It is not in the game yet."))
+		_line("Veki", "Martin's ship went off into the Sea of Propuh. We will not find it by flying around blind."),
+		_line("Veki", "Krešo keeps a bar on a rock called Smokva. Hackers and smugglers drink there, and somebody always saw something."),
+		_line("Veki", "Or we go back to Otpornik first. But once we are out in the Sea, the Republic will be watching that port. We will not go back."),
+	], Callable(), [
+		_choice("Fly to Smokva", confirm_smokva),
+		_choice("Fly back to Otpornik", func() -> void: story_travel_requested.emit("otpornik")),
+		_choice("Stay on R-7", Callable()),
+	])
+
+func confirm_smokva() -> void:
+	_tell("Veki", "Smokva, then. Otpornik will be behind us for good. Are you sure?", [
+		_choice("Set course for Smokva", fly_to_smokva),
+		_choice("Not yet", Callable()),
+	])
+
+func fly_to_smokva() -> void:
+	GameState.set_smokva_course()
+	story_travel_requested.emit("smokva")
 
 # ---------- the raid ----------
 

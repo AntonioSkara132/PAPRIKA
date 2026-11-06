@@ -523,9 +523,13 @@ func _on_ship_spot(id: String) -> void:
 func _helm() -> void:
 	if GameState.davor_taken():
 		_scene([
-			_line("Veki", "Martin's ship flew toward Republic space. Somebody in this port saw which way, and how far."),
-			_line("Veki", "Ask around, fill your pack, rest in the bunks. Then we go and get Davor back."),
-			_line("", "The search for Davor is the next chapter. It is not in the game yet."),
+			_line("Veki", "Martin's ship went off into the Sea of Propuh. Krešo's bar on Smokva is where the hackers and smugglers drink. Somebody there saw something."),
+			_line("Veki", "Fill your pack and rest in the bunks first. Once we are out in the Sea, the Republic will be watching this port. We will not come back."),
+		], Callable(), [
+			_choice("Set course for Smokva", func() -> void:
+				GameState.set_smokva_course()
+				story_travel_requested.emit("smokva")),
+			_choice("Not yet", Callable()),
 		])
 		return
 	_scene([

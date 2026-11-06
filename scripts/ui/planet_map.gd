@@ -88,7 +88,8 @@ func _add_planet(entry: Dictionary) -> void:
 	var button := Button.new()
 	button.name = String(entry["id"])
 	var unknown_size := Vector2(Atlas.UNKNOWN_SIZE, Atlas.UNKNOWN_SIZE)
-	button.size = Vector2(64, 52) if known else unknown_size
+	var width := Atlas.SEA_BUTTON_WIDTH if entry.get("region", "") == "sea" else 64.0
+	button.size = Vector2(width, 52) if known else unknown_size
 	button.position = CHART_ORIGIN + entry["position"] - button.size * 0.5
 	button.tooltip_text = "%s — %s" % [entry["name"], entry["terrain"]]
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -103,10 +104,10 @@ func _add_planet(entry: Dictionary) -> void:
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	image.size = Vector2(32, 32) if known else unknown_size
-	image.position = Vector2(16, 1) if known else Vector2.ZERO
+	image.position = Vector2((width - 32) * 0.5, 1) if known else Vector2.ZERO
 	button.add_child(image)
 	if known:
-		var label := _label(entry["name"], Vector2(0, 34), Vector2(64, 16), 10, CREAM, button)
+		var label := _label(entry["name"], Vector2(0, 34), Vector2(width, 16), 10, CREAM, button)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	else:
 		button.text = ""
@@ -144,7 +145,7 @@ func select_planet(id: String) -> void:
 	var entry: Dictionary = entries_by_id[id]
 	detail_name.text = entry["name"]
 	detail_faction.text = entry["faction"]
-	detail_faction.modulate = ENGINEERIA if entry["faction"] == "Engineeria" else CAULIFLOWER if entry["faction"] == "Cauliflower Confederation" else SEA if entry["faction"] == "Sea of Propuh" else Color.WHITE
+	detail_faction.modulate = ENGINEERIA if entry["faction"] == "Engineeria" else CAULIFLOWER if entry["faction"] == "Cauliflower Confederation" else SEA if entry.get("region", "") == "sea" else Color.WHITE
 	detail_terrain.text = entry["terrain"]
 	detail_description.text = entry["description"]
 	detail_image.texture = load(entry["image"]) as Texture2D

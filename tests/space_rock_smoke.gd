@@ -117,6 +117,7 @@ func _run() -> void:
 	legacy["schema"] = GameState.OTPORNIK_SAVE_SCHEMA
 	legacy["current_planet"] = "otpornik"
 	legacy["planet_positions"].erase("rock")
+	legacy["planet_positions"].erase("smokva")
 	_check(GameState._valid_save(legacy), "schema 16 saves stay valid")
 	_check(game._load_saved_game(), "loading the R-7 save")
 	world = game.world as SpaceRockWorld
@@ -191,18 +192,20 @@ func _run() -> void:
 	_check(ui.scene_playing(), "Veki offers to fly")
 	ui.cancel_scene()
 	world.leave_rock()
-	_check(ui.scene_playing() and ui.scene_lines_left() == 1, "Veki sets course for the Republic")
-	for i in 2:
-		ui.advance_scene()
+	_check(ui.scene_playing() and ui.scene_lines_left() == 2, "Veki offers Smokva or Otpornik")
+	ui.cancel_scene()
+	world.confirm_smokva()
+	_check(ui.scene_playing(), "flying to Smokva asks once more, because Otpornik closes after it")
+	ui.cancel_scene()
 	await get_tree().process_frame
-	_check(not ui.scene_playing() and GameState.current_planet == "rock" and game.world == world, "the flight to the Republic is not in the game yet, so the player stays on R-7")
-	# A save from before the change could still go back to Otpornik.
+	_check(GameState.current_planet == "rock" and game.world == world and not GameState.smokva_course_set(), "turning the Lasta down keeps the player on R-7")
+	# Otpornik is still open before Smokva.
 	game._on_story_travel_requested("otpornik")
 	await get_tree().process_frame
 	port = game.world as OtpornikWorld
 	_check(port != null and port.davor == null and port.veki != null, "Davor is not on Otpornik after R-7")
 	port._helm()
-	_check(ui.scene_playing() and ui.scene_lines_left() == 2, "the helm points at the search for Davor")
+	_check(ui.scene_playing() and ui.scene_lines_left() == 1, "the helm offers the flight to Smokva")
 	ui.cancel_scene()
 	port._terminal()
 	_check(ui.scene_playing(), "Veki will not leave for Iskra without Davor")

@@ -23,12 +23,12 @@ class PlanetArtTests(unittest.TestCase):
                 self.assertLessEqual(len(image.getcolors()), 24)
 
     def test_known_biomes_have_distinct_art(self):
-        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra", "otpornik", "rock", "unknown"]
+        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra", "otpornik", "rock", "smokva", "unknown"]
         images = {ART.planet(name).tobytes() for name in names}
         self.assertEqual(len(images), len(names))
 
     def test_undefined_terrain_does_not_invent_a_biome(self):
-        for name in ["cichvarda", "elektrika"]:
+        for name in ["cichvarda", "elektrika", "skamp", "ambar", "bavarin"]:
             with self.subTest(name=name):
                 self.assertEqual(ART.planet(name).tobytes(), ART.unknown().tobytes())
 
@@ -42,7 +42,7 @@ class PlanetArtTests(unittest.TestCase):
         self.assertEqual(len(records), len(ART.NAMES))
         self.assertEqual(len({record["id"] for record in records}), len(records))
         with Image.open(ART.OUT / "sheet.png") as sheet:
-            self.assertEqual(sheet.size, (128, 128))
+            self.assertEqual(sheet.size, (ART.COLUMNS * 32, ART.ROWS * 32))
             for record in records:
                 x, y, w, h = record["region"]
                 with Image.open(ART.OUT / record["image"]) as sprite:
@@ -50,7 +50,7 @@ class PlanetArtTests(unittest.TestCase):
 
     def test_reference_sheet_is_present(self):
         with Image.open(ART.PREVIEW) as image:
-            self.assertEqual(image.size, (576, 624))
+            self.assertEqual(image.size, (ART.COLUMNS * 144, ART.ROWS * 156))
 
 
 if __name__ == "__main__":

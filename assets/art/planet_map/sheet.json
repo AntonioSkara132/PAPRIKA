@@ -110,11 +110,51 @@
     ]
   },
   {
+    "id": "skamp",
+    "image": "skamp.png",
+    "region": [
+      96,
+      64,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "ambar",
+    "image": "ambar.png",
+    "region": [
+      0,
+      96,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "bavarin",
+    "image": "bavarin.png",
+    "region": [
+      32,
+      96,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "smokva",
+    "image": "smokva.png",
+    "region": [
+      64,
+      96,
+      32,
+      32
+    ]
+  },
+  {
     "id": "rock",
     "image": "rock.png",
     "region": [
       96,
-      64,
+      96,
       32,
       32
     ]
@@ -124,7 +164,7 @@
     "image": "unknown.png",
     "region": [
       0,
-      96,
+      128,
       32,
       32
     ]

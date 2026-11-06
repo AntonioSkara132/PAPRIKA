@@ -11,7 +11,7 @@ PREVIEW = ROOT / "art/concepts/planet_sprite_sheet.png"
 INK = (28, 23, 48)
 GOLD = (245, 195, 76)
 CREAM = (247, 241, 221)
-NAMES = ["Otpornik", "Elektrika", "Iskra", "Skoljka", "Rudnik", "Paprika", "Brudet", "Pomidor", "Cichvarda", "Chvarak", "Artichoke", "R-7", "Unknown"]
+NAMES = ["Otpornik", "Elektrika", "Iskra", "Skoljka", "Rudnik", "Paprika", "Brudet", "Pomidor", "Cichvarda", "Chvarak", "Artichoke", "Skamp", "Ambar", "Bavarin", "Smokva", "R-7", "Unknown"]
 COLUMNS = 4
 ROWS = (len(NAMES) + COLUMNS - 1) // COLUMNS
 
@@ -103,10 +103,38 @@ def rock():
     return image
 
 
+def smokva():
+    """Smokva: a two-lobed rock with the landing pad on the west lobe and Krešo's
+    bar, its green yard and the fig tree on the east one."""
+    image = Image.new("RGBA", (32, 32))
+    draw = ImageDraw.Draw(image)
+    rock_fill, rock_shadow = (116, 112, 124), (84, 80, 94)
+    draw.ellipse((2, 11, 15, 25), fill=INK)
+    draw.ellipse((12, 6, 30, 27), fill=INK)
+    draw.ellipse((3, 12, 14, 24), fill=rock_fill)
+    draw.ellipse((13, 7, 29, 26), fill=rock_fill)
+    draw.pieslice((3, 12, 14, 24), 20, 160, fill=rock_shadow)
+    draw.pieslice((13, 7, 29, 26), 20, 160, fill=rock_shadow)
+    # The bridge between the lobes and the landing pad.
+    draw.rectangle((12, 16, 15, 17), fill=(214, 201, 173))
+    draw.ellipse((5, 15, 10, 19), fill=(76, 72, 86))
+    draw.point((7, 17), fill=GOLD)
+    # The yard, the bar with its orange roof, and the fig tree.
+    draw.ellipse((16, 12, 27, 23), fill=(88, 140, 72))
+    draw.rectangle((21, 9, 27, 14), fill=(201, 92, 52))
+    draw.rectangle((22, 12, 26, 14), fill=(232, 220, 184))
+    draw.point((24, 13), fill=INK)
+    draw.ellipse((16, 15, 21, 20), fill=(52, 98, 56))
+    draw.line((18, 20, 18, 21), fill=(106, 80, 50))
+    return image
+
+
 def planet(key):
     if key == "rock":
         return rock()
-    if key in ("unknown", "elektrika", "cichvarda"):
+    if key == "smokva":
+        return smokva()
+    if key in ("unknown", "elektrika", "cichvarda", "skamp", "ambar", "bavarin"):
         return unknown()
     palettes = {
         "paprika": ((115, 160, 78), (106, 80, 50)),

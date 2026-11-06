@@ -25,11 +25,11 @@ func _run() -> void:
 	_check(InputMap.has_action("planet_map"), "map action is registered")
 	var binding := InputMap.action_get_events("planet_map")[0] as InputEventKey
 	_check(binding != null and binding.physical_keycode == KEY_M, "M is the map shortcut")
-	_check(Atlas.world_count() == 49 and Atlas.unknown_count() == 38, "atlas follows the library's political census")
-	_check(view.buttons.size() == 50, "all eleven named worlds, R-7 and 38 unknown worlds are clickable")
+	_check(Atlas.world_count() == 49 and Atlas.unknown_count() == 35, "atlas follows the library's political census")
+	_check(view.buttons.size() == 51, "all fourteen named worlds, R-7, Smokva and 35 unknown worlds are clickable")
 	var entries := Atlas.entries()
 	var ids := {}
-	var counts := {"Engineeria": 0, "Cauliflower Confederation": 0, "Unidentified world": 0, "Sea of Propuh": 0}
+	var counts := {"Engineeria": 0, "Cauliflower Confederation": 0, "Unidentified world": 0, "New Republic": 0, "Independent": 0, "Unclaimed space rock": 0}
 	for entry: Dictionary in entries:
 		var id: String = entry["id"]
 		_check(not ids.has(id), "unique atlas entry " + id)
@@ -38,16 +38,18 @@ func _run() -> void:
 		_check(ResourceLoader.exists(entry["image"]), "sprite exists for " + id)
 		_check(not String(entry["description"]).is_empty(), "description exists for " + id)
 		var position: Vector2 = entry["position"]
-		if entry["faction"] == "Sea of Propuh":
-			_check(Atlas.SEA_RECT.encloses(Rect2(position - Vector2(32, 26), Vector2(64, 52))) and position.x < MapView.CHART_SIZE.x / 2, id + " is in the Sea of Propuh, south of Engineeria")
+		if entry.get("region", "") == "sea":
+			var half := Vector2(Atlas.SEA_BUTTON_WIDTH, 52) * 0.5
+			_check(Atlas.SEA_RECT.encloses(Rect2(position - half, half * 2)) and position.x < MapView.CHART_SIZE.x / 2, id + " is in the Sea of Propuh, south of Engineeria")
 		elif entry["faction"] == "Engineeria":
 			_check(position.x < MapView.CHART_SIZE.x / 2 and position.y < MapView.CHART_SIZE.y / 2, id + " is northwest")
 		elif entry["faction"] == "Cauliflower Confederation":
 			_check(position.x > MapView.CHART_SIZE.x / 2 and position.y < MapView.CHART_SIZE.y / 2, id + " is northeast")
 		else:
 			_check(entry["name"] == "UNKNOWN" and not entry["known"] and position.y > 135, "unidentified worlds stay anonymous and south of known labels")
-	_check(counts == {"Engineeria": 5, "Cauliflower Confederation": 6, "Unidentified world": 38, "Sea of Propuh": 1}, "faction membership matches the libraries")
-	for id in ["elektrika", "cichvarda"]:
+	_check(counts == {"Engineeria": 5, "Cauliflower Confederation": 6, "Unidentified world": 35, "New Republic": 1, "Independent": 2, "Unclaimed space rock": 2}, "faction membership matches the libraries")
+	_check(view.entries_by_id["skamp"]["position"].x < view.entries_by_id["ambar"]["position"].x and view.entries_by_id["skamp"]["position"].x < view.entries_by_id["bavarin"]["position"].x, "Skamp is on the western edge of the Sea of Propuh")
+	for id in ["elektrika", "cichvarda", "skamp", "ambar", "bavarin"]:
 		_check(view.entries_by_id[id]["terrain"] == "Terrain unknown", id + " has no invented landscape")
 	_check(not ids.has("station") and not ids.has("engineeria"), "station is not a planet and Engineeria is not duplicated as Rudnik")
 	_press("planet_map")

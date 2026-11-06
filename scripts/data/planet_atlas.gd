@@ -1,14 +1,18 @@
 extends RefCounted
 
 # Brudet's library gives these political totals; the unnamed worlds stay unidentified here.
-# Entries with "census": false (R-7) are not worlds in that census.
+# Entries with "census": false (R-7 and Smokva) are not worlds in that census. Bavarin is
+# one of the New Republic's worlds and Ambar and Skamp are the two independent ones.
 const WORLD_COUNTS := {"New Republic": 24, "Breece": 7, "Engineeria": 5, "Cauliflower Confederation": 6, "Saint Confederation": 5, "Independent": 2}
 ## The Sea of Propuh lies south of Engineeria. Its planets and space rocks
-## (R-7 first) are placed inside SEA_RECT, in chart coordinates.
-const SEA_RECT := Rect2(1, 119, 209, 56)
+## ("region": "sea") are placed inside SEA_RECT, in chart coordinates, with
+## narrower buttons so five fit in a row; Skamp is on its western edge.
+const SEA_RECT := Rect2(1, 119, 209, 66)
+const SEA_BUTTON_WIDTH := 41.0
 ## The unknown worlds' grid lies below the Sea of Propuh.
-const UNKNOWN_TOP := 198
+const UNKNOWN_TOP := 210
 const UNKNOWN_SIZE := 16
+const UNKNOWN_COLUMNS := 12
 const PLANETS := [
 	{"id": "otpornik", "name": "Otpornik", "faction": "Engineeria", "position": Vector2(40, 28), "terrain": "Port town / university", "description": "Its engineering school sheltered engineers from Blockovia after the Destruction of Block. Their rebuilding work helped found Engineeria."},
 	{"id": "elektrika", "name": "Elektrika", "faction": "Engineeria", "position": Vector2(108, 28), "terrain": "Terrain unknown", "description": "One of Engineeria's first three planets. Elektrika joined while facing shortages and threats from hackers and the Republic."},
@@ -21,7 +25,11 @@ const PLANETS := [
 	{"id": "cichvarda", "name": "Cichvarda", "faction": "Cauliflower Confederation", "position": Vector2(256, 88), "terrain": "Terrain unknown", "description": "One of the Confederation's four founding planets in year 83, with two seats on the Big Council. Its landscape is not yet described."},
 	{"id": "chvarak", "name": "Chvarak", "faction": "Cauliflower Confederation", "position": Vector2(326, 88), "terrain": "Mountains / farms", "description": "Mountain valleys hold terraced fields and livestock pastures. Ships heading toward Engineeria leave from the northern spaceport."},
 	{"id": "artichoke", "name": "Artichoke", "faction": "Cauliflower Confederation", "position": Vector2(394, 88), "terrain": "Snow / frozen coast", "description": "A frozen war front. Artichoke rebelled against Republic drafts and for independence, then joined the Confederation. Trenches cross its snow."},
-	{"id": "rock", "name": "R-7", "faction": "Sea of Propuh", "position": Vector2(160, 146), "terrain": "Space rock / cave", "census": false, "description": "A space rock far off the old survey lanes, much smaller than a planet. Old Republic scaffolding stands over its cave."},
+	{"id": "skamp", "name": "Skamp", "faction": "Independent", "region": "sea", "position": Vector2(22, 159), "terrain": "Terrain unknown", "description": "An independent planet on the western edge of the Sea of Propuh."},
+	{"id": "ambar", "name": "Ambar", "faction": "Independent", "region": "sea", "position": Vector2(63, 159), "terrain": "Terrain unknown", "description": "An independent planet in the Sea of Propuh."},
+	{"id": "bavarin", "name": "Bavarin", "faction": "New Republic", "region": "sea", "position": Vector2(105, 159), "terrain": "Terrain unknown", "description": "A Republic planet and base in the Sea of Propuh."},
+	{"id": "smokva", "name": "Smokva", "faction": "Unclaimed space rock", "region": "sea", "position": Vector2(146, 159), "terrain": "Space rock / bar", "census": false, "description": "A small space rock in the Sea of Propuh with Krešo's bar on it. Ships land free on its pad; the drinks are not free."},
+	{"id": "rock", "name": "R-7", "faction": "Unclaimed space rock", "region": "sea", "position": Vector2(188, 159), "terrain": "Space rock / cave", "census": false, "description": "A space rock far off the old survey lanes, much smaller than a planet. Old Republic scaffolding stands over its cave."},
 ]
 
 static func entries() -> Array[Dictionary]:
@@ -33,11 +41,11 @@ static func entries() -> Array[Dictionary]:
 		entry.erase("census")
 		result.append(entry)
 	var index := 0
-	for row in 4:
-		for column in (10 if row % 2 == 0 else 9):
+	for row in ceili(float(unknown_count()) / UNKNOWN_COLUMNS):
+		for column in UNKNOWN_COLUMNS:
 			if index >= unknown_count():
 				break
-			result.append({"id": "unknown_%02d" % index, "name": "UNKNOWN", "faction": "Unidentified world", "position": Vector2(24 + column * 42 + (21 if row % 2 == 1 else 0), UNKNOWN_TOP + row * 14), "terrain": "No terrain record", "description": "No named record is available. This marker represents one of the library's other worlds. Its identity and terrain remain unknown.", "image": "res://assets/art/planet_map/unknown.png", "known": false})
+			result.append({"id": "unknown_%02d" % index, "name": "UNKNOWN", "faction": "Unidentified world", "position": Vector2(24 + column * 34 + (17 if row % 2 == 1 else 0), UNKNOWN_TOP + row * 14), "terrain": "No terrain record", "description": "No named record is available. This marker represents one of the library's other worlds. Its identity and terrain remain unknown.", "image": "res://assets/art/planet_map/unknown.png", "known": false})
 			index += 1
 	return result
 

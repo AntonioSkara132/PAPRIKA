@@ -98,6 +98,10 @@ func _ready() -> void:
 	_fit_to_window()
 
 func _input(event: InputEvent) -> void:
+	# A bar game (darts, table soccer) takes the keys while it is open, Escape included.
+	for game in get_tree().get_nodes_in_group("bar_game"):
+		if game is CanvasItem and (game as CanvasItem).is_visible_in_tree():
+			return
 	if _text_prompt_active:
 		if event.is_action_pressed("pause"):
 			close_modal()

@@ -231,6 +231,12 @@ const ENEMIES := {
 	# The hackers who come back to R-7 with Veki. Later hackers are stronger than the Paprika and Brudet ones.
 	"void_hacker": {"name": "Pyjama Hacker", "level": 8, "max_health": 260, "damage": 22, "speed": 60.0, "reach": 26.0, "armor": 3, "attack_cooldown": 0.9, "event": "rock_hacker_defeated", "reward": 150},
 	"hacker_trooper": {"name": "Jumpsuit Hacker", "level": 8, "max_health": 200, "damage": 18, "speed": 56.0, "reach": 28.0, "armor": 4, "attack_cooldown": 1.0, "event": "rock_hacker_defeated", "reward": 100},
+	# The Purple Parrots at Smokva and Donat (scripts/actors/smokva_brawler.gd). Levels rank the hackers against each other.
+	"parrot_ruff": {"name": "Ruff", "level": 9, "max_health": 300, "damage": 22, "speed": 58.0, "reach": 26.0, "armor": 3, "attack_cooldown": 0.95, "event": "smokva_parrot_defeated", "reward": 90},
+	"parrot_ruff_decoy": {"name": "Ruff", "level": 9, "max_health": 1, "damage": 22, "speed": 58.0, "reach": 26.0, "armor": 0, "attack_cooldown": 0.95, "event": "", "reward": 0},
+	"parrot_puffa": {"name": "Puffa", "level": 10, "max_health": 360, "damage": 24, "dash_damage": 30, "speed": 54.0, "reach": 26.0, "armor": 4, "attack_cooldown": 1.0, "event": "smokva_parrot_defeated", "reward": 110},
+	"parrot_luster": {"name": "Luster", "level": 11, "max_health": 420, "damage": 26, "bolt_damage": 14, "speed": 56.0, "reach": 26.0, "armor": 3, "attack_cooldown": 0.9, "event": "smokva_parrot_defeated", "reward": 140},
+	"donat_duel": {"name": "Donat", "level": 12, "max_health": 600, "damage": 28, "speed": 62.0, "reach": 34.0, "armor": 5, "attack_cooldown": 1.1, "event": "", "reward": 0},
 	"phase_hacker": {"name": "Phase Hacker", "level": 5, "max_health": 95, "damage": 13, "speed": 54.0, "event": "hacker_defeated", "reward": 80},
 	"finling": {"name": "Finling", "level": 2, "max_health": 14, "damage": 4, "speed": 50.0, "event": "river_monster_defeated", "reward": 6},
 	"lake_maw": {"name": "Lake Maw", "level": 3, "max_health": 42, "damage": 8, "speed": 36.0, "event": "river_monster_defeated", "reward": 16},

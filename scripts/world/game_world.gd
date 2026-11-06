@@ -118,6 +118,12 @@ func recruit(villager_id: String) -> bool:
 		return false
 	return GameState.recruit_villager(villager_id, villager.global_position)
 
+## Moves the player's body for this frame when something other than the
+## player's input drives it, as when the player is in another body on Smokva.
+## Returns false to leave the body to the input and the squad controls.
+func drive_player_body(_body: Player, _delta: float) -> bool:
+	return false
+
 func controlled_actor() -> CharacterBody2D:
 	if GameState.controlled_member_id != "player":
 		var villager := find_villager(GameState.controlled_member_id)
