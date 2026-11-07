@@ -6,9 +6,13 @@ extends GameWorld
 ##
 ## The diplomatic ship's interior is a walled room on the same map, in open
 ## space below the southern mountains. Boarding moves the player and the envoys
-## into it. Hackers paid by Julius board the ship in flight; the fight cannot be
-## won, and after FLIGHT_SECONDS, or as soon as the player is downed, the ship
-## goes down and the story moves the player to Engineeria.
+## into it. Soon after take-off a hackers' ship attacks, and the pilot, Klara
+## Rog, gives the player the ship's TNT launchers: a ship battle
+## (scripts/ship_battle/ship_battle.gd) that always ends with the hackers
+## fastened to the ship or jumping across. Then the hackers, paid by Julius in
+## secret, board the ship; that fight cannot be won, and after FLIGHT_SECONDS,
+## or as soon as the player is downed, a second hackers' ship hits the
+## diplomatic ship, it goes down and the story moves the player to Engineeria.
 
 const CHVARAK_MAP := "res://maps/chvarak.tmj"
 const STORY_SERVICE_PREFIX := "chvarak_story:"
@@ -30,6 +34,11 @@ const SHIP_ENTRY := Vector2(488, 1096)
 const CABIN_SEATS := [Vector2(352, 1078), Vector2(376, 1126), Vector2(400, 1078)]
 ## Where the ship's two guards stand, between the cabin and the hatch.
 const GUARD_POSTS := [Vector2(560, 1080), Vector2(560, 1130)]
+## The pilot's console against the ship's north wall, and Klara's seat in front of it.
+const COCKPIT_CONSOLE := Vector2(488, 1042)
+const COCKPIT_SEAT := Vector2(488, 1060)
+const CONSOLE_TEXTURE := "res://assets/art/chvarak/ship_console.png"
+const KLARA_TEXTURE := "res://assets/art/chvarak/klara_rog.png"
 ## The hatch the hackers cut through, at the east end of the ship.
 const HATCH_SPAWNS := [Vector2(664, 1056), Vector2(648, 1092), Vector2(668, 1126), Vector2(640, 1140)]
 ## In front of the boarding ramp on the east pad. A save made in flight loads here.
@@ -43,6 +52,35 @@ const WAVES := [
 	{"at": 34.0, "kinds": ["hacker", "hacker", "hacker"]},
 ]
 const SHIP_GUARD_HEALTH := 80
+## The pilot, heard over the ship's speaker; she has no figure on the map.
+const PILOT := "Klara Rog"
+## Names in the ship battle's HUD and radio. Speakers outside this list are
+## shown in the hackers' colour.
+const BATTLE_CREW := ["You", "Klara", "Ship Guard", "Ship Guard", "Petar Lis", "Nada Grof", "Oto Ban"]
+## Radio lines in the ship battle against the hackers (GameData.SHIPS
+## "hacker_ship"). This is the player's first ship battle, so Klara explains
+## the controls. The hackers never say who pays them.
+const HACKER_BATTLE_LINES := {
+	"start": [["Klara", "Captain! A ship behind us, no lights, coming up fast."],
+		["Klara", "Ever fired ship launchers? No? Then listen."],
+		["Klara", "Arrows or WASD steer. Up is more speed, down is less."],
+		["Klara", "TNT only leaves our sides. Q fires left, E fires right."],
+		["Klara", "Space fires the side facing them. Each side reloads alone."],
+		["Hacker", "Three envoys on one white ship. Nobody will miss them."],
+		["Hacker", "Sink us if you like. We're coming aboard either way."],
+		["Klara", "See the spike on their nose? A harpoon. Keep it off us!"]],
+	"side_open": [["Klara", "They're off our {side}. Fire!"]],
+	"hit": [["Klara", "That was a bolt. This ship has paint, not armour!"],
+		["Petar Lis", "Keep them off the cabin, Captain. The letters are there."]],
+	"harpoon": [["Klara", "Harpoon! Turn away, turn!"]],
+	"harpoon_miss": [["Klara", "Missed us. They're reeling it in for another go."]],
+	"low": [["Klara", "She's a courier, not a warship. She can't take much more!"]],
+	"harpooned": [["Klara", "The harpoon's in! They're pulling us in!"],
+		["Hacker", "Knock knock. Open the hatch, or we cut it."]],
+	"lost": [["Klara", "Engines are hit, I can't steer! They're coming alongside!"]],
+	"boarded": [["Hacker", "Our ship? Keep it. We were never staying on it."],
+		["Klara", "Something just landed on our hull, by the hatch!"]],
+}
 ## Julius's hired hackers are stronger than the hackers met first on Paprika
 ## and Brudet, who are the weakest of them. Being downed in the fight is not a
 ## defeat: it brings the ship down, and the story goes on in Engineeria.
@@ -73,6 +111,7 @@ func _ready() -> void:
 	if not tiled_loader.load_map(CHVARAK_MAP):
 		push_error("Chvarak map could not be loaded.")
 		return
+	_build_cockpit()
 	move_child(tiled_loader, 0)
 	if player == null:
 		_spawn_player(GameState.CHVARAK_ARRIVAL, "res://art/concepts/source/player.png")
@@ -153,6 +192,8 @@ func ship_guards() -> Array[RaidSoldier]:
 ## Objective text for the HUD panel in the top right.
 func story_status_text() -> String:
 	if _flying:
+		if ship_battle_open():
+			return "DIPLOMATIC SHIP\nA hackers' ship attacks\nKeep their harpoon off the ship"
 		if _flight_time >= ALARM_SECONDS:
 			return "DIPLOMATIC SHIP\nHackers are boarding through the hatch\nKeep them away from the cabin"
 		return "DIPLOMATIC SHIP\nOn the way to Engineeria"
@@ -205,8 +246,44 @@ func _line(key: String, text: String) -> Dictionary:
 		return {"speaker": "", "text": text}
 	return {"speaker": String(STORY_PEOPLE[key]), "text": text, "focus": story_person(key)}
 
+## Klara Rog at the pilot's console inside the ship. The ship room is out in
+## space below the map, so she is only reachable on board.
+func _build_cockpit() -> void:
+	var console := Sprite2D.new()
+	console.name = "ShipConsole"
+	console.texture = load(CONSOLE_TEXTURE) as Texture2D
+	console.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	console.centered = false
+	if console.texture != null:
+		console.position = COCKPIT_CONSOLE - Vector2(console.texture.get_width() * 0.5, console.texture.get_height())
+	console.z_index = 100 + int(COCKPIT_CONSOLE.y)
+	actors_root.add_child(console)
+	var body := StaticBody2D.new()
+	body.name = "ShipConsoleBody"
+	var shape := CollisionShape2D.new()
+	var box := RectangleShape2D.new()
+	box.size = Vector2(44, 14)
+	shape.shape = box
+	body.position = COCKPIT_CONSOLE - Vector2(0, 7)
+	body.add_child(shape)
+	actors_root.add_child(body)
+	var klara := StationStaff.new()
+	klara.name = "story_klara"
+	klara.configure(STORY_SERVICE_PREFIX + "klara", PILOT, KLARA_TEXTURE, COCKPIT_SEAT)
+	klara.service_requested.connect(_on_service_requested)
+	actors_root.add_child(klara)
+	_story["klara"] = klara
+
 func talk_to(key: String) -> void:
 	match key:
+		"klara":
+			if _flight_time >= 0.0:
+				_play([{"speaker": PILOT, "text": "Not now, Captain! Keep them off the envoys; I'll keep us flying.", "focus": story_person("klara")}])
+			else:
+				_play([
+					{"speaker": PILOT, "text": "Klara Rog. Iva Most hired me for this run. I've flown to Engineeria a dozen times.", "focus": story_person("klara")},
+					{"speaker": PILOT, "text": "Four days if the lanes are quiet. Sit down with the envoys, Captain. I'll call you if I need you.", "focus": story_person("klara")},
+				])
 		"guard":
 			_play([
 				_line("guard", "Welcome to Chvarak. Mind the cows on the road down; they have right of way here."),
@@ -234,7 +311,7 @@ func _offer_boarding() -> void:
 		_play([{"speaker": "", "text": "The ship's hatch is shut. It flies only for the Council's embassy."}])
 		return
 	_play([
-		_line("envoy_0", "Our ship. Iva Most hired the pilot himself; she has flown to Engineeria a dozen times."),
+		_line("envoy_0", "Our ship. Iva Most hired the pilot himself, Klara Rog; she has flown to Engineeria a dozen times."),
 		_line("envoy_2", "Are we really going? All right. All right."),
 	], Callable(), [
 		{"label": "Board the ship", "action": board_ship},
@@ -269,10 +346,51 @@ func board_ship() -> bool:
 	GameState.military_changed.emit()
 	_play([
 		{"speaker": "", "text": "The hatch closes. The engines start, and Chvarak's mountains drop away under the windows."},
-		_line("envoy_1", "Four days to Engineeria, if the pilot keeps to the open lanes."),
+		_line("envoy_1", "Four days to Engineeria, if Klara keeps to the open lanes."),
 		_line("envoy_0", "Then we have time to read the letters again. Captain, sit down; nothing happens out here for hours."),
-	], _start_flight_clock)
+	], _call_to_the_guns)
 	return true
+
+func _call_to_the_guns() -> void:
+	if not _flying:
+		return
+	_play([
+		{"speaker": "", "text": "The deck tilts hard. At the console, Klara Rog spins her seat round.", "focus": story_person("klara")},
+		{"speaker": PILOT, "text": "Captain, up here! A ship is coming up behind us with its lights off.", "focus": story_person("klara")},
+		{"speaker": "", "text": "Klara pulls a lever on the console. Blue hatches slide open on both sides of the hull, over the TNT launchers.", "focus": story_person("klara")},
+		{"speaker": PILOT, "text": "Two launchers a side. Take the helm, Captain; I'll talk you through it.", "focus": story_person("klara")},
+	], start_hacker_battle)
+
+## The ship battle against the hackers' ship. It always ends with the hackers
+## boarding: harpooned, at 0 hull, or with their own ship wrecked.
+func start_hacker_battle() -> ShipBattle:
+	if not _flying or _flight_time >= 0.0:
+		return null
+	if ship_battle_open():
+		return ship_battle
+	var battle := open_ship_battle("hacker_ship", HACKER_BATTLE_LINES, BATTLE_CREW, _hacker_battle_finished, "diplomatic_ship")
+	_refresh_location_title()
+	GameState.military_changed.emit()
+	return battle
+
+## Every result leads to the boarding; only the lines differ.
+func _hacker_battle_finished(result: String) -> void:
+	if not _flying or _flight_time >= 0.0:
+		return
+	var lines: Array = []
+	if result == "boarded":
+		lines = [
+			{"speaker": "", "text": "The hackers' ship turns away, dark and burning. Then a flash of teal light, right outside the hatch."},
+			{"speaker": PILOT, "text": "(Over the speaker.) Someone jumped across! He's on our hull with a cable, and the others are coming along it!"},
+		]
+	else:
+		lines = [
+			{"speaker": "", "text": "A jolt runs through the hull. The harpoon's cable goes tight, and the hackers' ship pulls itself in against the white hull."},
+			{"speaker": PILOT, "text": "(Over the speaker.) They're on us, by the hatch. I can't shake them off!"},
+		]
+	lines.append({"speaker": "", "text": "Something hisses at the hatch. A line of orange light starts to creep down the metal."})
+	lines.append(_line("envoy_2", "What is that? What is that noise?"))
+	_play(lines, _start_flight_clock)
 
 func _start_flight_clock() -> void:
 	if _flying and _flight_time < 0.0:
@@ -333,6 +451,7 @@ func crash() -> void:
 	screen_flash(Color(1.0, 0.25, 0.1, 0.8), 1.2, 0.2)
 	shake_camera(1.6, 6.0)
 	_play([
+		{"speaker": PILOT, "text": "(Over the speaker.) A second ship, under us! Hold on!"},
 		{"speaker": "", "text": "Something hits the ship from outside. The deck jumps, the lights go red, and the windows fill with fire."},
 		_line("envoy_0", "The engines! They are shooting the engines!"),
 		{"speaker": "", "text": "A planet swings into the windows, green and close. The ship is falling."},
@@ -368,6 +487,7 @@ func _cancel_flight() -> void:
 	_flying = false
 	_crashing = false
 	_flight_time = -1.0
+	close_ship_battle()
 	_clear_flight_fighters()
 	_place_envoys_at_pad()
 	player.respawn_position = GameState.CHVARAK_ARRIVAL
@@ -381,7 +501,9 @@ func _place_envoys_at_pad() -> void:
 			envoy.global_position = BOARD_POSITION + Vector2(36 + index * 18, 14)
 
 func _on_player_respawned() -> void:
-	if _flying and not _crashing:
+	# With a save, main.gd's one-life rule loads it and the flight is cancelled.
+	# Without one, being downed in flight brings the ship down.
+	if _flying and not _crashing and not FileAccess.file_exists(GameState.SAVE_PATH):
 		crash()
 		return
 	super._on_player_respawned()

@@ -49,7 +49,7 @@ func _run() -> void:
 			_check(entry["name"] == "UNKNOWN" and not entry["known"] and position.y > 135, "unidentified worlds stay anonymous and south of known labels")
 	_check(counts == {"Engineeria": 5, "Cauliflower Confederation": 6, "Unidentified world": 35, "New Republic": 1, "Independent": 2, "Unclaimed space rock": 2}, "faction membership matches the libraries")
 	_check(view.entries_by_id["skamp"]["position"].x < view.entries_by_id["ambar"]["position"].x and view.entries_by_id["skamp"]["position"].x < view.entries_by_id["bavarin"]["position"].x, "Skamp is on the western edge of the Sea of Propuh")
-	for id in ["elektrika", "cichvarda", "skamp", "ambar", "bavarin"]:
+	for id in ["elektrika", "cichvarda", "skamp", "ambar"]:
 		_check(view.entries_by_id[id]["terrain"] == "Terrain unknown", id + " has no invented landscape")
 	_check(not ids.has("station") and not ids.has("engineeria"), "station is not a planet and Engineeria is not duplicated as Rudnik")
 	_press("planet_map")

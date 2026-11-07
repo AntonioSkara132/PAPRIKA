@@ -118,6 +118,7 @@ func _run() -> void:
 	legacy["current_planet"] = "otpornik"
 	legacy["planet_positions"].erase("rock")
 	legacy["planet_positions"].erase("smokva")
+	legacy["planet_positions"].erase("bavarin")
 	_check(GameState._valid_save(legacy), "schema 16 saves stay valid")
 	_check(game._load_saved_game(), "loading the R-7 save")
 	world = game.world as SpaceRockWorld

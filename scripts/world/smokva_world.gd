@@ -176,9 +176,33 @@ const KRESO_LINES := [
 	"Your pilot, Veki. He looked at my fridge like he knows something. Does he know something?",
 	"A tab? No tabs. The last man with a tab turned into a space rock. That's how R-7 got there.",
 ]
+## Krešo's greeting the first time the player talks to him.
+const KRESO_EYES_LINES := [
+	["Krešo", "Funny eyes. When did you go blind? HA!"],
+	["Krešo", "You remind me of some fucker that used to drink here, years back. Same eyes."],
+	["You", "Who was he?"],
+	["Krešo", "Oh, that was a long time ago. Don't really remember. (He wipes the same glass for a long time.)"],
+]
+
+## The photo on the bar wall, top left in assets/art/smokva/room.png pixels
+## (tools/create_davor_photo_concept.py). The room is drawn at twice that size.
+const PHOTO_FRAME_AT := Vector2(60, 6)
+const PHOTO := ART + "davor_photo.png"
 
 ## The Lasta on the pad, top left in map pixels.
 const LASTA_AT := Vector2(46, 262)
+## Radio lines in the ship battle with the Purple Parrots (scripts/ship_battle/ship_battle.gd).
+const PARROT_BATTLE_LINES := {
+	"start": [["Luster", "Did you think Julius would let you just fly off? He still wants that face."],
+		["Donat", "Give me the left guns. I'm not here for the right."],
+		["Veki", "Same keys as always: Q left, E right. Give them a side."]],
+	"side_open": [["Veki", "They're off our {side}. Fire!"]],
+	"hit": [["Donat", "They scratched your ugly ship. Good. Now hit them back."]],
+	"low": [["Veki", "She can't take much more of this!"]],
+	"flee": [["Luster", "Julius will hear about this! Into the current, go, go!"]],
+	"won": [["Veki", "They dived into the current. Let them run."]],
+	"lost": [["Veki", "We're losing air. I'm taking her down. Now!"]],
+}
 
 var markers: Dictionary = {}
 var veki: StationStaff
@@ -239,6 +263,8 @@ func _ready() -> void:
 	lasta_sprite.name = "Lasta"
 	kreso_sprite = _sprite_at(ART + "kreso.png", marker("kreso") - Vector2(8, 22), 1.0, marker("kreso").y)
 	kreso_sprite.name = "Krešo"
+	var frame := _sprite_at(ART + "photo_frame.png", ROOM_RECT.position + PHOTO_FRAME_AT * 2.0, 2.0, ROOM_RECT.position.y)
+	frame.name = "PhotoFrame"
 	veki = StationStaff.new()
 	veki.name = "Veki"
 	veki.configure("smokva:veki", "Veki", "res://assets/art/iskra/npcs/veki.png", marker("veki_post"))
@@ -283,8 +309,10 @@ func story_status_text() -> String:
 		return "Fight the Purple Parrots (%d left). You are in %s." % [_parrots.size(), "Donat's body" if bodies_switched else "your own body"]
 	if duel_active:
 		return "Duel with Donat: break his guard, or stay on your feet for %d seconds." % ceili(maxf(0.0, DUEL_HOLD_SECONDS - duel_time))
+	if has_flag("ship_battle_won"):
+		return "The Parrots got away into the current. Talk to Veki to fly to Bavarin."
 	if has_flag("donat_joined"):
-		return "Donat has joined you. The Republic ship went to Bavarin."
+		return "Donat has joined you. The Republic ship went to Bavarin. Talk to Veki to take off."
 	if has_flag("parrots_beaten"):
 		return "Donat wants a duel. Talk to him at his table."
 	if has_flag("asked_ship"):
@@ -316,6 +344,7 @@ func capture_player_position() -> void:
 
 func apply_loaded_state() -> void:
 	close_bar_game()
+	close_ship_battle()
 	_end_fights()
 	_sync_story()
 	player.global_position = _safe_loaded_position(GameState.player_position)
@@ -369,6 +398,7 @@ const SPOTS := {
 	"darts": "Play darts",
 	"table_soccer": "Play table soccer",
 	"wc_door": "Look at the door",
+	"photo": "Look at the photo",
 }
 
 func _spawn_spots() -> void:
@@ -411,6 +441,7 @@ func _on_spot(id: String) -> void:
 		"darts": open_darts()
 		"table_soccer": open_table_soccer()
 		"wc_door": _tell("", "WC. Someone has written \"The Republic sits here too\" on the door in chalk.")
+		"photo": look_at_photo()
 
 # ---------- people ----------
 
@@ -464,8 +495,42 @@ func _talk_to_kreso() -> void:
 	]
 	if not has_flag("donat_joined"):
 		choices.append(_choice("Ask about a Republic ship", ask_about_ship))
+	if has_flag("photo_seen"):
+		choices.append(_choice("Ask about the photo", ask_about_photo))
 	choices.append(_choice("Not now", Callable()))
+	if not has_flag("kreso_eyes"):
+		# The first time, Krešo notices the Brine's eyes. Years ago a young
+		# Brine drank here with Davor, and Krešo won't say more about it.
+		set_flag("kreso_eyes")
+		_scene(KRESO_EYES_LINES.map(func(line: Array) -> Dictionary: return _line(line[0], line[1])), Callable(), choices)
+		return
 	_tell("Krešo", next_line("kreso", KRESO_LINES), choices)
+
+## The faded photo between the TV and the back door: Davor at about 40 and the
+## Voice at about 20, a Brine already, drinking at this counter years ago. Only
+## the white eyes give him away; nobody names him.
+func look_at_photo() -> void:
+	set_flag("photo_seen")
+	var lines := [
+		_photo_line("", "A faded photo in a wooden frame. Two men drinking at this counter, years ago."),
+		_photo_line("", "One of them is Davor, his beard still brown. The other is a young man with white eyes."),
+		_photo_line("", "Behind the counter, a younger Krešo is wiping a glass."),
+		_line("", "On the back, in Krešo's handwriting: \"SMOKVA. D. and the kid. Their tab is still open!! – K.\""),
+	]
+	if has_flag("donat_joined"):
+		lines.append(_line("Donat", "(Looking over your shoulder.) That one with the cap has my eyes. ...Weird. Whatever."))
+	_scene(lines)
+
+func _photo_line(speaker: String, text: String) -> Dictionary:
+	var line := _line(speaker, text)
+	line["picture"] = PHOTO
+	return line
+
+func ask_about_photo() -> void:
+	_scene([
+		_line("Krešo", "What photo? There's no photo there. There's never been a photo."),
+		_line("Krešo", "(He wipes the same glass for a long time.) ...They never paid, you know. Either of them."),
+	])
 
 ## Krešo makes a joke of it, then sends the player to Donat.
 func ask_about_ship() -> void:
@@ -529,13 +594,55 @@ func talk_to_hacker(id: String) -> void:
 	var hacker: Dictionary = HACKERS[id]
 	_tell(String(hacker["name"]), next_line(id, hacker["lines"]))
 
-## The Lasta goes nowhere from Smokva yet; Otpornik is behind the party now.
+## Before Donat joins, the Lasta goes nowhere from Smokva; Otpornik is behind
+## the party now. With Donat aboard, Veki takes off, and the Purple Parrots'
+## ship is waiting (start_ship_battle). After the battle the Lasta is back on
+## the pad for repairs, and Veki flies the party on to Bavarin (BavarinWorld).
 func _talk_to_veki() -> void:
-	if has_flag("donat_joined"):
-		_tell("Veki", "Bavarin. A Republic base. I would rather fly into a sun, but a sun has never taken Davor. Give me time to plot a way in.")
+	if has_flag("ship_battle_won"):
+		_tell("Veki", "The hull is patched, more or less. I'll set her down in a canyon south of Martin's base, where nobody looks. Bavarin?", [
+			_choice("Fly to Bavarin", func() -> void: story_travel_requested.emit("bavarin")),
+			_choice("Not yet", Callable()),
+		])
+	elif has_flag("donat_joined"):
+		_tell("Veki", "Bavarin. A Republic base. I would rather fly into a sun, but a sun has never taken Davor. Shall we go?", [
+			_choice("Take off", start_ship_battle),
+			_choice("Not yet", Callable()),
+		])
 	else:
 		_tell("Veki", "The drive is warm. Otpornik is behind us now; the Republic will be watching that port.")
-	GameState.notify("The rest of the Sea of Propuh is not in the game yet.")
+		GameState.notify("The rest of the Sea of Propuh is not in the game yet.")
+
+# ---------- the ship battle with the Purple Parrots ----------
+
+## The Lasta lifts off, and the Parrots' ship comes out of the dust current.
+func start_ship_battle() -> void:
+	if ship_battle_open():
+		return
+	_scene([
+		_line("", "The Lasta lifts off the pad. Smokva's fig tree shrinks to a dot."),
+		_line("Veki", "Company. A purple ship, coming out of the current. Is that a beak on the nose?"),
+		_line("Donat", "Purple Parrots. Of course it is. They never learn."),
+	], open_parrot_battle)
+
+func open_parrot_battle() -> ShipBattle:
+	return open_ship_battle("parrot_ship", PARROT_BATTLE_LINES, ["You", "Veki", "Donat"], _ship_battle_finished)
+
+func _ship_battle_finished(result: String) -> void:
+	if result == "won":
+		set_flag("ship_battle_won")
+		_scene([
+			_line("Luster", "(On the radio, crackling.) Julius will hear about this. Julius hears about everything."),
+			_line("Veki", "They're gone into the current. And our hull has more holes than Krešo's excuses."),
+			_line("Veki", "I'm taking her back down to Smokva to patch her. Then Bavarin."),
+			_line("Donat", "Fine. Not because I'm scared of them. Because your ship is ugly AND broken."),
+		])
+	else:
+		_scene([
+			_line("Veki", "We're down. Back on Smokva's pad, and still breathing. That's the good news."),
+			_line("Donat", "Turn a SIDE to them. The nose has no guns. Even I know that, and I don't even like ships."),
+			_line("Veki", "Talk to me when you want another go."),
+		])
 
 # ---------- bar games ----------
 

@@ -1,0 +1,767 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "name": "bavarin_objects",
+  "tilewidth": 1280,
+  "tileheight": 896,
+  "tilecount": 126,
+  "columns": 0,
+  "tiles": [
+    {
+      "id": 0,
+      "image": "../assets/art/bavarin/ground.png",
+      "imagewidth": 1280,
+      "imageheight": 896
+    },
+    {
+      "id": 1,
+      "image": "../assets/art/bavarin/sprite_000.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 2,
+      "image": "../assets/art/bavarin/sprite_001.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 3,
+      "image": "../assets/art/bavarin/sprite_002.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 4,
+      "image": "../assets/art/bavarin/sprite_003.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 5,
+      "image": "../assets/art/bavarin/sprite_004.png",
+      "imagewidth": 210,
+      "imageheight": 150
+    },
+    {
+      "id": 6,
+      "image": "../assets/art/bavarin/sprite_005.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 7,
+      "image": "../assets/art/bavarin/sprite_006.png",
+      "imagewidth": 110,
+      "imageheight": 70
+    },
+    {
+      "id": 8,
+      "image": "../assets/art/bavarin/sprite_007.png",
+      "imagewidth": 100,
+      "imageheight": 70
+    },
+    {
+      "id": 9,
+      "image": "../assets/art/bavarin/sprite_008.png",
+      "imagewidth": 150,
+      "imageheight": 72
+    },
+    {
+      "id": 10,
+      "image": "../assets/art/bavarin/sprite_009.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 11,
+      "image": "../assets/art/bavarin/sprite_010.png",
+      "imagewidth": 130,
+      "imageheight": 80
+    },
+    {
+      "id": 12,
+      "image": "../assets/art/bavarin/sprite_011.png",
+      "imagewidth": 40,
+      "imageheight": 90
+    },
+    {
+      "id": 13,
+      "image": "../assets/art/bavarin/sprite_012.png",
+      "imagewidth": 190,
+      "imageheight": 110
+    },
+    {
+      "id": 14,
+      "image": "../assets/art/bavarin/sprite_013.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 15,
+      "image": "../assets/art/bavarin/sprite_014.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 16,
+      "image": "../assets/art/bavarin/sprite_015.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 17,
+      "image": "../assets/art/bavarin/sprite_016.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 18,
+      "image": "../assets/art/bavarin/sprite_017.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 19,
+      "image": "../assets/art/bavarin/sprite_018.png",
+      "imagewidth": 24,
+      "imageheight": 30
+    },
+    {
+      "id": 20,
+      "image": "../assets/art/bavarin/sprite_019.png",
+      "imagewidth": 24,
+      "imageheight": 30
+    },
+    {
+      "id": 21,
+      "image": "../assets/art/bavarin/sprite_020.png",
+      "imagewidth": 24,
+      "imageheight": 30
+    },
+    {
+      "id": 22,
+      "image": "../assets/art/bavarin/sprite_021.png",
+      "imagewidth": 130,
+      "imageheight": 72
+    },
+    {
+      "id": 23,
+      "image": "../assets/art/bavarin/sprite_022.png",
+      "imagewidth": 110,
+      "imageheight": 56
+    },
+    {
+      "id": 24,
+      "image": "../assets/art/bavarin/sprite_023.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 25,
+      "image": "../assets/art/bavarin/sprite_024.png",
+      "imagewidth": 18,
+      "imageheight": 34
+    },
+    {
+      "id": 26,
+      "image": "../assets/art/bavarin/sprite_025.png",
+      "imagewidth": 18,
+      "imageheight": 34
+    },
+    {
+      "id": 27,
+      "image": "../assets/art/bavarin/sprite_026.png",
+      "imagewidth": 18,
+      "imageheight": 34
+    },
+    {
+      "id": 28,
+      "image": "../assets/art/bavarin/sprite_027.png",
+      "imagewidth": 18,
+      "imageheight": 34
+    },
+    {
+      "id": 29,
+      "image": "../assets/art/bavarin/sprite_028.png",
+      "imagewidth": 18,
+      "imageheight": 34
+    },
+    {
+      "id": 30,
+      "image": "../assets/art/bavarin/sprite_029.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 31,
+      "image": "../assets/art/bavarin/sprite_030.png",
+      "imagewidth": 140,
+      "imageheight": 90
+    },
+    {
+      "id": 32,
+      "image": "../assets/art/bavarin/sprite_031.png",
+      "imagewidth": 40,
+      "imageheight": 34
+    },
+    {
+      "id": 33,
+      "image": "../assets/art/bavarin/sprite_032.png",
+      "imagewidth": 96,
+      "imageheight": 72
+    },
+    {
+      "id": 34,
+      "image": "../assets/art/bavarin/sprite_033.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 35,
+      "image": "../assets/art/bavarin/sprite_034.png",
+      "imagewidth": 18,
+      "imageheight": 16
+    },
+    {
+      "id": 36,
+      "image": "../assets/art/bavarin/sprite_035.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 37,
+      "image": "../assets/art/bavarin/sprite_036.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 38,
+      "image": "../assets/art/bavarin/sprite_037.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 39,
+      "image": "../assets/art/bavarin/sprite_038.png",
+      "imagewidth": 32,
+      "imageheight": 32
+    },
+    {
+      "id": 40,
+      "image": "../assets/art/bavarin/sprite_039.png",
+      "imagewidth": 64,
+      "imageheight": 72
+    },
+    {
+      "id": 41,
+      "image": "../assets/art/bavarin/sprite_040.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 42,
+      "image": "../assets/art/bavarin/sprite_041.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 43,
+      "image": "../assets/art/bavarin/sprite_042.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 44,
+      "image": "../assets/art/bavarin/sprite_043.png",
+      "imagewidth": 16,
+      "imageheight": 8
+    },
+    {
+      "id": 45,
+      "image": "../assets/art/bavarin/sprite_044.png",
+      "imagewidth": 80,
+      "imageheight": 60
+    },
+    {
+      "id": 46,
+      "image": "../assets/art/bavarin/sprite_045.png",
+      "imagewidth": 140,
+      "imageheight": 90
+    },
+    {
+      "id": 47,
+      "image": "../assets/art/bavarin/sprite_046.png",
+      "imagewidth": 22,
+      "imageheight": 20
+    },
+    {
+      "id": 48,
+      "image": "../assets/art/bavarin/sprite_047.png",
+      "imagewidth": 12,
+      "imageheight": 34
+    },
+    {
+      "id": 49,
+      "image": "../assets/art/bavarin/sprite_048.png",
+      "imagewidth": 80,
+      "imageheight": 40
+    },
+    {
+      "id": 50,
+      "image": "../assets/art/bavarin/sprite_049.png",
+      "imagewidth": 20,
+      "imageheight": 14
+    },
+    {
+      "id": 51,
+      "image": "../assets/art/bavarin/sprite_050.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 52,
+      "image": "../assets/art/bavarin/sprite_051.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 53,
+      "image": "../assets/art/bavarin/sprite_052.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 54,
+      "image": "../assets/art/bavarin/sprite_053.png",
+      "imagewidth": 36,
+      "imageheight": 30
+    },
+    {
+      "id": 55,
+      "image": "../assets/art/bavarin/sprite_054.png",
+      "imagewidth": 64,
+      "imageheight": 48
+    },
+    {
+      "id": 56,
+      "image": "../assets/art/bavarin/sprite_055.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 57,
+      "image": "../assets/art/bavarin/sprite_056.png",
+      "imagewidth": 150,
+      "imageheight": 90
+    },
+    {
+      "id": 58,
+      "image": "../assets/art/bavarin/sprite_057.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 59,
+      "image": "../assets/art/bavarin/sprite_058.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 60,
+      "image": "../assets/art/bavarin/sprite_059.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 61,
+      "image": "../assets/art/bavarin/sprite_060.png",
+      "imagewidth": 42,
+      "imageheight": 30
+    },
+    {
+      "id": 62,
+      "image": "../assets/art/bavarin/sprite_061.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 63,
+      "image": "../assets/art/bavarin/sprite_062.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 64,
+      "image": "../assets/art/bavarin/sprite_063.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 65,
+      "image": "../assets/art/bavarin/sprite_064.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 66,
+      "image": "../assets/art/bavarin/sprite_065.png",
+      "imagewidth": 48,
+      "imageheight": 30
+    },
+    {
+      "id": 67,
+      "image": "../assets/art/bavarin/sprite_066.png",
+      "imagewidth": 42,
+      "imageheight": 30
+    },
+    {
+      "id": 68,
+      "image": "../assets/art/bavarin/sprite_067.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 69,
+      "image": "../assets/art/bavarin/sprite_068.png",
+      "imagewidth": 44,
+      "imageheight": 96
+    },
+    {
+      "id": 70,
+      "image": "../assets/art/bavarin/sprite_069.png",
+      "imagewidth": 20,
+      "imageheight": 18
+    },
+    {
+      "id": 71,
+      "image": "../assets/art/bavarin/sprite_070.png",
+      "imagewidth": 120,
+      "imageheight": 70
+    },
+    {
+      "id": 72,
+      "image": "../assets/art/bavarin/sprite_071.png",
+      "imagewidth": 24,
+      "imageheight": 22
+    },
+    {
+      "id": 73,
+      "image": "../assets/art/bavarin/sprite_072.png",
+      "imagewidth": 20,
+      "imageheight": 18
+    },
+    {
+      "id": 74,
+      "image": "../assets/art/bavarin/sprite_073.png",
+      "imagewidth": 42,
+      "imageheight": 50
+    },
+    {
+      "id": 75,
+      "image": "../assets/art/bavarin/sprite_074.png",
+      "imagewidth": 60,
+      "imageheight": 56
+    },
+    {
+      "id": 76,
+      "image": "../assets/art/bavarin/sprite_075.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 77,
+      "image": "../assets/art/bavarin/sprite_076.png",
+      "imagewidth": 22,
+      "imageheight": 20
+    },
+    {
+      "id": 78,
+      "image": "../assets/art/bavarin/sprite_077.png",
+      "imagewidth": 54,
+      "imageheight": 56
+    },
+    {
+      "id": 79,
+      "image": "../assets/art/bavarin/sprite_078.png",
+      "imagewidth": 42,
+      "imageheight": 62
+    },
+    {
+      "id": 80,
+      "image": "../assets/art/bavarin/sprite_079.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 81,
+      "image": "../assets/art/bavarin/sprite_080.png",
+      "imagewidth": 48,
+      "imageheight": 50
+    },
+    {
+      "id": 82,
+      "image": "../assets/art/bavarin/sprite_081.png",
+      "imagewidth": 90,
+      "imageheight": 80
+    },
+    {
+      "id": 83,
+      "image": "../assets/art/bavarin/sprite_082.png",
+      "imagewidth": 48,
+      "imageheight": 56
+    },
+    {
+      "id": 84,
+      "image": "../assets/art/bavarin/sprite_083.png",
+      "imagewidth": 18,
+      "imageheight": 16
+    },
+    {
+      "id": 85,
+      "image": "../assets/art/bavarin/sprite_084.png",
+      "imagewidth": 26,
+      "imageheight": 24
+    },
+    {
+      "id": 86,
+      "image": "../assets/art/bavarin/sprite_085.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 87,
+      "image": "../assets/art/bavarin/sprite_086.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 88,
+      "image": "../assets/art/bavarin/sprite_087.png",
+      "imagewidth": 16,
+      "imageheight": 14
+    },
+    {
+      "id": 89,
+      "image": "../assets/art/bavarin/sprite_088.png",
+      "imagewidth": 16,
+      "imageheight": 8
+    },
+    {
+      "id": 90,
+      "image": "../assets/art/bavarin/sprite_089.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 91,
+      "image": "../assets/art/bavarin/sprite_090.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 92,
+      "image": "../assets/art/bavarin/sprite_091.png",
+      "imagewidth": 36,
+      "imageheight": 40
+    },
+    {
+      "id": 93,
+      "image": "../assets/art/bavarin/sprite_092.png",
+      "imagewidth": 44,
+      "imageheight": 38
+    },
+    {
+      "id": 94,
+      "image": "../assets/art/bavarin/sprite_093.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 95,
+      "image": "../assets/art/bavarin/sprite_094.png",
+      "imagewidth": 42,
+      "imageheight": 50
+    },
+    {
+      "id": 96,
+      "image": "../assets/art/bavarin/sprite_095.png",
+      "imagewidth": 54,
+      "imageheight": 50
+    },
+    {
+      "id": 97,
+      "image": "../assets/art/bavarin/sprite_096.png",
+      "imagewidth": 42,
+      "imageheight": 50
+    },
+    {
+      "id": 98,
+      "image": "../assets/art/bavarin/sprite_097.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 99,
+      "image": "../assets/art/bavarin/sprite_098.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 100,
+      "image": "../assets/art/bavarin/sprite_099.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 101,
+      "image": "../assets/art/bavarin/sprite_100.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 102,
+      "image": "../assets/art/bavarin/sprite_101.png",
+      "imagewidth": 48,
+      "imageheight": 56
+    },
+    {
+      "id": 103,
+      "image": "../assets/art/bavarin/sprite_102.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 104,
+      "image": "../assets/art/bavarin/sprite_103.png",
+      "imagewidth": 44,
+      "imageheight": 38
+    },
+    {
+      "id": 105,
+      "image": "../assets/art/bavarin/sprite_104.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 106,
+      "image": "../assets/art/bavarin/sprite_105.png",
+      "imagewidth": 24,
+      "imageheight": 16
+    },
+    {
+      "id": 107,
+      "image": "../assets/art/bavarin/sprite_106.png",
+      "imagewidth": 48,
+      "imageheight": 56
+    },
+    {
+      "id": 108,
+      "image": "../assets/art/bavarin/sprite_107.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 109,
+      "image": "../assets/art/bavarin/sprite_108.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 110,
+      "image": "../assets/art/bavarin/sprite_109.png",
+      "imagewidth": 100,
+      "imageheight": 70
+    },
+    {
+      "id": 111,
+      "image": "../assets/art/bavarin/sprite_110.png",
+      "imagewidth": 50,
+      "imageheight": 28
+    },
+    {
+      "id": 112,
+      "image": "../assets/art/bavarin/sprite_111.png",
+      "imagewidth": 48,
+      "imageheight": 34
+    },
+    {
+      "id": 113,
+      "image": "../assets/art/bavarin/sprite_112.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 114,
+      "image": "../assets/art/bavarin/sprite_113.png",
+      "imagewidth": 40,
+      "imageheight": 54
+    },
+    {
+      "id": 115,
+      "image": "../assets/art/bavarin/sprite_114.png",
+      "imagewidth": 34,
+      "imageheight": 22
+    },
+    {
+      "id": 116,
+      "image": "../assets/art/bavarin/sprite_115.png",
+      "imagewidth": 42,
+      "imageheight": 62
+    },
+    {
+      "id": 117,
+      "image": "../assets/art/bavarin/sprite_116.png",
+      "imagewidth": 20,
+      "imageheight": 30
+    },
+    {
+      "id": 118,
+      "image": "../assets/art/bavarin/sprite_117.png",
+      "imagewidth": 48,
+      "imageheight": 34
+    },
+    {
+      "id": 119,
+      "image": "../assets/art/bavarin/sprite_118.png",
+      "imagewidth": 48,
+      "imageheight": 34
+    },
+    {
+      "id": 120,
+      "image": "../assets/art/bavarin/sprite_119.png",
+      "imagewidth": 60,
+      "imageheight": 62
+    },
+    {
+      "id": 121,
+      "image": "../assets/art/bavarin/sprite_120.png",
+      "imagewidth": 54,
+      "imageheight": 62
+    },
+    {
+      "id": 122,
+      "image": "../assets/art/bavarin/sprite_121.png",
+      "imagewidth": 48,
+      "imageheight": 62
+    },
+    {
+      "id": 123,
+      "image": "../assets/art/bavarin/sprite_122.png",
+      "imagewidth": 48,
+      "imageheight": 56
+    },
+    {
+      "id": 124,
+      "image": "../assets/art/bavarin/sprite_123.png",
+      "imagewidth": 42,
+      "imageheight": 56
+    },
+    {
+      "id": 125,
+      "image": "../assets/art/bavarin/sprite_124.png",
+      "imagewidth": 120,
+      "imageheight": 70
+    }
+  ]
+}

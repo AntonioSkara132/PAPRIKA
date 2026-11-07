@@ -271,7 +271,7 @@ func _create_static_object(name: String, texture: Texture2D, top_left: Vector2, 
 	holder.add_child(sprite)
 	# Barbed wire slows walkers and minefield marks are stepped on, so neither blocks movement.
 	# Skoljka's fish, jellyfish, coral and buoys ("sea_decor") are scenery only.
-	if name in ["ground_backdrop", "iskra_scenery", "otpornik_scenery", "rock_scenery", "stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern", "rudnik_gate", "sea_decor"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
+	if name in ["ground_backdrop", "iskra_scenery", "otpornik_scenery", "rock_scenery", "bavarin_scenery", "stone_bridge", "arrow_target", "training_ground", "barbed_wire", "trap_marker", "council_banner", "ship_window", "ship_hatch", "fern", "rudnik_gate", "sea_decor"] or name.begins_with("landing_pad") or name.begins_with("station_range_target") or name.begins_with("station_trap_dummy"):
 		return
 	if name == "spaceship":
 		_add_collision_rect(Vector2(size.x * 0.70, 8), top_left + Vector2(size.x * 0.5, size.y - 9))

@@ -249,10 +249,52 @@ const ENEMIES := {
 	"republic_swordsman": {"name": "Republic Swordsman", "level": 4, "max_health": 38, "damage": 8, "speed": 48.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "republic_soldier_defeated", "reward": 8},
 	"collector": {"name": "Debt Collector", "level": 3, "max_health": 40, "damage": 7, "speed": 50.0, "reach": 24.0, "armor": 1, "attack_cooldown": 1.0, "event": "bandit_defeated", "reward": 10},
 	"republic_guardsman": {"name": "Republic Guardsman", "level": 6, "max_health": 60, "damage": 8, "speed": 42.0, "reach": 28.0, "armor": 4, "attack_cooldown": 1.1, "event": "republic_soldier_defeated", "reward": 15},
+	# Martin's men at Bavarin in Tvrdium armor, and Martin himself (scripts/actors/martin_boss.gd).
+	"republic_tvrdium_guard": {"name": "Tvrdium Guard", "level": 7, "max_health": 70, "damage": 14, "speed": 46.0, "reach": 34.0, "armor": 5, "attack_cooldown": 1.1, "event": "republic_soldier_defeated", "reward": 30},
+	"martin_admin": {"name": "Martin", "level": 11, "max_health": 700, "damage": 24, "sword_damage": 22, "arrow_damage": 18, "jump_damage": 24, "speed": 52.0, "reach": 30.0, "armor": 5, "attack_cooldown": 1.0, "event": "", "reward": 0},
 	"yard_scavenger_sword": {"name": "Yard Scavenger", "level": 5, "max_health": 60, "damage": 9, "speed": 50.0, "reach": 26.0, "armor": 2, "attack_cooldown": 1.0, "event": "bandit_defeated", "reward": 15},
 	"yard_scavenger_spear": {"name": "Scavenger Spearman", "level": 5, "max_health": 55, "damage": 8, "speed": 46.0, "reach": 40.0, "armor": 2, "attack_cooldown": 1.2, "event": "bandit_defeated", "reward": 15},
 	"yard_scavenger_bow": {"name": "Scavenger Archer", "level": 5, "max_health": 45, "damage": 7, "speed": 44.0, "reach": 140.0, "ranged": true, "armor": 1, "attack_cooldown": 1.6, "event": "bandit_defeated", "reward": 15},
 	"forest_beast": {"name": "Forest Beast", "level": 6, "max_health": 90, "damage": 9, "speed": 82.0, "reach": 22.0, "attack_cooldown": 1.3, "event": "monster_defeated", "reward": 6},
+}
+
+## Ships in ship battles (scripts/ship_battle/). Speeds are in battle pixels a
+## second, turn rates in radians a second, reloads in seconds.
+## - "launchers": TNT launchers on each side.
+## - "tactic": "standoff" keeps "keep_distance" off the Lasta's nose or tail;
+##   "close_in" comes straight at her.
+## - Weapons, each present only when its damage is: aimed light bolts
+##   ("bolt_*"), Luster's spiralling ring ("ring_*"), sprays of scrap
+##   ("scrap_*") and a claw that replaces the ram damage ("claw_damage").
+## - "flee_share": the share of hull at which the ship runs along the dust
+##   current and gets away. Without it the ship is disabled at 0 hull.
+## - "colour" is the HUD colour; "beaten_text" the banner when the player wins.
+## - The player's ships ("lasta", "diplomatic_ship") have "lost_text", the
+##   banner when their hull reaches 0.
+## - A harpoon ("harpoon_*"): a slow barbed shot on a cable, fired from the
+##   nose, the first one after "harpoon_first" seconds. When it hits, or when
+##   the ships touch, the enemy is fastened to the player's ship and the
+##   battle ends "harpooned".
+## - "board_share": the share of hull at which the enemy's ship is wrecked and
+##   its crew jumps across to the player's ship anyway; the battle ends
+##   "boarded" and the banner is "beaten_text".
+## - "close_in_after": seconds after which a "standoff" ship comes straight in.
+## - "bolt_colour": the colour of its bolts, when not the Parrots' yellow.
+const SHIPS := {
+	"lasta": {"name": "Lasta", "art": "res://assets/art/ship_battle/lasta.png", "hull": 100, "max_speed": 70.0, "accel": 40.0, "turn_rate": 1.5, "radius": 17.0,
+		"launchers": 3, "tnt_damage": 9, "reload": 3.6, "lost_text": "THE LASTA CAN'T TAKE MORE"},
+	"diplomatic_ship": {"name": "Council Ship", "art": "res://assets/art/ship_battle/diplomatic_ship.png", "hull": 90, "max_speed": 62.0, "accel": 34.0, "turn_rate": 1.3, "radius": 18.0,
+		"launchers": 2, "tnt_damage": 8, "reload": 4.0, "lost_text": "THEY'RE COMING ALONGSIDE"},
+	"parrot_ship": {"name": "Purple Parrots", "art": "res://assets/art/ship_battle/parrot_ship.png", "hull": 120, "max_speed": 76.0, "accel": 50.0, "turn_rate": 2.1, "radius": 15.0,
+		"tactic": "standoff", "keep_distance": 150.0, "bolt_damage": 5, "bolt_cooldown": 2.6, "ring_damage": 5, "ring_cooldown": 7.0, "flee_share": 0.3,
+		"colour": "b49be8", "beaten_text": "THEY GOT AWAY"},
+	"scrap_ship": {"name": "Scrap Thieves", "art": "res://assets/art/ship_battle/scrap_ship.png", "hull": 70, "max_speed": 50.0, "accel": 30.0, "turn_rate": 1.0, "radius": 18.0,
+		"tactic": "close_in", "scrap_damage": 2, "scrap_pieces": 6, "scrap_cooldown": 2.2, "scrap_range": 140.0, "claw_damage": 8,
+		"colour": "c4784a", "beaten_text": "THEIR ENGINE IS DEAD"},
+	"hacker_ship": {"name": "Hackers", "art": "res://assets/art/ship_battle/hacker_ship.png", "hull": 160, "max_speed": 84.0, "accel": 52.0, "turn_rate": 1.9, "radius": 17.0,
+		"tactic": "standoff", "keep_distance": 170.0, "close_in_after": 75.0, "bolt_damage": 4, "bolt_cooldown": 3.0, "bolt_colour": "5fd6d3",
+		"harpoon_first": 22.0, "harpoon_cooldown": 8.0, "harpoon_range": 160.0, "harpoon_speed": 130.0, "board_share": 0.35,
+		"colour": "5fd6d3", "beaten_text": "THEY'RE COMING ACROSS", "harpoon_text": "HARPOONED"},
 }
 
 const CROP_BY_TILE_ID := {
@@ -290,3 +332,6 @@ static func job(job_id: String) -> Dictionary:
 
 static func enemy(enemy_id: String) -> Dictionary:
 	return ENEMIES.get(enemy_id, {})
+
+static func ship(ship_id: String) -> Dictionary:
+	return SHIPS.get(ship_id, {})

@@ -129,12 +129,53 @@ def smokva():
     return image
 
 
+def palm(draw, x, y):
+    draw.line((x, y-6, x, y), fill=INK, width=2)
+    draw.line((x, y-6, x, y), fill=(122, 86, 52))
+    draw.polygon([(x-4, y-5), (x, y-8), (x+4, y-5), (x, y-6)], fill=INK)
+    draw.line((x-3, y-6, x+3, y-6), fill=(76, 139, 77))
+    draw.line((x-1, y-7, x+1, y-7), fill=(145, 184, 92))
+    draw.point((x-4, y-5), fill=(76, 139, 77))
+    draw.point((x+4, y-5), fill=(76, 139, 77))
+
+
+def bavarin():
+    """Bavarin: desert with dune ridges, the oasis village with palms and a pool
+    in the south, and Martin's walled base in navy and gold in the north-east."""
+    image = world((214, 176, 112), (156, 112, 68))
+    draw = ImageDraw.Draw(image)
+
+    def dunes(d):
+        for points in ([(4, 15), (8, 13), (12, 15)], [(14, 22), (19, 20), (24, 22)], [(5, 21), (9, 19), (12, 21)]):
+            d.line(points, fill=(240, 212, 150))
+            d.line([(x, y + 1) for x, y in points[1:]], fill=(176, 134, 82))
+        d.ellipse((17, 22, 22, 25), fill=(74, 151, 164))
+    terrain(image, dunes)
+    palm(draw, 13, 25)
+    palm(draw, 25, 25)
+    # The base: a wall with two towers, a navy hall and a gold flag.
+    draw.rectangle((15, 9, 28, 17), fill=INK)
+    draw.rectangle((16, 10, 27, 16), fill=(184, 150, 104))
+    draw.rectangle((19, 11, 25, 15), fill=(46, 58, 104))
+    draw.line((19, 11, 25, 11), fill=GOLD)
+    for x in (15, 27):
+        draw.rectangle((x - 2, 6, x + 2, 17), fill=INK)
+        draw.rectangle((x - 1, 7, x + 1, 16), fill=(208, 178, 128))
+        draw.point((x, 6), fill=(208, 178, 128))
+        draw.point((x, 9), fill=INK)
+    draw.line((22, 5, 22, 10), fill=INK)
+    draw.rectangle((23, 5, 25, 6), fill=GOLD)
+    return image
+
+
 def planet(key):
     if key == "rock":
         return rock()
     if key == "smokva":
         return smokva()
-    if key in ("unknown", "elektrika", "cichvarda", "skamp", "ambar", "bavarin"):
+    if key == "bavarin":
+        return bavarin()
+    if key in ("unknown", "elektrika", "cichvarda", "skamp", "ambar"):
         return unknown()
     palettes = {
         "paprika": ((115, 160, 78), (106, 80, 50)),

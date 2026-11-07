@@ -23,12 +23,12 @@ class PlanetArtTests(unittest.TestCase):
                 self.assertLessEqual(len(image.getcolors()), 24)
 
     def test_known_biomes_have_distinct_art(self):
-        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra", "otpornik", "rock", "smokva", "unknown"]
+        names = ["paprika", "brudet", "pomidor", "chvarak", "artichoke", "rudnik", "skoljka", "iskra", "otpornik", "rock", "smokva", "bavarin", "unknown"]
         images = {ART.planet(name).tobytes() for name in names}
         self.assertEqual(len(images), len(names))
 
     def test_undefined_terrain_does_not_invent_a_biome(self):
-        for name in ["cichvarda", "elektrika", "skamp", "ambar", "bavarin"]:
+        for name in ["cichvarda", "elektrika", "skamp", "ambar"]:
             with self.subTest(name=name):
                 self.assertEqual(ART.planet(name).tobytes(), ART.unknown().tobytes())
 

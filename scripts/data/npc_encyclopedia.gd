@@ -1,7 +1,7 @@
 class_name NpcEncyclopedia
 extends RefCounted
 
-const CATEGORIES := ["Allies", "Cauliflower Confederation", "Engineeria", "Republic forces", "Julius Organization", "Other hostiles", "Wildlife"]
+const CATEGORIES := ["Allies", "Cauliflower Confederation", "Engineeria", "Sea of Propuh", "Republic forces", "Julius Organization", "Other hostiles", "Wildlife"]
 
 const HOSTILES := [
 	["wolf", "Wildlife", "Paprika", "art/concepts/source/wolf.png", "A great wolf prowling beyond the village paths."],
@@ -12,8 +12,8 @@ const HOSTILES := [
 	["bandit_spear", "Other hostiles", "Paprika / Brudet", "assets/art/bandit.png", "A bandit who keeps opponents at spear length."],
 	["bandit_bow", "Other hostiles", "Paprika / Brudet", "assets/art/bandit.png", "A bandit who attacks from a distance with a bow."],
 	["bandit_sword", "Other hostiles", "Paprika / Brudet", "assets/art/bandit.png", "A bandit who closes in with a sword."],
-	["hacker", "Other hostiles", "Paprika / Chvarak", "assets/art/hacker.png", "A dangerous fighter capable of far more than ordinary combat."],
-	["phase_hacker", "Other hostiles", "Brudet / Chvarak", "assets/art/hacker.png", "A hacker who changes position during a fight."],
+	["hacker", "Other hostiles", "Paprika / Chvarak", "assets/art/hacker.png", "A dangerous fighter capable of far more than ordinary combat. Fires a light bolt at anyone within range every second or so, and strikes up close with almost no warning."],
+	["phase_hacker", "Other hostiles", "Brudet / Chvarak", "assets/art/hacker.png", "A hacker who fires light bolts like the others and also jumps across the fight: a pink mark appears on the ground, and half a second later he reappears on it. He can jump every six seconds."],
 	["finling", "Wildlife", "Brudet", "assets/art/river_planet/finling.png", "A small creature found near Brudet's water."],
 	["lake_maw", "Wildlife", "Brudet", "assets/art/river_planet/lake_maw.png", "A heavy predator of the lakeside."],
 	["river_serpent", "Wildlife", "Brudet", "assets/art/river_planet/river_serpent.png", "A river predator that can strike from a distance."],
@@ -29,6 +29,12 @@ const HOSTILES := [
 	["republic_spearman", "Republic forces", "Artichoke", "assets/art/artichoke/objects/republic_soldier_2.png", "A Republic soldier armed with a spear."],
 	["republic_swordsman", "Republic forces", "Artichoke", "assets/art/artichoke/objects/republic_soldier_3.png", "A Republic soldier who fights with a sword."],
 	["republic_guardsman", "Republic forces", "Artichoke", "assets/art/artichoke/objects/republic_guardsman.png", "A heavily armored Republic defender."],
+	["republic_tvrdium_guard", "Republic forces", "Bavarin", "assets/art/bavarin/tvrdium_guard.png", "One of Martin's own guards at the Bavarin base, in Tvrdium armor that turns most blows."],
+	["void_hacker", "Other hostiles", "R-7", "assets/art/rock/hacker.png", "A hacker in pyjamas. He and a partner caught Veki in the Sea of Propuh and came to R-7 for the treasure Veki promised them in the cave. Fires light bolts and jumps across the fight like a phase hacker: a pink mark shows where he will reappear."],
+	["hacker_trooper", "Other hostiles", "R-7", "assets/art/rock/hacker_trooper.png", "A hacker in a jumpsuit who came to R-7 with Veki's captors. He has no bolts and does not jump; he closes in with a sword, and his heavier armor takes more off every hit."],
+	["parrot_puffa", "Julius Organization", "Smokva", "assets/art/smokva/hackers/parrot_puffa.png", "A Purple Parrot in a puffer jacket zipped up to his nose. He puffs up, a line shows where he will dash, then he charges along it; if he hits a wall he is dazed. Below half health he dashes twice."],
+	["parrot_ruff", "Julius Organization", "Smokva", "assets/art/smokva/hackers/parrot_ruff.png", "A Purple Parrot in a fur ruff with a red nose and three chains. At half health he vanishes in smoke and comes back as two; the copy without the purple feather pops after one hit."],
+	["parrot_luster", "Julius Organization", "Smokva", "assets/art/smokva/hackers/parrot_luster.png", "The leader of the Purple Parrots, with a chandelier on his head. When its candles glow he lets out a ring of eight light bolts that spirals outward; walls and furniture stop them. Julius wants the player, and Luster came to bring them."],
 ]
 
 const PEOPLE := [
@@ -39,6 +45,7 @@ const PEOPLE := [
 	["pig", "Pig", "Wildlife", "Chvarak", "assets/art/chvarak/pig_0.png", "Pigs live around Chvarak's farms.", "Combat stats not defined"],
 	["chvarak_guard", "Port guard", "Cauliflower Confederation", "Chvarak", "assets/art/chvarak/chvarak_guard.png", "A guard stationed near the mountain port.", "Combat stats not defined"],
 	["ship_guard", "Ship guard", "Cauliflower Confederation", "Chvarak", "assets/art/chvarak/ship_guard_0.png", "A guard protecting a ship's crew.", "Stats vary by encounter"],
+	["klara_rog", "Klara Rog", "Cauliflower Confederation", "Chvarak", "assets/art/chvarak/klara_rog.png", "The pilot Iva Most hired for the Council's white diplomatic ship. She has flown to Engineeria a dozen times. When a hackers' ship attacked after Chvarak, she gave the Captain the ship's TNT launchers and talked them through the fight.", "Pilot of the diplomatic ship  ·  Combat stats not defined"],
 	["councillor", "Councillor", "Cauliflower Confederation", "Pomidor", "assets/art/pomidor/councillor_pomidor_0.png", "One of the delegates serving on the Confederation's council.", "Combat stats not defined"],
 	["secretary", "Secretary", "Cauliflower Confederation", "Pomidor", "assets/art/pomidor/secretary_economy.png", "A council-appointed official responsible for an area of government.", "Combat stats not defined"],
 	["council_guard", "Council guard", "Cauliflower Confederation", "Pomidor", "assets/art/pomidor/council_guard.png", "A guard at the council buildings.", "Combat stats not defined"],
@@ -65,7 +72,7 @@ const PEOPLE := [
 	["squirrel_guard", "Green Squirrel guard", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/squirrel_guard.png", "A guard at the Green Squirrels' office. Every Squirrel guard wears armor: two tvrdium, two iron, two bronze.", "Health 38  ·  Damage 8  ·  Armor 2 (bronze) or 3 (iron)"],
 	["pelican_guard", "Red Pelican guard", "Julius Organization", "Iskra", "assets/art/iskra/investigation/npcs/pelican_guard.png", "A guard at the Red Pelicans' office. Half of them wear iron armor.", "Health 38  ·  Damage 8  ·  Armor 1, or 3 in iron"],
 	["tvrdium_guard", "Tvrdium guard", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/squirrel_tv_guard.png", "A Squirrel guard armed with a tvrdium blade. Two wear tvrdium armor and one wears iron.", "Health 38  ·  Damage 14  ·  Armor 5 (tvrdium) or 3 (iron)  ·  Longer reach"],
-	["roko", "Roko", "Julius Organization", "Iskra", "assets/art/iskra/investigation/npcs/pelican_hacker.png", "The Red Pelicans' hacker, far stronger than the hackers of Paprika and Brudet.", "Level 8  ·  Health 480  ·  Damage 30  ·  Speed 76  ·  Armor 3"],
+	["roko", "Roko", "Julius Organization", "Iskra", "assets/art/iskra/investigation/npcs/pelican_hacker.png", "The Red Pelicans' hacker, far stronger than the hackers of Paprika and Brudet. He fires light bolts and jumps like a phase hacker, and jumps away when two fighters close in on him. Anyone who comes near gets a red ring as warning before he looses sixteen arrows in every direction. He leaves tar puddles where he walks, which halve the speed of anyone standing in them. A ward stops Banishing Arrows until he has taken 120 damage, and he jumps aside from a Banishing Arrow aimed at him.", "Level 10  ·  Health 480  ·  Damage 30  ·  Speed 76  ·  Armor 3"],
 	["iva_most", "Iva Most", "Cauliflower Confederation", "Iskra", "assets/art/iskra/investigation/npcs/cauliflower_secretary.png", "The Confederation's Secretary of Diplomacy, who came to Iskra to find the lost embassy and left 2000 gold for the journey to Breece.", "Combat stats not defined"],
 	["diplomatic_secretary", "Diplomatic Secretary", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/diplomatic_secretary.png", "Engineeria's Diplomatic Secretary, who received the embassy's letters at the Tower.", "Combat stats not defined"],
 	["board_nation", "Zvonimir Dom", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/board_nation.png", "Head of Nation. Coordinates the work of the other Heads and leads the Board.", "Combat stats not defined"],
@@ -75,6 +82,19 @@ const PEOPLE := [
 	["board_demographics", "Ljerka Popis", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/board_demographics.png", "Head of Demographics. Keeps the census of every person in Iskra.", "Combat stats not defined"],
 	["board_finance", "Dubravka Riznic", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/board_finance.png", "Head of Finance. Guards the treasury and Engineeria's trade with the Confederation.", "Combat stats not defined"],
 	["board_defense", "Branko Stit", "Engineeria", "Iskra", "assets/art/iskra/investigation/npcs/board_defense.png", "Head of Defense. Does not trust Davor.", "Combat stats not defined"],
+	["otpornik_line_clerk", "Line Clerk", "Engineeria", "Otpornik", "assets/art/iskra/npcs/board_officer.png", "Runs the passenger line between Otpornik and Iskra. The Tower passes cover the return trip.", "Combat stats not defined"],
+	["otpornik_broker", "Ship Broker", "Engineeria", "Otpornik", "assets/art/iskra/npcs/civic_engineer.png", "Sold the Lasta to the player for 2000 gold. Brokers keep books, and Martin read them.", "Combat stats not defined"],
+	["otpornik_foreman", "Yard Foreman", "Engineeria", "Otpornik", "assets/art/iskra/npcs/dock_mechanic.png", "Pays anyone who chases the scrap thieves out of his yard, until the player owns a ship of their own.", "Combat stats not defined  ·  Pays 250 gold a job"],
+	["otpornik_porter", "University Porter", "Engineeria", "Otpornik", "assets/art/iskra/npcs/library_archivist.png", "Keeps visitors out of the university. Lectures, exams and the High-Voltage Lab are for enrolled students only.", "Combat stats not defined"],
+	["martin", "Martin", "Republic forces", "R-7", "assets/art/rock/martin.png", "A Republic Admin who followed the party from Otpornik to R-7, struck the player down and took Davor. He calls Davor the best of the Admins. He holds Davor at his base on Bavarin. He fights with a Banishing Sword and Banishing Arrows, which are meant to finish anyone in one hit, and he jumps on anyone who keeps their distance. Banishing does nothing to a Brine.", "Level 11  ·  700 health  ·  Fought at Bavarin"],
+	["voice_in_the_dark", "Voice in the Dark", "Allies", "R-7", "assets/art/rock/voice.png", "A voice beside a grave in R-7's cave. It merged with the player, who became a Brine, and sent them to find Davor.", "The merge: +52 max health, attacks ×1.5  ·  A Brine sees in the dark and can push heavy rocks"],
+	["donat", "Donat", "Allies", "Smokva", "assets/art/smokva/donat.png", "A grumpy young rank 12 hacker from Krešo's bar. He wanted no part of the Purple Parrots' fight until he and the player switched bodies by accident. After his duel with the player he came along, not because he likes them.", "Health 320  ·  Sword slash 28  ·  Armor 3\nIn the duel: level 12, health 600, armor 5"],
+	["kreso", "Krešo", "Sea of Propuh", "Smokva", "assets/art/smokva/kreso.png", "The barman at Smokva: greedy, cheap and funny, fond of beer and a little paranoid. He sells Beer, Pelinkovac and Cedevita and plays darts and table soccer for gold.", "Combat stats not defined"],
+	["fishbowl", "Fishbowl", "Sea of Propuh", "Smokva", "assets/art/smokva/hackers/aquarium.png", "A hacker with a fishbowl on his head. The fish, Server, is his backup.", "Combat stats not defined"],
+	["floppy", "Floppy", "Sea of Propuh", "Smokva", "assets/art/smokva/hackers/grills.png", "A hacker with a floppy disk on his chest and a hat over his eyes. Says hacking is all done by feel.", "Combat stats not defined"],
+	["fivecap", "Fivecap", "Sea of Propuh", "Smokva", "assets/art/smokva/hackers/cap_stack.png", "A hacker in five caps, one for each project. None of the projects is done yet.", "Combat stats not defined"],
+	["plug", "Plug", "Sea of Propuh", "Smokva", "assets/art/smokva/hackers/cable_durag.png", "A hacker with cables in his durag and a grinning monitor called Ekran.", "Combat stats not defined"],
+	["bonbon", "Bonbon", "Sea of Propuh", "Smokva", "assets/art/smokva/hackers/rainbow_clown.png", "A rainbow clown hacker whose headphones play the same song as the jukebox. Honks hello.", "Combat stats not defined"],
 ]
 
 ## Subgroup inside each entry's category. Entries listed in ALSO_IN appear
@@ -82,10 +102,29 @@ const PEOPLE := [
 const SUBGROUPS := {
 	"davor": "Companions",
 	"veki": "Companions",
+	"donat": "Companions",
+	"voice_in_the_dark": "R-7",
+	"otpornik_line_clerk": "Otpornik",
+	"otpornik_broker": "Otpornik",
+	"otpornik_foreman": "Otpornik",
+	"otpornik_porter": "Otpornik",
+	"kreso": "Smokva",
+	"fishbowl": "Smokva",
+	"floppy": "Smokva",
+	"fivecap": "Smokva",
+	"plug": "Smokva",
+	"bonbon": "Smokva",
+	"parrot_puffa": "Purple Parrots",
+	"parrot_ruff": "Purple Parrots",
+	"parrot_luster": "Purple Parrots",
+	"martin": "Martin's men",
+	"void_hacker": "Hackers",
+	"hacker_trooper": "Hackers",
 	"villager": "Paprika & Brudet",
 	"chvarak_farmer": "Chvarak",
 	"chvarak_guard": "Chvarak",
 	"ship_guard": "Chvarak",
+	"klara_rog": "Chvarak",
 	"councillor": "Pomidor Council",
 	"secretary": "Pomidor Council",
 	"council_guard": "Pomidor Council",
@@ -117,6 +156,7 @@ const SUBGROUPS := {
 	"republic_swordsman": "Republic army",
 	"republic_guardsman": "Republic army",
 	"martin_spy": "Martin's men",
+	"republic_tvrdium_guard": "Martin's men",
 	"company_crew": "Martin's men",
 	"company_assassin": "Martin's men",
 	"collector": "Debt collectors",
@@ -148,9 +188,25 @@ const SUBGROUPS := {
 	"board_defense": "Engineering Board",
 }
 
-const ALSO_IN := {"ves": "Engineeria", "vlado": "Engineeria", "roko": "Engineeria", "pelican_guard": "Engineeria"}
+## Each extra listing is [category, subgroup]. Every hacker is also listed
+## under Other hostiles, Hackers.
+const ALSO_IN := {
+	"ves": [["Engineeria", "Red Pelicans"]],
+	"vlado": [["Engineeria", "Red Pelicans"]],
+	"pelican_guard": [["Engineeria", "Red Pelicans"]],
+	"roko": [["Engineeria", "Red Pelicans"], ["Other hostiles", "Hackers"]],
+	"parrot_puffa": [["Sea of Propuh", "Purple Parrots"], ["Other hostiles", "Hackers"]],
+	"parrot_ruff": [["Sea of Propuh", "Purple Parrots"], ["Other hostiles", "Hackers"]],
+	"parrot_luster": [["Sea of Propuh", "Purple Parrots"], ["Other hostiles", "Hackers"]],
+	"donat": [["Other hostiles", "Hackers"]],
+	"fishbowl": [["Other hostiles", "Hackers"]],
+	"floppy": [["Other hostiles", "Hackers"]],
+	"fivecap": [["Other hostiles", "Hackers"]],
+	"plug": [["Other hostiles", "Hackers"]],
+	"bonbon": [["Other hostiles", "Hackers"]],
+}
 
-const SUBGROUP_ORDER := ["Companions", "Paprika & Brudet", "Paprika", "Brudet", "Chvarak", "Pomidor Council", "Army", "Engineering Board", "Iskra", "Green Squirrels", "Red Pelicans", "Engineeria", "Skoljka", "Republic army", "Martin's men", "Debt collectors", "Hackers", "Bandits", "Undead", "Hired attackers"]
+const SUBGROUP_ORDER := ["Companions", "R-7", "Paprika & Brudet", "Paprika", "Brudet", "Chvarak", "Pomidor Council", "Army", "Engineering Board", "Iskra", "Green Squirrels", "Red Pelicans", "Engineeria", "Skoljka", "Otpornik", "Smokva", "Purple Parrots", "Republic army", "Martin's men", "Debt collectors", "Hackers", "Bandits", "Undead", "Hired attackers"]
 
 static func entries() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -164,9 +220,10 @@ static func entries() -> Array[Dictionary]:
 		result.append({"id": row[0], "name": row[1], "category": row[2], "location": row[3], "image": "res://" + row[4], "intro": row[5], "facts": row[6]})
 	for entry in result.duplicate():
 		entry["subgroup"] = SUBGROUPS.get(entry["id"], "Other")
-		if ALSO_IN.has(entry["id"]):
+		for listing: Array in ALSO_IN.get(entry["id"], []):
 			var copy: Dictionary = entry.duplicate()
-			copy["category"] = ALSO_IN[entry["id"]]
+			copy["category"] = listing[0]
+			copy["subgroup"] = listing[1]
 			result.append(copy)
 	return result
 

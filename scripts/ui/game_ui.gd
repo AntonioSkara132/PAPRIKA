@@ -61,6 +61,8 @@ var scene_panel: PanelContainer
 var scene_speaker_label: Label
 var scene_text_label: Label
 var scene_buttons: HFlowContainer
+## A picture shown big above the scene panel while a line with a "picture" is up.
+var scene_picture: TextureRect
 var _scene_lines: Array = []
 var _scene_index := -1
 var _scene_finished := Callable()
@@ -688,9 +690,32 @@ func _build_scene_panel(root: Control) -> void:
 	scene_panel.resized.connect(_position_scene_panel)
 	box.add_child(scene_buttons)
 	scene_panel.visible = false
+	scene_picture = TextureRect.new()
+	scene_picture.name = "ScenePicture"
+	scene_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	scene_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scene_picture.visible = false
+	root.add_child(scene_picture)
+
+## Shows the picture of a scene line at the largest whole-number scale that
+## fits above the scene panel, centred; hides it when the line has none.
+func _show_scene_picture(path: String) -> void:
+	var texture := load(path) as Texture2D if not path.is_empty() else null
+	scene_picture.visible = texture != null
+	if texture == null:
+		return
+	# The same screen size the scene panel is placed in; the panel sits at the bottom.
+	var screen := BASE_SIZE / scale.x
+	var room := Vector2(screen.x - 32.0, screen.y - 12.0 - 96.0 - 16.0)
+	var times := maxf(1.0, floorf(minf(room.x / texture.get_width(), room.y / texture.get_height())))
+	scene_picture.texture = texture
+	scene_picture.size = texture.get_size()
+	scene_picture.scale = Vector2(times, times)
+	scene_picture.position = Vector2((screen.x - texture.get_width() * times) / 2.0, 8.0 + (room.y - texture.get_height() * times) / 2.0)
 
 ## Shows `lines` one at a time. Each line is {speaker, text} with an optional
-## `focus` node, which gets a small gold marker over its head while it speaks.
+## `focus` node, which gets a small gold marker over its head while it speaks,
+## and an optional `picture` (a texture path) shown big above the panel.
 ## `choices` are {label, action} buttons on the last line; picking one ends the
 ## scene and calls its action. `finished` runs when the scene ends either way.
 func play_scene(lines: Array, finished: Callable = Callable(), choices: Array = []) -> void:
@@ -729,6 +754,7 @@ func advance_scene() -> void:
 	scene_speaker_label.visible = not scene_speaker_label.text.is_empty()
 	scene_text_label.text = String(line.get("text", ""))
 	_mark_speaker(line.get("focus", null))
+	_show_scene_picture(String(line.get("picture", "")))
 	for child in scene_buttons.get_children():
 		scene_buttons.remove_child(child)
 		child.queue_free()
@@ -766,6 +792,7 @@ func cancel_scene() -> void:
 	if not scene_panel.visible:
 		return
 	scene_panel.visible = false
+	scene_picture.visible = false
 	_mark_speaker(null)
 	_scene_lines = []
 	_scene_choices = []
@@ -774,6 +801,7 @@ func cancel_scene() -> void:
 
 func _end_scene(action: Callable) -> void:
 	scene_panel.visible = false
+	scene_picture.visible = false
 	_mark_speaker(null)
 	var finished := _scene_finished
 	_scene_lines = []

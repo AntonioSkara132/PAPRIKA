@@ -136,7 +136,10 @@ func _run() -> void:
 	legacy["planet_positions"].erase("otpornik")
 	legacy["planet_positions"].erase("rock")
 	legacy["planet_positions"].erase("smokva")
+	legacy["planet_positions"].erase("bavarin")
 	_check(GameState._valid_save(legacy), "schema 15 saves stay valid")
+
+	await _scrap_battle_checks()
 
 	# Back to Iskra on the passenger line.
 	ui.cancel_scene()
@@ -147,6 +150,70 @@ func _run() -> void:
 	await get_tree().process_frame
 	_check(game.world is IskraWorld and GameState.current_planet == "iskra", "the line returns to Iskra")
 	_finish()
+
+## The first flight to R-7: the scrap thieves' battle, a loss with another go,
+## a load closing the battle, and a win that flies on. Travel requests are
+## recorded instead of followed, so the world stays loaded.
+func _scrap_battle_checks() -> void:
+	ui.cancel_scene()
+	var travel: Array = []
+	world.story_travel_requested.disconnect(game._on_story_travel_requested)
+	var record := func(destination: String) -> void: travel.append(destination)
+	world.story_travel_requested.connect(record)
+	world._helm()
+	_skip_lines()
+	_check(ui._scene_choices.size() == 2 and ui._scene_choices[0]["label"] == "Fly to R-7", "the helm offers the flight to R-7")
+	_choose(0)
+	_check(_scene_texts().contains("scrap thieves") and travel.is_empty(), "taking off, Veki sees the scrap thieves")
+	_skip()
+	await get_tree().process_frame
+	_check(world.ship_battle_open() and world.ship_battle.enemy.display_name == "Scrap Thieves", "the scrap thieves' battle opens")
+	_check(world.ship_battle.crew == ["You", "Veki", "Davor"] and world.ship_battle.lines["start"][0][0] == "Veki" and String(world.ship_battle.lines["start"][0][1]).contains("before"), "Veki reminds a crew of three of the controls")
+	await _capture("scrap_battle")
+	world.ship_battle._damage(world.ship_battle.player, 1000)
+	world.ship_battle.step(0.02)
+	world.ship_battle.step(ShipBattle.END_SECONDS + 0.1)
+	await get_tree().process_frame
+	_check(not world.ship_battle_open() and _scene_texts().contains("limping back") and travel.is_empty() and not world.has_flag("scrap_battle_won"), "losing brings the Lasta back to the pad")
+	ui.cancel_scene()
+	world.fly_to_rock()
+	_skip()
+	await get_tree().process_frame
+	_check(world.ship_battle_open(), "the helm offers another go")
+	world.apply_loaded_state()
+	await get_tree().process_frame
+	_check(not world.ship_battle_open(), "loading closes the ship battle")
+	world.open_scrap_battle()
+	world.ship_battle._damage(world.ship_battle.enemy, 1000)
+	world.ship_battle.step(ShipBattle.END_SECONDS + 0.1)
+	await get_tree().process_frame
+	_check(not world.ship_battle_open() and world.has_flag("scrap_battle_won"), "disabling the thieves wins the battle")
+	_check(_scene_texts().contains("You owe us an engine") and _scene_texts().contains("port patrol"), "Veki leaves the thieves for the port patrol")
+	_skip()
+	_check(travel == ["rock"], "after the battle the Lasta flies on to R-7")
+	world.fly_to_rock()
+	_check(travel == ["rock", "rock"] and not world.ship_battle_open(), "later flights to R-7 skip the battle")
+	world.story_travel_requested.disconnect(record)
+	world.story_travel_requested.connect(game._on_story_travel_requested)
+
+func _scene_texts() -> String:
+	var all := []
+	for line: Dictionary in ui._scene_lines:
+		all.append(String(line["text"]))
+	return "\n".join(all)
+
+func _skip_lines() -> void:
+	while ui.scene_playing() and ui.scene_lines_left() > 0:
+		ui.advance_scene()
+
+func _skip() -> void:
+	_skip_lines()
+	if ui.scene_playing() and ui._scene_choices.is_empty():
+		ui.advance_scene()
+
+func _choose(index: int) -> void:
+	_skip_lines()
+	ui._end_scene(ui._scene_choices[index]["action"])
 
 func _capture(label: String) -> void:
 	var directory := OS.get_environment("OTPORNIK_SCREENSHOT_DIR")

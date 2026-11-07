@@ -84,7 +84,7 @@ func _run() -> void:
 	# Krešo at the bar.
 	world._on_spot("bar")
 	_check(ui.scene_playing() and ui._scene_choices.size() == 5 and String(ui._scene_choices[3]["label"]) == "Ask about a Republic ship", "Krešo offers darts, table soccer, drinks and news of the ship")
-	_check(String(ui._scene_lines[0]["text"]) == SmokvaWorld.KRESO_LINES[0], "Krešo starts with his first line")
+	_check(String(ui._scene_lines[0]["text"]).contains("Funny eyes") and _scene_texts().contains("Same eyes") and _scene_texts().contains("long time ago"), "The first time, Krešo notices the eyes and remembers someone with the same ones")
 	var darts_choice: Callable = ui._scene_choices[0]["action"]
 	ui.cancel_scene()
 	darts_choice.call()
@@ -92,7 +92,33 @@ func _run() -> void:
 	world.close_bar_game()
 	await get_tree().process_frame
 	world._talk_to_kreso()
+	_check(String(ui._scene_lines[0]["text"]) == SmokvaWorld.KRESO_LINES[0] and ui._scene_choices.size() == 5, "After that, Krešo starts on his usual lines")
+	ui.cancel_scene()
+	world._talk_to_kreso()
 	_check(String(ui._scene_lines[0]["text"]) == SmokvaWorld.KRESO_LINES[1], "Krešo's next visit has a new line")
+	ui.cancel_scene()
+
+	# The photo of Davor and the young Voice on the bar wall.
+	var frame := world.get_node_or_null("PhotoFrame") as Sprite2D
+	_check(frame != null and frame.texture != null and world.ROOM_RECT.has_point(frame.position), "The photo hangs on the bar wall")
+	_check(world.tiled_loader.is_walkable_position(world.marker("photo")), "The spot under the photo can be walked to")
+	world.player.global_position = world.marker("photo")
+	world.player._update_nearest_interactable()
+	_check(world.player._current_interactable == world._spots["photo"], "E at the wall selects the photo")
+	world._on_spot("photo")
+	_check(ui.scene_picture.visible and ui.scene_picture.texture == load(SmokvaWorld.PHOTO), "Looking at the photo shows it big")
+	_check(_scene_texts().contains("Davor") and _scene_texts().contains("white eyes") and _scene_texts().contains("D. and the kid"), "The photo shows Davor and a young man with white eyes, and Krešo wrote on the back")
+	_check(not _scene_texts().contains("my eyes"), "Donat only comments on the photo once he has joined")
+	await _capture("smokva_photo")
+	_skip_lines()
+	_check(not ui.scene_picture.visible, "The back of the photo is told without the picture")
+	_skip()
+	_check(not ui.scene_picture.visible and not ui.scene_playing(), "The picture closes with the scene")
+	world._talk_to_kreso()
+	_check(ui._scene_choices.any(func(choice: Dictionary) -> bool: return choice["label"] == "Ask about the photo"), "After seeing the photo you can ask Krešo about it")
+	ui.cancel_scene()
+	world.ask_about_photo()
+	_check(_scene_texts().contains("There's never been a photo") and _scene_texts().contains("never paid"), "Krešo denies the photo exists, then complains about the tab")
 	ui.cancel_scene()
 
 	# Drinks.
@@ -780,6 +806,61 @@ func _story() -> void:
 	await get_tree().process_frame
 	_check(GameState.health > 1 and _scene_texts().contains("Got you") and world.has_flag("donat_joined"), "losing the duel does not stop the story")
 	_skip()
+	await _ship_battle_checks()
+
+## Veki takes off with Donat aboard and the Parrots' ship attacks.
+func _ship_battle_checks() -> void:
+	ui.cancel_scene()
+	world.look_at_photo()
+	_check(_scene_texts().contains("That one with the cap has my eyes"), "Once he has joined, Donat notices the man in the photo has his eyes")
+	ui.cancel_scene()
+	world._talk_to_veki()
+	_check(ui._scene_choices.size() == 2 and ui._scene_choices[0]["label"] == "Take off", "Veki offers to take off once Donat has joined")
+	_choose(0)
+	_check(_scene_texts().contains("purple ship"), "Taking off, Veki sees the Parrots' ship")
+	_skip()
+	await get_tree().process_frame
+	_check(world.ship_battle_open() and world.ship_battle.player.display_name == "Lasta", "The ship battle opens")
+	_check(world.ship_battle.lines.has("flee") and world.ship_battle.is_in_group("ui_modal"), "The battle has the Parrots' radio lines and freezes the player")
+	await _capture("smokva_ship_battle")
+	# A lost battle brings the Lasta back down; Veki offers another go.
+	world.ship_battle._damage(world.ship_battle.player, 1000)
+	world.ship_battle.step(0.02)
+	world.ship_battle.step(ShipBattle.END_SECONDS + 0.1)
+	await get_tree().process_frame
+	_check(not world.ship_battle_open() and _scene_texts().contains("another go") and not world.has_flag("ship_battle_won"), "Losing the battle lands the Lasta back on Smokva")
+	ui.cancel_scene()
+	world._talk_to_veki()
+	_choose(0)
+	_skip()
+	await get_tree().process_frame
+	_check(world.ship_battle_open(), "Veki takes off again for another go")
+	# Loading closes the battle.
+	world.apply_loaded_state()
+	await get_tree().process_frame
+	_check(not world.ship_battle_open(), "Loading closes the ship battle")
+	# Winning: the Parrots get away.
+	world.open_parrot_battle()
+	world.ship_battle._damage(world.ship_battle.enemy, 1000)
+	for i in 60:
+		world.ship_battle.player.hull = 100
+		world.ship_battle.step(0.25)
+		if not world.ship_battle_open():
+			break
+	await get_tree().process_frame
+	_check(not world.ship_battle_open() and world.has_flag("ship_battle_won"), "The battle is won when the Parrots get away")
+	_check(_scene_texts().contains("Julius will hear about this"), "Luster swears Julius will hear of it")
+	_skip_lines()
+	ui.cancel_scene()
+	_check(world.story_status_text().contains("fly to Bavarin"), "The status says Veki will fly to Bavarin")
+	world._talk_to_veki()
+	_check(_scene_texts().contains("patched") and ui._scene_choices.size() == 2, "After the battle Veki offers to fly to Bavarin")
+	var travel: Array[String] = []
+	world.story_travel_requested.connect(func(destination: String) -> void: travel.append(destination))
+	ui._end_scene(ui._scene_choices[0]["action"])
+	await get_tree().process_frame
+	_check(travel == ["bavarin"], "Choosing to fly asks for travel to Bavarin")
+	ui.cancel_scene()
 
 func _parrot(kind: String) -> SmokvaBrawler:
 	for enemy: SmokvaBrawler in world._parrots:

@@ -19,14 +19,29 @@ func _run() -> void:
 	var ids := {}
 	for entry in entries:
 		var id: String = entry["id"]
-		check(not ids.has(id), "Duplicate entry " + id)
+		var listing := "%s in %s" % [id, entry["category"]]
+		check(not ids.has(listing), "Duplicate entry " + listing)
+		ids[listing] = true
 		ids[id] = true
 		check(ResourceLoader.exists(entry["image"]), "Missing image " + id)
 		check(not String(entry["intro"]).is_empty(), "Missing introduction " + id)
 		check(NpcEncyclopedia.CATEGORIES.has(entry["category"]), "Unknown category " + id)
 		check(not NpcEncyclopedia.stats(entry).is_empty(), "Missing facts " + id)
+	# Ruff's decoy is described in Ruff's entry and Donat's duel in Donat's.
 	for enemy_id in GameData.ENEMIES:
-		check(ids.has(enemy_id) or enemy_id in ["bandit", "camp_bandit"], "Missing hostile " + enemy_id)
+		check(ids.has(enemy_id) or enemy_id in ["bandit", "camp_bandit", "parrot_ruff_decoy", "donat_duel", "martin_admin"], "Missing hostile " + enemy_id)
+	for id in ["donat", "kreso", "fishbowl", "floppy", "fivecap", "plug", "bonbon", "martin", "voice_in_the_dark", "otpornik_foreman", "klara_rog"]:
+		check(ids.has(id), "Missing person " + id)
+	check(NpcEncyclopedia.subgroups("Julius Organization").has("Purple Parrots"), "Purple Parrots under Julius")
+	check(NpcEncyclopedia.subgroups("Sea of Propuh").has("Purple Parrots"), "Purple Parrots also in the Sea of Propuh")
+	var listed_hackers := {}
+	for entry in entries:
+		if entry["category"] == "Other hostiles" and entry["subgroup"] == "Hackers":
+			listed_hackers[entry["id"]] = true
+	for id in ["hacker", "phase_hacker", "void_hacker", "hacker_trooper", "roko", "parrot_puffa", "parrot_ruff", "parrot_luster", "donat", "fishbowl", "floppy", "fivecap", "plug", "bonbon"]:
+		check(listed_hackers.has(id), "Hacker listed under Other hostiles, Hackers: " + id)
+	check(_find(entries, "donat")["category"] == "Allies", "Donat keeps his own entry under Allies")
+	check(_find(entries, "klara_rog")["subgroup"] == "Chvarak" and _find(entries, "klara_rog")["category"] == "Cauliflower Confederation", "Klara Rog, the diplomatic ship's pilot, is listed under Chvarak")
 	check(NpcEncyclopedia.stats(_find(entries, "hacker")).contains("150 health, 24 damage"), "Chvarak hacker stats")
 	check(NpcEncyclopedia.stats(_find(entries, "villager")).contains("Health 12"), "Civilian stats")
 	check(NpcEncyclopedia.stats(_find(entries, "councillor")).contains("not defined"), "Undefined civilian combat stats")

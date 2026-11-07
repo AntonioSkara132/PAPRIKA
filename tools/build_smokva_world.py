@@ -53,6 +53,7 @@ ROOM_POINTS = {
     "room_entry": (102, 122), "room_door": (102, 130),
     "bar": (150, 52), "couch": (36, 40), "jukebox": (116, 26),
     "darts": (56, 116), "table_soccer": (48, 72), "wc_door": (184, 60),
+    "photo": (72, 28),
 }
 # Krešo stands behind the counter, out of reach of the walk grid.
 KRESO_AT = (150, 32)

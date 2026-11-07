@@ -8,6 +8,11 @@ extends GameWorld
 ## The Lasta's three floors are in open space below the port on the same map
 ## (built by tools/build_otpornik_world.py). Ladders, the hatch, the stairs and
 ## the airlock move the player, Davor and Veki between them.
+##
+## The first flight to R-7 from the helm is a ship battle against the scrap
+## thieves from the yards (fly_to_rock()). A win sets the "scrap_battle_won"
+## flag and flies on; a loss brings the Lasta back to the pad and the helm
+## offers the flight again. The battle is not saved halfway.
 
 const OTPORNIK_MAP := "res://maps/otpornik.tmj"
 const FLAG_PREFIX := "otpornik_"
@@ -42,6 +47,21 @@ const RESIDENT_LINES := [
 	"Every ship in Engineeria passed through these yards at least once, for building or for mending.",
 	"The university keeps its gates shut to visitors this term. Exams, they say.",
 ]
+## Radio lines in the scrap thieves' battle, on the first flight to R-7. The
+## player learned the controls from Klara on the Chvarak diplomatic ship, so
+## Veki only reminds them. See ShipBattle.lines for the events.
+const SCRAP_BATTLE_LINES := {
+	"start": [["Veki", "You've fired ship launchers before? Good. Same keys here."],
+		["Veki", "Q fires left, E fires right, Space the side facing them."],
+		["Veki", "The Lasta has three launchers a side. Make them count."],
+		["Thief", "Nice plates on that old tub. We'll take them, thanks!"]],
+	"side_open": [["Veki", "They're off our {side}. Fire!"]],
+	"hit": [["Veki", "That claw tore a plate off! Don't let them touch us."],
+		["Davor", "They're slow. Turn away and give them a side."]],
+	"low": [["Veki", "She can't take much more of this!"]],
+	"won": [["Veki", "Their engine's dead. They're not going anywhere."]],
+	"lost": [["Veki", "Too many holes. I'm turning back to Otpornik!"]],
+}
 
 var markers: Dictionary = {}
 var davor: RaidSoldier
@@ -149,6 +169,7 @@ func capture_player_position() -> void:
 	GameState.remember_player_position(player.global_position)
 
 func apply_loaded_state() -> void:
+	close_ship_battle()
 	_clear_yard_job()
 	player.global_position = _safe_loaded_position(GameState.player_position)
 	GameState.player_position = player.global_position
@@ -539,6 +560,40 @@ func _helm() -> void:
 		_line("Veki", "R-7? There is nothing out there."),
 		_line("Davor", "That is why I left it there."),
 	], Callable(), [
-		_choice("Fly to R-7", func() -> void: story_travel_requested.emit("rock")),
+		_choice("Fly to R-7", fly_to_rock),
 		_choice("Not yet", Callable()),
 	])
+
+## The first flight to R-7 is a ship battle: the scrap thieves from the yards
+## follow the Lasta out. Once they are beaten, the Lasta flies straight there.
+func fly_to_rock() -> void:
+	if has_flag("scrap_battle_won"):
+		story_travel_requested.emit("rock")
+		return
+	if ship_battle_open():
+		return
+	_scene([
+		_line("", "The Lasta lifts off pad 1. Otpornik's copper towers drop away below."),
+		_line("Davor", "Something is following us. It looks like a heap of hull plates welded together."),
+		_line("Veki", "The scrap thieves from the yard. They want the Lasta's plates, and they'll tear them off in flight if they can."),
+		_line("Veki", "Good. You have never flown a fight. I'll talk you through it on the way."),
+	], open_scrap_battle)
+
+func open_scrap_battle() -> ShipBattle:
+	return open_ship_battle("scrap_ship", SCRAP_BATTLE_LINES, ["You", "Veki", "Davor"], _scrap_battle_finished)
+
+func _scrap_battle_finished(result: String) -> void:
+	if result == "won":
+		set_flag("scrap_battle_won")
+		_scene([
+			_line("", "The thieves' ship turns slowly in the dark, its engine dead and smoking."),
+			_line("Thief", "(On the radio.) Our engine! You owe us an engine!"),
+			_line("Veki", "I'll call the port patrol. They'll tow you home, and then they'll ask where all those plates came from."),
+			_line("Davor", "Not bad for a first fight. On to R-7."),
+		], func() -> void: story_travel_requested.emit("rock"))
+	else:
+		_scene([
+			_line("Veki", "That's enough. I'm turning her round. We are limping back to pad 1."),
+			_line("Davor", "They've got half our plates and a smile on their faces."),
+			_line("Veki", "Remember: TNT only leaves the sides. Turn a side to them and keep away from that claw. Talk to me at the helm when you want to try again."),
+		])

@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 25,
+  "nextobjectid": 26,
   "layers": [
     {
       "id": 1,
@@ -5012,6 +5012,17 @@
         },
         {
           "id": 22,
+          "name": "photo",
+          "type": "marker",
+          "point": true,
+          "x": 424,
+          "y": 856,
+          "width": 0,
+          "height": 0,
+          "visible": true
+        },
+        {
+          "id": 23,
           "name": "kreso",
           "type": "marker",
           "point": true,
@@ -5022,7 +5033,7 @@
           "visible": true
         },
         {
-          "id": 23,
+          "id": 24,
           "name": "room_rect_origin",
           "type": "marker",
           "point": true,
@@ -5033,7 +5044,7 @@
           "visible": true
         },
         {
-          "id": 24,
+          "id": 25,
           "name": "room_rect_end",
           "type": "marker",
           "point": true,

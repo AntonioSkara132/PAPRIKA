@@ -1,7 +1,8 @@
 extends Node
 
 ## The embassy to Engineeria: Julius's people on Pomidor, the Council meeting,
-## Chvarak, the ambush on the diplomatic ship, the crash and Davor.
+## Chvarak, the ship battle and the ambush on the diplomatic ship, the crash
+## and Davor.
 
 var checks := 0
 var failures := 0
@@ -244,8 +245,7 @@ func _chvarak() -> bool:
 		var envoy := port.story_person(key)
 		_check(port.on_ship(envoy.global_position) and not envoy.is_in_group("interactable") and not envoy.is_in_group("party_target"), "%s sits in the cabin and cannot be targeted" % ChvarakWorld.STORY_PEOPLE[key])
 	_check(ui.scene_playing() and port.flight_time() < 0.0, "the take-off lines play before the flight clock starts")
-	_end_scene()
-	_check(port.flight_time() == 0.0, "the flight clock starts after the take-off lines")
+	await _through_ship_battle(port, "harpooned")
 
 	# A save in flight keeps the player on the pad.
 	port.capture_player_position()
@@ -271,13 +271,28 @@ func _chvarak() -> bool:
 	_check(port.ambushers().is_empty() and port.ship_guards().is_empty(), "loading clears the hackers and the ship guards")
 	_check(not state.defeated_persistent_enemies.has(PomidorWorld.DEPARTED_FLAG), "the embassy has not left yet after the load")
 
-	# Board again and sit out the whole flight: the ship goes down after FLIGHT_SECONDS.
+	# A load during the ship battle closes it and puts the player back on the pad.
 	_interact_service(port, "diplomatic_ship")
 	_skip_to_choices()
 	_choose("Board the ship")
 	_end_scene()
-	port.advance_flight(ChvarakWorld.FLIGHT_SECONDS + 0.5)
+	_check(port.ship_battle_open(), "boarding again opens the ship battle again")
+	_check(state.load_game(), "the save loads during the ship battle")
+	port.apply_loaded_state()
+	await get_tree().process_frame
+	_check(not port.ship_battle_open() and not port.flying() and port.player.global_position.distance_to(ChvarakWorld.BOARD_POSITION) < 24.0, "loading closes the ship battle and puts the player back on the pad")
+
+	# Board again, wreck the hackers' ship and sit out the whole flight: the
+	# ship goes down after FLIGHT_SECONDS.
+	_interact_service(port, "diplomatic_ship")
+	_skip_to_choices()
+	_choose("Board the ship")
+	await _through_ship_battle(port, "boarded")
+	port.advance_flight(ChvarakWorld.ALARM_SECONDS + 0.5)
+	_check(port.ambushers().size() == 2, "after the hackers jump across, the same first group comes through the hatch")
+	port.advance_flight(ChvarakWorld.FLIGHT_SECONDS)
 	_check(state.defeated_persistent_enemies.has(state.CRASH_FLAG) and ui.scene_playing() and _scene_has_line("falling"), "the ship goes down after %d seconds of flight" % int(ChvarakWorld.FLIGHT_SECONDS))
+	_check(_scene_has_line("A second ship"), "Klara sees a second hackers' ship before the hit")
 	_end_scene()
 	for frame in 3:
 		await get_tree().process_frame
@@ -291,16 +306,32 @@ func _chvarak() -> bool:
 	if port == null:
 		return false
 
-	# Board again; being downed in the fight brings the ship down.
+	# Board again and lose the ship battle. The MC has one life: being downed in
+	# the fight loads the last save, which puts the player back on the pad.
 	_interact_service(port, "diplomatic_ship")
 	_skip_to_choices()
 	_choose("Board the ship")
-	_end_scene()
+	await _through_ship_battle(port, "lost")
 	port.advance_flight(ChvarakWorld.ALARM_SECONDS + 0.5)
+	_check(port.ambushers().size() == 2 and port.ambushers().all(func(e: Enemy) -> bool: return e.max_health == int(ChvarakWorld.AMBUSH_STATS[e.enemy_id]["max_health"])), "after a lost battle the same hackers board, at full strength")
 	port.player._invulnerability = 0.0
 	port.player.take_damage(9999, port.player.global_position)
-	_check(state.defeated_persistent_enemies.has(PomidorWorld.DEPARTED_FLAG) and state.defeated_persistent_enemies.has(state.CRASH_FLAG), "being downed in the fight brings the ship down")
-	_check(port.ambushers().is_empty() and ui.scene_playing() and _scene_has_line("falling"), "the crash clears the fight and plays the fall")
+	for frame in 3:
+		await get_tree().process_frame
+	port = game.world as ChvarakWorld
+	_check(port != null and state.current_planet == "chvarak" and not state.defeated_persistent_enemies.has(state.CRASH_FLAG) and not port.flying() and port.ambushers().is_empty(), "being downed in the fight loads the save on the pad instead of crashing the ship")
+	if port == null:
+		return false
+	ui.cancel_scene()
+
+	# Board once more and sit out the flight to reach Engineeria.
+	_interact_service(port, "diplomatic_ship")
+	_skip_to_choices()
+	_choose("Board the ship")
+	await _through_ship_battle(port, "harpooned")
+	port.advance_flight(ChvarakWorld.ALARM_SECONDS + 0.5)
+	port.advance_flight(ChvarakWorld.FLIGHT_SECONDS)
+	_check(state.defeated_persistent_enemies.has(PomidorWorld.DEPARTED_FLAG) and state.defeated_persistent_enemies.has(state.CRASH_FLAG) and port.ambushers().is_empty() and ui.scene_playing() and _scene_has_line("falling"), "after the reload the flight still ends in the crash")
 	_end_scene()
 	return true
 
@@ -357,11 +388,9 @@ func _engineeria() -> bool:
 	forest.advance_chase(EngineeriaWorld.STALL_SECONDS * 4.0)
 	_check(forest.beasts().size() == EngineeriaWorld.MAX_BEASTS, "no more than %d beasts chase at once" % EngineeriaWorld.MAX_BEASTS)
 
-	# Being downed starts the chase again by the wreck.
-	player._invulnerability = 0.0
-	player.take_damage(9999, player.global_position)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# Being downed with no save starts the chase again by the wreck. (With a
+	# save, main.gd's one-life rule loads it instead; the Chvarak checks cover that.)
+	await _downed_without_save(player)
 	_check(player.global_position.distance_to(state.ENGINEERIA_ARRIVAL) < 4.0 and forest.chasing() and forest.beasts().size() == EngineeriaWorld.FIRST_GROUP, "being downed wakes the player by the wreck and the chase starts again")
 	_check(int(state.inventory.get("embassy_letters", 0)) == 1 and not ui.scene_playing(), "the player keeps the letters and the crash scene does not repeat")
 
@@ -388,11 +417,8 @@ func _engineeria() -> bool:
 	_check(davor.max_health == EngineeriaWorld.DAVOR_HEALTH and davor.armor == 0 and davor.speed == EngineeriaWorld.DAVOR_SPEED and davor.can_leap, "Davor has 260 health, no armor, speed 100 and can leap")
 	_check((davor.get_node("NameLabel") as Label).text == "Old Man  Lv.8", "he is an old man of level 8 until he gives his name")
 
-	# Being downed now wakes the player at his door, not back at the wreck.
-	player._invulnerability = 0.0
-	player.take_damage(9999, player.global_position)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# Being downed with no save now wakes the player at his door, not back at the wreck.
+	await _downed_without_save(player)
 	_check(player.global_position.distance_to(EngineeriaWorld.HOUSE_FRONT) < 4.0 and forest.beasts().is_empty() and not forest.chasing() and forest.davor() == davor, "being downed after the old man comes out wakes the player at his door with the beasts dead")
 	for frame in 30:
 		await get_tree().physics_frame
@@ -452,12 +478,14 @@ func _engineeria() -> bool:
 			break
 	_check(leapt and not davor.leaping() and davor.global_position.y < 35 * 16 and loader.is_walkable_position(davor.global_position), "Davor leaps up the ledge and lands on open ground")
 
-	# Downed, he gets up again.
+	# Downed, he stays down: he does not get up on a timer (DAVOR_GET_UP_SECONDS is 0).
 	davor.take_damage(9999)
 	_check(davor.down and not davor.is_in_group("party_target"), "Davor can be downed")
 	for step in 11:
 		davor._physics_process(1.0)
-	_check(not davor.down and davor.health == davor.max_health and davor.is_in_group("party_target"), "Davor gets up again after ten seconds")
+	_check(davor.down and not davor.is_in_group("party_target"), "Davor stays down; he does not get up on his own")
+	# Stand him up to carry on with the rest of the story.
+	davor.get_up()
 
 	# Save and load after he joins.
 	player.global_position = _open_point_near(loader, Vector2(60 * 16, 30 * 16))
@@ -655,10 +683,8 @@ func _rudnik_port(forest: EngineeriaWorld) -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_check(forest.story_person("miner_1").visible and not forest.story_person("miner_2").visible and not forest.trip_running() and forest.davor() != null, "loading keeps the first trip and Davor")
-	player._invulnerability = 0.0
-	player.take_damage(9999, player.global_position)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# With no save, being downed wakes the player inside the gate.
+	await _downed_without_save(player)
 	_check(player.global_position.distance_to(EngineeriaWorld.GATE_INSIDE) < 4.0 and forest.in_port(player.global_position), "being downed in the port wakes the player inside the gate")
 
 	_interact_service(forest, "rudnik_lift")
@@ -699,6 +725,45 @@ func _rudnik_port(forest: EngineeriaWorld) -> bool:
 	return true
 
 # ---- helpers ----
+
+## From the take-off lines through Klara's call and the ship battle, ending it
+## with `result`, to the scene at the hatch and the start of the flight clock.
+func _through_ship_battle(port: ChvarakWorld, result: String) -> void:
+	_finish_scene()
+	_check(ui.scene_playing() and _scene_has_line("lights off") and port.flight_time() < 0.0 and not port.ship_battle_open(), "Klara calls the Captain to the guns (%s)" % result)
+	var klara := port.story_person("klara")
+	_check(klara != null and port.on_ship(klara.global_position) and port.on_ship(ChvarakWorld.COCKPIT_CONSOLE) and klara.get_node_or_null("../ShipConsole") != null, "Klara sits at the pilot's console inside the ship (%s)" % result)
+	_finish_scene()
+	var battle := port.ship_battle
+	_check(port.ship_battle_open() and battle.player_id == "diplomatic_ship" and battle.enemy_id == "hacker_ship" and battle.crew.has("Klara") and port.flight_time() < 0.0, "the ship battle against the hackers opens before the flight clock starts (%s)" % result)
+	if not port.ship_battle_open():
+		return
+	_check(port.story_status_text().contains("harpoon") and battle.lines["start"][1][0] == "Klara" and not battle.lines.values().any(func(lines: Array) -> bool: return lines.any(func(line: Array) -> bool: return String(line[1]).contains("Julius"))), "Klara explains the controls, and the hackers never name Julius")
+	match result:
+		"harpooned":
+			battle._end("harpooned")
+		"boarded":
+			battle._damage(battle.enemy, 1000)
+		"lost":
+			battle._damage(battle.player, 1000)
+			battle.step(0.02)
+	_check(battle.state == result, "the ship battle ends %s" % result)
+	var guard := 0
+	while battle.state != "over" and guard < 400:
+		battle.step(1.0 / 60.0)
+		guard += 1
+	# The battle frees itself at the end of the frame.
+	await get_tree().process_frame
+	var expected := "teal light" if result == "boarded" else "cable goes tight"
+	_check(not port.ship_battle_open() and ui.scene_playing() and _scene_has_line(expected) and _scene_has_line("hisses at the hatch") and port.flight_time() < 0.0, "after the battle (%s) a short scene shows the hackers at the hatch" % result)
+	_end_scene()
+	_check(port.flight_time() == 0.0 and port.ambushers().is_empty() and ChvarakWorld.WAVES[0]["at"] == ChvarakWorld.ALARM_SECONDS, "then the flight clock starts and the boarding follows as before (%s)" % result)
+
+## Reads the current scene to its end, which may start the next one.
+func _finish_scene() -> void:
+	_skip_to_choices()
+	if ui.scene_playing():
+		ui.advance_scene()
 
 func _talk(world: Node, key: String) -> void:
 	ui.close_modal()
@@ -761,6 +826,20 @@ func _reach_clearing(forest: EngineeriaWorld) -> RaidSoldier:
 	close[1].global_position = _open_point_near(loader, forest.player.global_position + Vector2(60, 50))
 	forest.advance_chase(0.25)
 	return forest.davor()
+
+## Downs the player with the save moved aside, so the world's own respawn runs
+## instead of main.gd's one-life reload, then puts the save back.
+func _downed_without_save(player: Player) -> void:
+	var path := ProjectSettings.globalize_path(state.SAVE_PATH)
+	var had_save := FileAccess.file_exists(path)
+	if had_save:
+		DirAccess.rename_absolute(path, path + ".aside")
+	player._invulnerability = 0.0
+	player.take_damage(9999, player.global_position)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if had_save:
+		DirAccess.rename_absolute(path + ".aside", path)
 
 func _quick_load() -> void:
 	var event := InputEventAction.new()

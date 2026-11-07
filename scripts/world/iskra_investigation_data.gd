@@ -18,7 +18,7 @@ const ARROW := "banishing_arrow"
 const GUARD_COUNTS := {"squirrel": 6, "pelican": 6}
 ## Roko joins the Pelican fight when his guards are down or the player comes this close.
 const HACKER_WAKE_DISTANCE := 96.0
-const HACKER_STATS := {"name": "Roko — Pelican Hacker", "level": 8, "max_health": 480, "damage": 30, "speed": 76.0, "armor": 3, "reward": 0, "event": "iskra_investigation_enemy_defeated"}
+const HACKER_STATS := {"name": "Roko — Pelican Hacker", "level": 10, "max_health": 480, "damage": 30, "speed": 76.0, "armor": 3, "reward": 0, "event": "iskra_investigation_enemy_defeated"}
 const ACTOR_IDS := ["assassin", "squirrel_boss", "contract_handler", "pelican_hacker", "squirrel_guard_0", "squirrel_guard_1", "squirrel_guard_2", "squirrel_guard_3", "squirrel_guard_4", "squirrel_guard_5", "pelican_guard_0", "pelican_guard_1", "pelican_guard_2", "pelican_guard_3", "pelican_guard_4", "pelican_guard_5", "squirrel_ally_0", "squirrel_ally_1", "squirrel_ally_2", "pelican_ally_0", "pelican_ally_1", "pelican_ally_2"]
 const ACTOR_MODES := ["idle", "shoot", "attack", "flee", "surrendered", "captured", "dead", "escaped", "follow", "hold", "down"]
 

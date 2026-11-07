@@ -124,6 +124,39 @@ func recruit(villager_id: String) -> bool:
 func drive_player_body(_body: Player, _delta: float) -> bool:
 	return false
 
+var ship_battle: ShipBattle
+var _battle_layer: CanvasLayer
+
+func ship_battle_open() -> bool:
+	return ship_battle != null and is_instance_valid(ship_battle)
+
+## Opens a ship battle (scripts/ship_battle/ship_battle.gd) against `enemy_id`
+## from GameData.SHIPS, over the world, with the player flying `player_id`.
+## `on_finished` gets the result: "won", "lost", "harpooned" or "boarded".
+func open_ship_battle(enemy_id: String, lines: Dictionary, crew: Array, on_finished: Callable, player_id: String = "lasta") -> ShipBattle:
+	close_ship_battle()
+	if _battle_layer == null:
+		_battle_layer = CanvasLayer.new()
+		_battle_layer.name = "ShipBattleLayer"
+		_battle_layer.layer = 1001
+		add_child(_battle_layer)
+	ship_battle = ShipBattle.new()
+	ship_battle.name = "ShipBattle"
+	ship_battle.enemy_id = enemy_id
+	ship_battle.player_id = player_id
+	ship_battle.lines = lines
+	ship_battle.crew = crew
+	_battle_layer.add_child(ship_battle)
+	ship_battle.finished.connect(func(result: String) -> void:
+		ship_battle = null
+		on_finished.call(result))
+	return ship_battle
+
+func close_ship_battle() -> void:
+	if ship_battle_open():
+		ship_battle.queue_free()
+	ship_battle = null
+
 func controlled_actor() -> CharacterBody2D:
 	if GameState.controlled_member_id != "player":
 		var villager := find_villager(GameState.controlled_member_id)
